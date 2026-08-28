@@ -36,8 +36,11 @@ class ParserService:
         self.cache = get_cache()
 
         # frequency_words.txt mtime 缓存
-        self._freq_words_cache: Optional[List[Dict]] = None
+        self._freq_words_cache: Optional[
+            Tuple[List[Dict], List[Dict], List[Dict]]
+        ] = None
         self._freq_words_mtime: float = 0.0
+        self._freq_words_path: Optional[str] = None
 
     @staticmethod
     def clean_title(title: str) -> str:
@@ -373,9 +376,11 @@ class ParserService:
         except Exception as e:
             raise FileParseError(str(config_path), str(e))
 
-    def parse_frequency_words(self, words_file: str = None) -> List[Dict]:
+    def parse_frequency_config(
+        self, words_file: str = None
+    ) -> Tuple[List[Dict], List[Dict], List[Dict]]:
         """
-        解析关键词配置文件（带 mtime 缓存）
+        解析完整关键词配置（带 mtime 缓存）。
 
         仅当 frequency_words.txt 被修改时才重新解析，避免循环内重复 IO。
 
@@ -394,7 +399,7 @@ class ParserService:
             words_file: 关键词文件路径，默认为 config/frequency_words.txt
 
         Returns:
-            词组列表
+            (词组列表, 兼容用文件级过滤词, 全局过滤词)
 
         Raises:
             FileParseError: 文件解析错误
@@ -410,17 +415,27 @@ class ParserService:
         try:
             current_mtime = os.path.getmtime(words_file)
 
-            if self._freq_words_cache is not None and current_mtime == self._freq_words_mtime:
+            if (
+                self._freq_words_cache is not None
+                and current_mtime == self._freq_words_mtime
+                and words_file == self._freq_words_path
+            ):
                 return self._freq_words_cache
 
-            word_groups, filter_words, global_filters = load_frequency_words(words_file)
-            self._freq_words_cache = word_groups
+            frequency_config = load_frequency_words(words_file)
+            self._freq_words_cache = frequency_config
             self._freq_words_mtime = current_mtime
-            return word_groups
+            self._freq_words_path = words_file
+            return frequency_config
         except FileNotFoundError:
-            return []
+            return [], [], []
         except Exception as e:
             raise FileParseError(words_file, str(e))
+
+    def parse_frequency_words(self, words_file: str = None) -> List[Dict]:
+        """返回关键词组；完整匹配应使用 :meth:`parse_frequency_config`。"""
+        word_groups, _, _ = self.parse_frequency_config(words_file)
+        return word_groups
 
     def get_available_dates(self, db_type: str = "news") -> List[str]:
         """

@@ -10,7 +10,15 @@ from trendradar.core.config import (
     get_account_at_index,
 )
 from trendradar.core.loader import load_config
-from trendradar.core.frequency import load_frequency_words, matches_word_groups
+from trendradar.core.frequency import (
+    FrequencyMatch,
+    FrequencyValidationIssue,
+    RuleConfig,
+    load_frequency_words,
+    match_frequency_title,
+    matches_word_groups,
+    validate_frequency_file,
+)
 from trendradar.core.scheduler import Scheduler, ResolvedSchedule
 from trendradar.core.data import (
     read_all_today_titles_from_storage,
@@ -31,8 +39,13 @@ __all__ = [
     "limit_accounts",
     "get_account_at_index",
     "load_config",
+    "FrequencyMatch",
+    "FrequencyValidationIssue",
+    "RuleConfig",
     "load_frequency_words",
+    "match_frequency_title",
     "matches_word_groups",
+    "validate_frequency_file",
     # 数据处理
     "read_all_today_titles_from_storage",
     "read_all_today_titles",

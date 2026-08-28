@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Tuple
 
 from trendradar.context import AppContext
 from trendradar import __version__
-from trendradar.core import load_config
+from trendradar.core import RuleConfig, load_config
 from trendradar.core.analyzer import convert_keyword_stats_to_platform_stats
 from trendradar.crawler import DataFetcher
 from trendradar.storage import convert_crawl_results_to_news_data
@@ -656,10 +656,10 @@ class NewsAnalyzer:
         title_info: Dict,
         new_titles: Dict,
         word_groups: List[Dict],
-        filter_words: List[str],
+        filter_words: List[RuleConfig],
         id_to_name: Dict,
         failed_ids: Optional[List] = None,
-        global_filters: Optional[List[str]] = None,
+        global_filters: Optional[List[RuleConfig]] = None,
         quiet: bool = False,
         rss_items: Optional[List[Dict]] = None,
         rss_new_items: Optional[List[Dict]] = None,

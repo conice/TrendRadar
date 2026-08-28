@@ -380,30 +380,31 @@ class DataService:
 
         # 预加载关键词数据（避免在循环内重复调用）
         if extract_mode == "keywords":
-            from trendradar.core.frequency import _word_matches
-            word_groups = self.parser.parse_frequency_words()
+            from trendradar.core.frequency import match_frequency_title
+            word_groups, filter_words, global_filters = (
+                self.parser.parse_frequency_config()
+            )
 
         # 遍历要处理的标题
         for platform_id, titles in titles_to_process.items():
             for title in titles.keys():
                 if extract_mode == "keywords":
-                    # 基于预设关键词统计（支持正则匹配）
-                    title_lower = title.lower()
+                    match_result = match_frequency_title(
+                        title,
+                        word_groups,
+                        filter_words=filter_words,
+                        global_filters=global_filters,
+                    )
+                    if match_result.groups:
+                        group = match_result.groups[0]
+                        display_key = group.get("display_name") or group.get(
+                            "group_key", ""
+                        )
 
-                    for group in word_groups:
-                        all_words = group.get("required", []) + group.get("normal", [])
-                        # 检查是否匹配词组中的任意一个词
-                        matched = any(_word_matches(word_config, title_lower) for word_config in all_words)
-
-                        if matched:
-                            # 使用组的 display_name（组别名或行别名拼接）
-                            display_key = group.get("display_name") or group.get("group_key", "")
-
-                            word_frequency[display_key] += 1
-                            if display_key not in keyword_to_news:
-                                keyword_to_news[display_key] = []
-                            keyword_to_news[display_key].append(title)
-                            break  # 每个标题只计入第一个匹配的词组
+                        word_frequency[display_key] += 1
+                        if display_key not in keyword_to_news:
+                            keyword_to_news[display_key] = []
+                        keyword_to_news[display_key].append(title)
 
                 elif extract_mode == "auto_extract":
                     # 自动提取关键词

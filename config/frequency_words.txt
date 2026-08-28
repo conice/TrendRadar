@@ -1,258 +1,699 @@
 # ═══════════════════════════════════════════════════════════════
 #                    TrendRadar 频率词配置文件
-#                         Version: 1.1.0
+#                         Version: 1.3.0
 # ═══════════════════════════════════════════════════════════════
-
+#
 # 可视化配置编辑器地址: https://sansan0.github.io/TrendRadar/
+# Last-Reviewed: 2026-09-05
+# Review-Cadence: 每月回放、每季度清理时效词
+# Validation: python scripts/validate_frequency_words.py
+# Audit: python scripts/audit_frequency_words.py --news-dir output/news
 #
 # 凡是左侧有 # 的都是仅供阅读的说明性文字
 #
-# 这个文件用来设置你想关注的新闻关键词。
-# 系统会自动抓取包含这些关键词的热榜新闻推送给你。
+# 维护约定：
+#   1. 中英规则写在同一组，不要再拆「英文区」平行分类
+#   2. 拉丁品牌/专名只写一次
+#   3. 英文短词用 (?<![a-z0-9])token(?![a-z0-9])，不要用 \b
+#      Python 默认 UNICODE，\b 在「的AI」之间不成立
+#   4. 同一 [组] 内不要空行，空行会拆成两个词组
+#   5. !过滤词只作用于所在组；全局排除统一写入 [GLOBAL_FILTER]
+#   6. [GLOBAL_FILTER] 支持普通词、/正则/、=> 命名，保持 5-15 条高精度规则
+#   7. 高频组用 @数字限制单组条数，避免刷屏
+#   8. 中文允许裸词提召回；拉丁短词仍加 lookaround。同形词必须加场景词
+#   9. 产品型号、影视、赛事等时效词放 config/custom/keyword/，不要进入默认词库
 #
-# 文件分为两个区域：
 #   [GLOBAL_FILTER]  - 全局过滤区：排除不想看的内容
 #   [WORD_GROUPS]    - 词组定义区：设置想关注的关键词
 #
-# ═══════════════════════════════════════════════════════════════
-
-
-# ───────────────────────────────────────────────────────────────
-#                        全局过滤区
-# ───────────────────────────────────────────────────────────────
-# 在这里写入你不想看到的词，每行一个。
-# 包含这些词的新闻会被自动排除，不会出现在推送中。
+# 格式：
+#   /正则/ => 别名       通用模式，自动忽略大小写
+#   关键词 => 别名        精确匹配（子字符串）
 #
-# 使用方法：
-#   震惊              直接写词，包含"震惊"的新闻会被过滤
-#   /赌博|博彩/       用 /.../ 包裹可以匹配多个词（用 | 分隔）
-
+# ═══════════════════════════════════════════════════════════════
+#                 全局过滤区（只过滤明确的低质行为/话术）
 [GLOBAL_FILTER]
-# 过滤标题党
-震惊
+# ═══════════════════════════════════════════════════════════════
 
+# 主题词不应作为全局过滤；这里只保留高置信度的话术组合。
+/(?:到手价|限时价|补贴价|券后价|历史低价).{0,16}\d{2,}\s*元/ => 价格营销
+/^(?:震惊|惊呆|吓傻)[！!:：]/ => 标题党
+/(?:不转不是中国人|是中国人就转|不转不是朋友|家人都转起来)/ => 道德绑架
+/(?:删前速看|再不看就没了|马上删掉|传疯了|刷爆朋友圈)/ => 诱导传播
+/(?:限时秒杀|清仓|跳楼价|领券|券后).{0,16}(?:元|折|优惠|到手)/ => 促销话术
+/(?:稳赚不赔|一夜暴富|躺赚|月入.{0,6}万|日赚.{0,6}\d+)/ => 致富话术
+/(?:刷单.{0,8}佣金|挂机赚钱|发展下线|拉人头|人头分成|返佣.{0,8}(?:群|项目))/ => 兼职传销
+/(?:加|添加).{0,8}(?:微信|V信|VX|客服).{0,12}(?:领取|返现|带单|进群)|扫码.{0,8}(?:加群|进群)/ => 私域导流
+/(?:荐股群|带单导师|老师带单|精准荐股|内幕消息.{0,6}(?:股票|个股)|收益截图.{0,8}进群)/ => 投资骗局
+/(?:助力提现|砍一刀|转发.{0,8}(?:朋友圈|群).{0,8}(?:领取|免费)|扫码.{0,8}(?:红包|佣金))/ => 任务裂变
+/(?:送彩金|包赢|稳赚).{0,12}(?:博彩|下注|百家乐|娱乐城)|(?:博彩|下注|百家乐|娱乐城).{0,12}(?:送彩金|开户|代理)/ => 赌博引流
+/(?:祖传|老中医|偏方).{0,12}(?:根治|包治百病|药到病除)/ => 医疗骗局
+/(?:一刀999|是兄弟就来砍我|装备全靠打|上线送VIP)/ => 页游广告
+/(?:短剧|爽剧).{0,10}(?:全集|免费(?:看|观看)|小程序(?:看|观看|入口))/ => 短剧引流
 
-
-# ───────────────────────────────────────────────────────────────
-#                        词组定义区
-# ───────────────────────────────────────────────────────────────
-# 在这里写入你想关注的关键词。
-# 每个词组用空行分隔，同一词组内的关键词是"或"的关系。
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      语法总览（快速参考）                      │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 关键词语法：
-#   关键词            普通关键词，标题包含即匹配
-#   /正则/            正则表达式匹配（自动忽略大小写）
-#   关键词 => 别名    给关键词指定显示别名
-#   [组别名]          词组第一行，给整组指定别名
-#   +关键词           必须词，所有必须词都要匹配才算匹配
-#   !关键词           过滤词，匹配则排除该条新闻（仅限当前词组）
-#   @数字             限制该词组最多显示多少条
-#
-# 显示名称优先级：
-#   1. 有组别名 → 显示组别名
-#   2. 没有组别名 → 显示各行别名拼接（用 " / " 连接）
-#   3. 没有别名 → 显示关键词本身
-#
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      基础用法（推荐新手）                      │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 1. 最简单：直接写关键词
-#    ────────────────────
-#    华为
-#
-#    效果：匹配所有包含"华为"的新闻
-#
-#
-# 2. 多个关键词归为一组
-#    ────────────────────
-#    华为
-#    鸿蒙
-#    任正非
-#
-#    效果：匹配包含"华为"或"鸿蒙"或"任正非"的新闻，统一显示为"华为 / 鸿蒙 / 任正非"
-#
-#
-# 3. 给词组起个名字（推荐）
-#    ────────────────────
-#    [华为]
-#    华为
-#    鸿蒙
-#    任正非
-#
-#    效果：同上，但显示名称为"华为"（更简洁）
-#
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      进阶用法（可选）                         │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 4. 用正则表达式匹配多个词（一行搞定）
-#    ────────────────────
-#    /华为|鸿蒙|任正非/ => 华为
-#
-#    效果：匹配包含"华为"或"鸿蒙"或"任正非"的新闻，显示为"华为"
-#    说明：/.../ 里用 | 分隔多个词，=> 后面是显示名称
-#
-#    💡 不懂正则？问 AI：
-#       "帮我写一个正则表达式，匹配包含'华为'或'鸿蒙'或'任正非'的文本，
-#        格式要求：/正则/ => 显示名称"
-#
-#
-# 5. 精确匹配英文单词（避免误匹配）
-#    ────────────────────
-#    /\bAI\b/i => AI
-#
-#    说明：\b 表示单词边界，避免匹配到 "MAIL" 中的 "AI"
-#          /i 表示忽略大小写，"ai"、"AI"、"Ai" 都能匹配
-#
-#    💡 不懂正则？问 AI：
-#       "帮我写一个正则表达式，精确匹配英文单词'AI'（不匹配 MAIL 中的 AI），
-#        忽略大小写，格式要求：/正则/i => 显示名称"
-#
-#
-# 6. 排除特定内容
-#    ────────────────────
-#    [苹果公司]
-#    苹果
-#    !水果
-#    !果园
-#
-#    效果：匹配"苹果"但排除包含"水果"或"果园"的新闻
-#    说明：! 开头的词表示"排除"
-#
-#
-# 7. 限制显示条数
-#    ────────────────────
-#    [科技新闻]
-#    科技
-#    @5
-#
-#    效果：最多显示 5 条匹配的新闻
-#    说明：@数字 表示限制条数
-#
-#
-# 8. 必须同时包含多个词
-#    ────────────────────
-#    +苹果
-#    +发布会
-#
-#    效果：必须同时包含"苹果"和"发布会"才匹配
-#    说明：+ 开头的词表示"必须包含"
-#
-# ───────────────────────────────────────────────────────────────
-
+# ═══════════════════════════════════════════════════════════════
+#                     词组定义区
 [WORD_GROUPS]
-
-# ═══════════════════════════════════════════════════════════════
-#                         企业与品牌
 # ═══════════════════════════════════════════════════════════════
 
-/胖东来|于东来/ => 胖东来
-
-/深度求索|幻方量化|梁文锋|\bDeepSeek\b/ => DeepSeek
-
-/华为|任正非|余承东|鸿蒙|海思|昇腾|鲲鹏|\bHUAWEI\b|\bHarmonyOS\b|\bHiSilicon\b/ => 华为
-
-/比亚迪|王传福|方程豹|腾势|仰望|弗迪|刀片电池|云辇|\bBYD\b|\bDenza\b|\bYangwang\b/ => 比亚迪
-
-/大疆|汪滔|灵眸|如影|\bDJI\b|\bRoboMaster\b|\bMavic\b|\bZenmuse\b/ => 大疆
-
-/宇树|王兴兴|\bUnitree\b/ => 宇树机器人
-
-/智元|灵犀|稚晖君|彭志辉|AgiBot/ => 智元机器人
-/众擎|EngineAI|赵同阳/ => 众擎机器人
-
-/黑神话|冯骥/ => 黑神话悟空
-
-/影之刃零|梁其伟/ => 影之刃零
-
-/三体|流浪地球|刘慈欣|郭帆/ => 三体/流浪地球
-
-申奥
-
-/京东|刘强东|\bJD\b|\bJingdong\b/ => 京东
-
-/字节|张一鸣|梁汝波|抖音|\bByteDance\b|\bTikTok\b|\bDouyin\b|\bLark\b|\bCapCut\b/ => 字节跳动
-
-/腾讯|鹅厂|马化腾|微信|QQ|天美|阅文集团|微众银行|\bTencent\b|\bPony Ma\b|\bWeChat\b|\bLightSpeed\b|\bWeBank\b/ => 腾讯
-
-/qwen|minimax|glm/ => 国产开源模型
-
-/特斯拉|马斯克|\bTesla\b|\bElon Musk\b|\bCybertruck\b|\bModel 3\b|\bModel Y\b|\bModel S\b|\bModel X\b|\bFSD\b/ => 特斯拉
-
-/英伟达|黄仁勋|\bNVIDIA\b|\bGeForce\b|\bRTX\b|\bCUDA\b|\bJensen Huang\b/ => 英伟达
-/苏姿丰|锐龙|霄龙|\bAMD\b|\bRyzen\b|\bEPYC\b|\bRadeon\b|\bLisa Su\b/ => AMD
-
-/微软|\bMicrosoft\b|\bWindows\b|\bAzure\b|\bSatya Nadella\b|\bCopilot\b/ => 微软
-/谷歌|皮查伊|安卓|油管|\bGoogle\b|\bAlphabet\b|\bAndroid\b|\bChrome\b|\bYouTube\b|\bGemini\b|\bDeepMind\b|\bWaymo\b/ => 谷歌
-/库克|\biPhone\b|\biPad\b|\bMacBook\b|\biOS\b|\bVision Pro\b|\bAirPods\b|\bApple\b|\bTim Cook\b/ => 苹果
-
-/\bOpenAI\b|\bChatGPT\b|\bSora\b|\bDALL-E\b|\bSam Altman\b|\bGreg Brockman\b/ => OpenAI
-/\bAnthropic\b|\bClaude\b|\bDario Amodei\b/ => Claude
-
-
 # ═══════════════════════════════════════════════════════════════
-#                         国家与地区
+#                    科技 / 互联网
 # ═══════════════════════════════════════════════════════════════
 
-[中国]
-国产
-中国
+# ── AI / 大模型 ──
 
-[东亚]
-日本
-朝鲜
-韩国
+[海外AI]
+/(ChatGPT|OpenAI|Sora|(?<![a-z0-9])GPT(?:s|[- .]?[0-9o][a-z0-9.-]*)?(?![a-z0-9])|(?<![a-z0-9])DALL.?E(?![a-z0-9])|(?<![a-z0-9])Codex(?![a-z0-9])|OpenAI.{0,8}Operator|Operator.{0,8}OpenAI)/ => OpenAI
+/(Claude|Anthropic|Claude[ .]Code|Claude.{0,8}Opus|Opus.{0,8}(?:Claude|Anthropic|模型))/ => Claude
+/(Gemini|DeepMind|Google.{0,12}(?:Gemini|(?<![a-z0-9])ai(?![a-z0-9])|Veo)|(?<![a-z0-9])Gemma(?![a-z0-9])|Veo.{0,8}(?:模型|视频生成|Google))/ => Gemini
+/(Llama|Meta.*(?:Llama|(?<![a-z0-9])ai(?![a-z0-9])))/ => Llama
+/(?<![a-z0-9])Mistral(?![a-z0-9])/ => Mistral
+/(?<![a-z0-9])(?:Copilot|GitHub[ .]Copilot)(?![a-z0-9])/ => Copilot
+/(?<![a-z0-9])(?:Grok|xAI)(?![a-z0-9])|(?<![a-z0-9])Grok-?[23](?![a-z0-9])/ => xAI
+@10
 
-[北美]
-美国
-加拿大
+[国产AI]
+/(深度求索|DeepSeek|(?<![a-z0-9])DeepSeek-?(?:R1|V3|Coder)(?![a-z0-9]))/ => DeepSeek
+/(智谱|ChatGLM|GLM-[0-9](?:\.[0-9]+)?|(?<![a-z0-9])AutoGLM(?![a-z0-9])|CodeGeeX)/ => 智谱
+/(Kimi|月之暗面|Moonshot)/ => Kimi
+/(通义千问|(?<![a-z0-9])(?:Qwen|QwQ)(?![a-z0-9]))/ => 通义千问
+/(文心一言|(?<![a-z0-9])ERNIE(?![a-z0-9])|文心.*(?:大模型|4\.[0-9]))/ => 文心一言
+/(字节.{0,12}豆包|豆包.{0,12}(?:AI|大模型|App|助手|上线|发布|更新)|(?<![a-z0-9])Doubao(?![a-z0-9])|即梦.{0,8}(?:AI|图片|视频|平台|发布|上线)|扣子.{0,8}(?:空间|AI|平台|智能体)|(?<![a-z0-9])(?:Jimeng|Coze)(?![a-z0-9]))/ => 豆包
+/(零一万物|01\.AI|01AI)/ => 零一万物
+/(讯飞星火|iFlytek Spark|讯飞.*(?:星辰|听见))/ => 讯飞星火
+/(百川智能|百川.*(?:大模型|AI)|(?<![a-z0-9])Baichuan(?![a-z0-9]))/ => 百川
+/(腾讯混元|腾讯元宝|Tencent[ .](?:Hunyuan|Yuanbao)|混元.*(?:3D|大模型)|元宝.*AI)/ => 腾讯混元
+/(华为.*盘古|盘古.*大模型|(?<![a-z0-9])Pangu(?![a-z0-9]))/ => 盘古
+/(可灵|(?<![a-z0-9])Kling(?![a-z0-9])|可灵.*(?:2|AI))/ => 可灵
+/(商汤|MiniMax|阶跃星辰|昆仑万维.{0,8}天工|天工.{0,8}(?:AI|大模型|智能体)|(?<![a-z0-9])Skywork(?![a-z0-9])|海螺AI)/ => 国产其他
+@10
 
-[西欧]
-法国
-英国
+[AI技术与应用]
+/(人工智能|大模型|大语言模型|大参数模型|基础模型|(?<![a-z0-9])llm(?![a-z0-9]))/ => 大模型
+/(?<![a-z0-9])(?:foundation models?|large language models?|artificial intelligence|frontier models?)(?![a-z0-9])/ => 大模型
+/(多模态|文生图|文生视频|视频生成|图像生成|(?<![a-z0-9])(?:multimodal (?:model|ai)|generative ai)(?![a-z0-9]))/ => 多模态
+/((?<![a-z0-9])AIGC(?![a-z0-9])|人工智能生成内容|AI生成内容|AI绘画|AI写作)/ => AIGC
+/(生成式AI|生成式.*人工智能|扩散模型|(?<![a-z0-9])diffusion model(?![a-z0-9]))/ => 生成式AI
+/(通用人工智能|(?<![a-z0-9])(?:AGI|ASI)(?![a-z0-9])|artificial general intelligence|artificial superintelligence)/ => AGI
+/(具身智能|智能体|(?<![a-z0-9])(?:embodied (?:ai|intelligence)|ai agents?|AI Agent)(?![a-z0-9]))/ => 智能体
+/(?<![a-z0-9])(?:RAG|MCP|MoE)(?![a-z0-9])|模型.*微调|微调.*(?:模型|大模型)|推理.*大模型|模型.*蒸馏|知识蒸馏|模型.*量化|(?<![a-z0-9])(?:fine-?tun(?:e|ing)|distill|quantiz[a-z]*)(?![a-z0-9])/ => 训练与推理
+/(AI眼镜|AI手机|AI耳机|AI手表|AI\s?PC|(?<![a-z0-9])ai (?:glasses|phone|earbuds|watch|pc)(?![a-z0-9]))/ => AI终端
+@10
 
-/俄罗斯|俄国/ => 俄罗斯
+# ── 芯片 / 半导体 ──
 
-印度
+[芯片半导体]
+/(芯片|半导体|集成电路|晶圆|AI芯片|先进制程|封测|(?<![a-z0-9])(?:gpu|cpu|soc|asic)(?![a-z0-9])|算力|芯片.*代工|晶圆.*代工)/ => 芯片
+/(?<![a-z0-9])(?:semiconductor|integrated circuit|process node|ai chips?|chip war|chip (?:ban|restrictions))(?![a-z0-9])/ => 芯片
+/(纳米.*制程|先进工艺|(?<![0-9])(?:[0-9]{1,2}(?:\.[0-9]+)?|[0-9]+a)[ .]?nm(?![a-z0-9]))/ => 制程工艺
+/(台积电|(?<![a-z0-9])TSMC(?![a-z0-9])|晶圆代工|(?<![a-z0-9])(?:semiconductor|chip) foundry(?![a-z0-9]))/ => 台积电
+/(三星.*芯片|三星.*半导体|Samsung.*(?:chip|semiconductor)|(?<![a-z0-9])Exynos(?![a-z0-9]))/ => 三星芯片
+/(英特尔|(?<![a-z0-9])Intel(?![a-z0-9])|(?:英特尔|Intel).{0,12}18A|18A.{0,12}(?:制程|工艺|英特尔|Intel))/ => 英特尔
+/((?<![a-z0-9])AMD(?![a-z0-9])|超威|锐龙|(?<![a-z0-9])Ryzen(?![a-z0-9])|(?<![a-z0-9])EPYC(?![a-z0-9]))/ => AMD
+/(英伟达|(?<![a-z0-9])NVIDIA(?![a-z0-9]))/ => 英伟达
+/(高通|(?<![a-z0-9])Qualcomm(?![a-z0-9])|骁龙|(?<![a-z0-9])Snapdragon(?![a-z0-9]))/ => 高通
+/(联发科|(?<![a-z0-9])MediaTek(?![a-z0-9])|天玑|(?<![a-z0-9])Dimensity(?![a-z0-9]))/ => 联发科
+/(海思|麒麟.*芯片|昇腾|鲲鹏|HiSilicon|Kirin.*chip|麒麟[0-9]{4})/ => 华为芯片
+/(寒武纪.*芯片|地平线.*芯片|黑芝麻.*芯片|芯驰|壁仞|摩尔线程|景嘉微|昆仑芯|沐曦|燧原|平头哥|Cambricon|Horizon Robotics|Biren|Moore Threads)/ => 国产芯片
+/(龙芯|飞腾|申威|龙架构|Loongson|LoongArch|Phytium|Sunway)/ => 自主架构
+/(RISC.?V|(?<![a-z0-9])(?:ARMv[0-9]|ARM64|Arm Holdings)(?![a-z0-9])|ARM.*(?:架构|芯片|处理器)|(?<![a-z0-9])(?:x86|x86_64|ARMv9)(?![a-z0-9]))/ => 架构
+/(光刻机|(?<![a-z0-9])(?:EUV|DUV)(?![a-z0-9])|光刻胶|多重曝光|浸润式光刻|lithography (?:tool|machine)|photoresist)/ => 光刻
+/(先进封装|Chiplet|硅光|混合键合|Chiplet.*封装|advanced packaging|hybrid bonding|silicon photonics)/ => 先进封装
+/(HBM[234]e?|HBM.*内存|GDDR[67]|存算一体|(?<![a-z0-9])(?:HBM|DDR5|NAND|processing[- ]in[- ]memory)(?![a-z0-9]))/ => 存储与存算
+/(芯片.*EDA|半导体.*EDA|全流程EDA|(?<![a-z0-9])EDA(?![a-z0-9]).*(?:工具|软件|芯片|tool|software))/ => EDA
+/((?<![a-z0-9])(?:Blackwell|Rubin|Hopper|GB[0-9]{3}|MI[0-9]{3})(?![a-z0-9])|玻璃基板|碳基.*(?:芯片|半导体)|光子.*芯片|量子.*芯片|(?<![a-z0-9])High.?NA(?![a-z0-9]).*(?:EUV|光刻)|2\.5D.*(?:封装|packaging)|glass substrate)/ => 芯片前沿
+/(中芯国际|(?<![a-z0-9])SMIC(?![a-z0-9])|华虹|长江存储|长鑫存储|(?<![a-z0-9])(?:ASML|YMTC|CXMT|KLA|Lam Research)(?![a-z0-9])|应用材料|泛林|CoWoS|碳化硅|氮化镓|silicon carbide|gallium nitride)/ => 半导体上游
+@10
 
+# ── 华为 ──
+
+[华为]
+/(华为|(?<![a-z0-9])Huawei(?![a-z0-9])|华为.*(?:发布会|智选))/ => 华为
+/(鸿蒙|(?<![a-z0-9])HarmonyOS(?![a-z0-9])|HarmonyOS[ .]?Next|鸿蒙.*Next|鸿蒙.*(?:座舱|智驾))/ => 鸿蒙
+/(鸿蒙智行|智界|享界|傲界|尊界|(?<![a-z0-9])HIMA(?![a-z0-9])|Harmony Intelligent Mobility|智界[ .]?S7|尊界[ .]?S800)/ => 鸿蒙智行
+/(乾崑|华为.*ADS|Harmony.*ADS|ADS[ .]?[34]\.?[0-9]?)/ => 乾崑智驾
+/(Mate[ .]?(?:[0-9]{2,}|X[0-9]*)|Mate[ .]?XT|MateBook|MatePad|非凡大师)/ => Mate系列
+/(Pura[ .]?[0-9]+|华为.*Pura|Pura[ .]?80)/ => Pura
+@8
+
+# ── 手机 / 数码 ──
+
+[手机数码]
+/(旗舰手机|智能手机|折叠旗舰|手机.*(?:发布|销量|召回|系统|芯片|折叠)|(?<![a-z0-9])(?:smartphone|flagship phone|mobile phone)(?![a-z0-9]))/ => 手机
+/(苹果.*(?:公司|市值|财报|发布|手机|电脑|手表|眼镜)|iPhone|iPad|MacBook|iMac|VisionPro|(?<![a-z0-9])(?:iOS|iPadOS|macOS)(?![a-z0-9])|(?<![a-z0-9])Apple(?![a-z0-9])|Apple Intelligence|苹果智能)/ => Apple
+/(Apple.*(?:发布|launch|event|keynote)|苹果发布会)/ => 苹果发布会
+/(小米|(?<![a-z0-9])(?:Redmi|Xiaomi)(?![a-z0-9])|红米|小米[ .]?(?:15|MIX))/ => 小米
+/((?<![a-z0-9])OPPO(?![a-z0-9])|(?<![a-z0-9])vivo(?![a-z0-9])|(?<![a-z0-9])iQOO(?![a-z0-9])|欧珀|维沃)/ => OPPO/vivo
+/(一加|(?<![a-z0-9])OnePlus(?![a-z0-9]))/ => 一加
+/(荣耀手机|荣耀Magic|荣耀.*发布|(?<![a-z0-9])Honor(?![a-z0-9]) (?:Magic|phone|GT|X[0-9]))/ => 荣耀
+/(三星.*Galaxy|Samsung.*Galaxy)/ => 三星Galaxy
+/(全面屏|打孔屏|屏下摄像头|bezel-?less display|under-?display camera)/ => 屏幕形态
+/(折叠屏|三折叠|双折叠|内外折|(?<![a-z0-9])(?:foldable phone|tri-?fold|bi-?fold)(?![a-z0-9]))/ => 折叠屏
+/(快充|闪充|超充|无线充电|无线反向充电|(?:fast|flash|super|wireless) charg(?:e|ing)|reverse wireless charging)/ => 充电
+/(卫星通信|卫星通话|卫星短信|北斗卫星消息|satellite (?:comms|communication|call|messaging|SOS))/ => 卫星通信
+/(?<![a-z0-9])(?:5\.5g|5g|6g)(?![a-z0-9])/ => 通信技术
+/(Wi.?Fi|Wi.?Fi[ .]?7|蓝牙|(?<![a-z0-9])(?:UWB|NFC|Bluetooth)(?![a-z0-9])|Type.?C|USB.?[34])/ => 连接技术
+/((?<![a-z0-9])(?:TWS|AR|VR|MR|XR)(?![a-z0-9])|智能手表|智能手环|智能眼镜|智能戒指|可穿戴|(?<![a-z0-9])smartwatch(?![a-z0-9])|(?<![a-z0-9])smart ring(?![a-z0-9])|(?<![a-z0-9])mixed reality(?![a-z0-9])|(?<![a-z0-9])smart glasses(?![a-z0-9]))/ => 可穿戴/XR
+/(年度旗舰.*(?:发布|亮相|上线)|旗舰.*(?:发布|亮相|上线)|annual flagship.*(?:launch|unveil|release))/ => 新品发布
+@10
+
+# ── 电动汽车 ──
+
+[电动汽车]
+/(特斯拉|(?<![a-z0-9])Tesla(?![a-z0-9])|Model[ .]?[SYX3]|赛博皮卡|(?<![a-z0-9])Cybertruck(?![a-z0-9])|特斯拉.*Robotaxi)/ => 特斯拉
+/(比亚迪|仰望|方程豹|腾势|(?<![a-z0-9])BYD(?![a-z0-9])|Yangwang|Denza|比亚迪.{0,10}(?:海豹|海鸥)|(?:海豹|海鸥).{0,10}(?:汽车|车型|上市|售价|续航|比亚迪)|秦L|宋L)/ => 比亚迪
+/(蔚来|(?<![a-z0-9])NIO(?![a-z0-9])|蔚来.{0,10}(?:乐道|萤火虫)|乐道.{0,10}(?:汽车|车型|L60)|萤火虫.{0,10}(?:汽车|车型|EV))/ => 蔚来
+/(小鹏|(?<![a-z0-9])XPENG(?![a-z0-9])|小鹏.*MONA|MONA[ .]?M[0-9]+|小鹏[ .]?(?:G6|P7\+|G9))/ => 小鹏
+/(理想汽车|理想L[0-9]|理想.{0,8}MEGA|MEGA.{0,8}(?:汽车|车型|理想)|Li[ .]Auto)/ => 理想
+/(极氪|(?<![a-z0-9])Zeekr(?![a-z0-9])|领克)/ => 极氪
+/(小米[ .]?SU(?:[1-9]|[1-9][0-9])(?![a-z0-9])|小米[ .]?YU(?:[1-9]|[1-9][0-9])(?![a-z0-9])|小米.*汽车|Xiaomi[ .]?SU(?:[1-9]|[1-9][0-9])(?![a-z0-9])|Xiaomi[ .]?YU(?:[1-9]|[1-9][0-9])(?![a-z0-9])|Xiaomi.*(?:car|auto))/ => 小米汽车
+/(问界|(?<![a-z0-9])AITO(?![a-z0-9])|问界[ .]?(?:M[579]))/ => 问界
+/(宁德时代|(?<![a-z0-9])CATL(?![a-z0-9])|神行电池|麒麟电池|骁遥电池)/ => 宁德时代
+/(电动车|新能源汽车|混动|插混|纯电|增程|插电混动|纯电动|(?<![a-z0-9])(?:electric vehicles?|new energy vehicles?|plug-?in hybrids?|battery electric)(?![a-z0-9]))/ => 新能源车
+/(固态电池|钠电池|钠离子|碳酸锂|solid-?state battery|sodium-?ion)/ => 电池
+/(自动驾驶|智驾|城市智驾|(?<![a-z0-9])(?:FSD|NOA)(?![a-z0-9])|激光雷达|毫米波雷达|智驾芯片|(?<![a-z0-9])Orin(?![a-z0-9])|autonomous driving|intelligent driving|(?<![a-z0-9])lidar(?![a-z0-9]))/ => 智驾
+/(换电|超充|充电桩|超充桩|换电模式|battery swap|charging (?:pile|station))/ => 补能
+/(萝卜快跑|(?<![a-z0-9])(?:Robotaxi|Apollo Go)(?![a-z0-9]))/ => 萝卜快跑
+/(半固态电池|全固态|磷酸铁锂|磷酸锰铁锂|三元锂|刀片电池|热失控|换电站|semi-?solid[- ]?state battery|all-?solid[- ]?state battery|LFP battery|blade battery)/ => 电池安全/形态
+/(端到端.{0,12}(?:智驾|驾驶)|(?:智驾|驾驶).{0,12}端到端|纯视觉.{0,12}(?:智驾|驾驶)|无图.{0,12}(?:城市|智能驾驶)|车位到车位|end-?to-?end.{0,16}(?:driving|autonomous)|vision-?only.{0,16}(?:driving|autonomous))/ => 智驾进阶
+/(车路云|(?<![a-z0-9])V2X(?![a-z0-9])|智能座舱|线控底盘|800V|高压平台|smart cabin|by-?wire chassis)/ => 电动新技术
+@10
+
+# ── 互联网 / 平台 ──
+
+[互联网平台]
+/(微信|(?<![a-z0-9])WeChat(?![a-z0-9])|微信公众号|微信小店|小程序)/ => 微信
+/(抖音|(?<![a-z0-9])TikTok(?![a-z0-9])|抖音电商|抖音本地生活)/ => 抖音
+/(快手|(?<![a-z0-9])Kuaishou(?![a-z0-9])|快手电商)/ => 快手
+/(小红书|(?<![a-z0-9])Xiaohongshu(?![a-z0-9])|小红书电商|种草)/ => 小红书
+/(微博|(?<![a-z0-9])Weibo(?![a-z0-9])|微博热搜)/ => 微博
+/(B站|(?<![a-z0-9])bilibili(?![a-z0-9])|(?<![a-z0-9])UP主(?![a-z0-9]))/ => B站
+/(知乎|(?<![a-z0-9])Zhihu(?![a-z0-9]))/ => 知乎
+/(豆瓣|(?<![a-z0-9])Douban(?![a-z0-9]))/ => 豆瓣
+/(贴吧|(?<![a-z0-9])Tieba(?![a-z0-9]))/ => 贴吧
+/(百度|(?<![a-z0-9])Baidu(?![a-z0-9])|文小言|百度搜索)/ => 百度
+/(阿里|阿里巴巴|淘宝|天猫|(?<![a-z0-9])(?:Alibaba|Taobao|Tmall)(?![a-z0-9])|盒马|菜鸟)/ => 阿里
+/(京东|(?<![a-z0-9])JD(?:\.com)?(?![a-z0-9])|京东物流)/ => 京东
+/(拼多多|(?<![a-z0-9])(?:Pinduoduo|PDD)(?![a-z0-9]))/ => 拼多多
+/(美团|饿了么|(?<![a-z0-9])(?:Meituan|Ele\.me)(?![a-z0-9])|美团外卖)/ => 美团/饿了么
+/(滴滴|(?<![a-z0-9])Didi(?![a-z0-9])|滴滴出行)/ => 滴滴
+/(字节跳动|(?<![a-z0-9])ByteDance(?![a-z0-9])|火山引擎)/ => 字节
+/(腾讯|(?<![a-z0-9])(?:Tencent|QQ)(?![a-z0-9]))/ => 腾讯
+/(网易|(?<![a-z0-9])NetEase(?![a-z0-9])|网易云音乐)/ => 网易
+/(蚂蚁集团|蚂蚁金服|蚂蚁保|支付宝|微信支付|(?<![a-z0-9])Alipay(?![a-z0-9])|WeChat Pay|花呗|借呗)/ => 支付/蚂蚁
+/(视频号|私域流量|小程序电商|WeChat Channels|private domain traffic)/ => 流量与电商
+/(钉钉|飞书|高德|闲鱼|剪映|夸克.*(?:浏览器|网盘|AI|搜索)|DingTalk|Feishu|(?<![a-z0-9])(?:Amap|Xianyu|CapCut)(?![a-z0-9])|Quark.*(?:browser|app|AI))/ => 互联网应用
+/(谷歌|(?<![a-z0-9])Google(?![a-z0-9])|(?<![a-z0-9])Alphabet(?![a-z0-9])|油管|(?<![a-z0-9])YouTube(?![a-z0-9])|(?<![a-z0-9])Meta(?![a-z0-9])|脸书|奈飞|(?<![a-z0-9])Netflix(?![a-z0-9])|微软|(?<![a-z0-9])Microsoft(?![a-z0-9])|亚马逊|(?<![a-z0-9])Amazon(?![a-z0-9]))/ => 全球大厂
+@8
+
+# ── 云计算 / 数据中心 ──
+
+[云计算与数据中心]
+/(云计算|公有云|私有云|混合云|云服务.{0,8}(?:增长|市场|厂商)|cloud computing|public cloud|private cloud|hybrid cloud)/ => 云计算
+/(阿里云|腾讯云|华为云|百度智能云|天翼云|(?<![a-z0-9])AWS(?![a-z0-9])|Amazon Web Services|Microsoft Azure|Google Cloud|(?<![a-z0-9])GCP(?![a-z0-9]))/ => 云厂商
+/(数据中心|智算中心|算力中心|超算中心|AI数据中心|hyperscale data cent(?:er|re)|AI data cent(?:er|re))/ => 数据中心
+/(液冷.{0,12}(?:服务器|数据中心|机柜)|浸没式冷却|数据中心.{0,12}(?:液冷|能耗|用电)|data cent(?:er|re).{0,12}(?:liquid cooling|power consumption))/ => 数据中心基础设施
+/(云原生|容器编排|无服务器计算|(?<![a-z0-9])Kubernetes(?![a-z0-9])|(?<![a-z0-9])K8s(?![a-z0-9])|(?<![a-z0-9])serverless(?![a-z0-9]))/ => 云原生
+@8
+
+# ── 隐私 / 安全 ──
+
+[隐私与安全]
+/(数据泄露|隐私.*泄露|信息泄露|开源情报.*泄露|data breach|privacy.*leak)/ => 数据泄露
+/(人脸识别|监控.*隐私|生物识别.*隐私|facial recognition|biometric.*privacy)/ => 人脸识别
+/(APP权限|APP偷听|APP.*eavesdrop|麦克风权限)/ => APP隐私
+/(Cookie.*隐私|(?<![a-z0-9])GDPR(?![a-z0-9]))/ => 隐私法规
+/(个保法|个人信息保护法|个人信息保护|数据出境.*评估|(?<![a-z0-9])PIPL(?![a-z0-9]))/ => 个保法
+/(网络安全.{0,12}审查|网信办|APP.{0,12}(?:下架|整改)|网信办.{0,12}约谈|约谈.{0,12}(?:互联网平台|网络平台|APP)|cybersecurity.{0,12}review|(?<![a-z0-9])CAC(?![a-z0-9]))/ => 网信办/下架
+/(电信诈骗|杀猪盘|反诈|诈骗.*套路|刷单返利|冒充客服|telecom fraud|pig-?butchering)/ => 电信反诈
+/(黑客|勒索软件|(?<![a-z0-9])DDoS(?![a-z0-9])|(?<![a-z0-9])APT(?![a-z0-9]).*攻击|供应链攻击|钓鱼邮件|ransomware|supply chain attack|phishing)/ => 网络攻击
+/(零日|(?<![a-z0-9])0day(?![a-z0-9])|漏洞.*CVE|安全.*漏洞|高危漏洞|zero-?day|critical vulnerability)/ => 漏洞
+/(数据.*出境|跨境.*数据|数据安全评估|安全评估.*数据|cross-?border.*data)/ => 数据跨境
+/(算法备案|生成式AI.*备案|AIGC.*备案|深度合成.*监管|algorithm filing)/ => 算法与AI监管
+@8
+
+# ── 太空 / 航天 ──
+
+[太空航天]
+/(SpaceX|星舰|Starship|星链|Starlink|龙飞船|超级重型|Super Heavy|Dragon|猎鹰[9九]|猎鹰.*火箭|Falcon.?[0-9])/ => SpaceX
+/(航天|商业航天|载人航天|探月工程|(?<![a-z0-9])spaceflight(?![a-z0-9])|commercial spaceflight|crewed spaceflight)/ => 航天动态
+/((?<![a-z0-9])NASA(?![a-z0-9])|美国国家航空航天局|美国宇航局|(?<![a-z0-9])Perseverance(?![a-z0-9]))/ => NASA
+/(阿尔忒弥斯|(?<![a-z0-9])(?:Artemis|Orion)(?![a-z0-9])|猎户座)/ => 阿尔忒弥斯
+/(嫦娥|天问|天宫|嫦娥[0-9]号|Chang'e.*(?:probe|mission)|Tianwen|Tiangong)/ => 嫦娥/天问/天宫
+/(长征.*火箭|神舟|空间站|神舟[0-9]+号|Long March.*rocket|Shenzhou)/ => 神舟/长征
+/(火星.*探测|月球.*探测|小行星.*探测|Mars.*exploration|lunar.*exploration|asteroid.*exploration)/ => 深空探测
+/(火箭.*回收|可回收.*火箭|垂直回收|reusable.*rocket|vertical landing)/ => 回收火箭
+/(卫星|低轨卫星|通信卫星|物联网卫星|satellite.*launch|LEO satellite|IoT satellite)/ => 卫星
+/(北斗|北斗三号|鹊桥|巡天|BeiDou|Queqiao|Xuntian)/ => 北斗/天文
+/(韦伯|哈勃|James.*Webb|(?<![a-z0-9])(?:JWST|Hubble)(?![a-z0-9]))/ => 韦伯
+/(星网|千帆|G60星链|朱雀.*火箭|天龙.*火箭|蓝箭|谷神星|双曲线|可重复使用.*火箭|LandSpace|Zhuque|Tianlong)/ => 商业火箭
+@8
+
+[低空经济]
+/(低空经济|(?<![a-z0-9])eVTOL(?![a-z0-9])|飞行汽车|无人机|通用航空|空中巴士|low-?altitude economy|flying car|advanced air mobility)/ => 低空经济
+/(低空空域|空域.*改革|低空试点|适航.*认证|城市空中交通|airworthiness.*certif|urban air mobility)/ => 低空政策
+/(无人机.*配送|无人机.*巡检|无人机.*物流|通航.*机场|低空.*基建|drone.*(?:delivery|inspection|logistics))/ => 无人机基建
+/(空中出租车|载人.*eVTOL|eVTOL.*试飞|飞行出租|air taxi)/ => 低空出行
+@6
+
+[人形机器人]
+/(人形机器人|humanoid robots?|(?<![a-z0-9])Optimus(?![a-z0-9])|擎天柱.*机器人|特斯拉Optimus|宇树|智元|(?<![a-z0-9])(?:Figure AI|Unitree|AgiBot)(?![a-z0-9]))/ => 人形机器人
+/(灵巧手|伺服电机|行星减速器|滚珠丝杠|六维力传感器|力控.*机器人|dexterous hand|six-?axis force sensor|robot.*servo)/ => 核心部件
+/(量产.*人形|人形.*量产|工厂.*人形|具身智能.*应用|人形机器人.*(?:量产|落地)|humanoid.*mass[- ]produc)/ => 产业化
+/(特斯拉.*Optimus|Figure.*机器人|宇树.*机器人|小鹏.*机器人|银河通用)/ => 企业动态
+@6
+
+# ── 产业制造 ──
+
+[产业制造]
+/(工业母机|数控机床|高端机床|五轴联动|(?<![a-z0-9])CNC(?![a-z0-9]).{0,8}(?:机床|加工)|machine tool)/ => 工业母机
+/(智能制造|工业互联网|灯塔工厂|柔性制造|数字孪生.{0,8}(?:工厂|制造)|smart manufacturing|industrial internet|lighthouse factory)/ => 智能制造
+/(工业机器人|协作机器人|机器视觉.{0,8}(?:工业|工厂|产线)|工厂自动化|产线自动化|industrial robot|collaborative robot|factory automation)/ => 工业自动化
+/(工业软件|国产.{0,8}(?:CAD|CAE|CAM|EDA)|制造执行系统|(?<![a-z0-9])MES(?![a-z0-9]).{0,8}(?:系统|软件)|industrial software)/ => 工业软件
+/(供应链.{0,10}(?:重构|转移|韧性|国产化|本土化)|产业链.{0,10}(?:补链|强链|安全|自主可控)|supply chain.{0,12}(?:resilience|reshoring|localization))/ => 产业链
+@8
 
 # ═══════════════════════════════════════════════════════════════
-#                         科技领域
+#                    财经 / 商业
 # ═══════════════════════════════════════════════════════════════
 
-[AI 相关]
-/(?<![a-zA-Z])ai(?![a-zA-Z])/
-人工智能
+[宏观经济]
+/(宏观经济|经济增长|经济衰退|经济下行|经济复苏|结构性改革|(?<![a-z0-9])GDP(?![a-z0-9]))/ => 经济
+/(增长.*经济|衰退.*经济|下行.*经济|温和复苏|滞胀|econom(?:y|ic).*(?:growth|recession|slowdown)|stagflation)/ => 增长/衰退
+/((?<![a-z0-9])(?:CPI|PPI|PMI)(?![a-z0-9])|GDP平减指数)/ => 物价指数
+/(社融|社会融资|货币供应量|(?<![a-z0-9])M2(?![a-z0-9]))/ => 社融
+/(通胀|通缩|输入性通胀|(?<![a-z0-9])(?:inflation|deflation)(?![a-z0-9]))/ => 通胀
+/(加息|降息|降准|存款准备金|存款利率|rate hike|rate cut|reserve requirement)/ => 利率
+/(贷款利率|政策利率|利率决议|利率下调|利率上调|国债收益率|(?<![a-z0-9])(?:LPR|MLF|SLF)(?![a-z0-9])|逆回购|reverse repo)/ => 利率/货币政策
+/(国债|地方债|专项债|特别国债|超长期特别国债|treasury bond|special-?purpose bond)/ => 国债
+/(财政|财政赤字|财政政策|减税降费|fiscal deficit|fiscal.*policy)/ => 财政
+/(美联储|Federal Reserve|(?<![a-z0-9])(?:FOMC|the Fed)(?![a-z0-9])|点阵图|缩表)/ => 美联储
+/(央行|人民银行|银保监|金融监管总局|金监总局|证监会|金融稳定|(?<![a-z0-9])(?:PBOC|NFRA|CBIRC|CSRC)(?![a-z0-9]))/ => 金融监管
+/(汇率|人民币.*(?:汇率|国际化|升值|贬值)|离岸人民币|在岸人民币|外汇储备|人民币贬值压力|renminbi.*exchange rate|offshore yuan)/ => 汇率
+/(工业增加值|固定资产投资|社会消费品零售总额|货物.*进出口|规模以上工业|信贷数据|industrial value-?added|fixed asset investment|retail sales of consumer goods|trade in goods)/ => 月度数据
+@10
 
-[芯片]
-芯片
-光刻机
-半导体
+[贵金属]
+/(金价|黄金价格|国际黄金|现货黄金|伦敦金|黄金.{0,8}(?:上涨|下跌|新高|回调)|gold price|spot gold)/ => 黄金
+/(银价|白银价格|现货白银|白银.{0,8}(?:上涨|下跌|新高|回调)|silver price|spot silver)/ => 白银
+/(?<![a-z0-9])COMEX(?![a-z0-9]).{0,8}(?:黄金|白银|gold|silver)|(?:黄金|白银).{0,8}(?:期货|主力合约)/ => 贵金属期货
+/(央行.{0,8}(?:购金|增持黄金)|黄金储备|外汇储备.{0,8}黄金|central bank.{0,12}gold)/ => 央行购金
+@6
 
-/水电|雅鲁藏布江/ => 水电
-/光伏|太阳能/ => 光伏
-核能
-能源
+[股市投资]
+/(股票|证券|券商|A股|上证|深证|创业板|科创板|北交所|沪深股市|A-?shares|Shanghai Composite|ChiNext|STAR Market)/ => A股/证券
+/(港股|恒生|恒生指数|Hang Seng)/ => 港股
+/(美股|纳斯达克|标普|纳指|标普500|道琼斯|(?<![a-z0-9])Nasdaq(?![a-z0-9])|S&P|Dow Jones)/ => 美股
+/(沪深300|中证500|中证1000|CSI 300|CSI 500|CSI 1000)/ => 指数
+/(涨停|跌停|熔断|千股涨停|千股跌停|limit up|limit down|circuit breaker)/ => 涨跌停
+/(牛市|熊市|慢牛|结构性行情|股市.*(?:反弹|回调|震荡)|A股.*(?:反弹|回调))/ => 行情
+/(北向资金|南向资金|主力资金|外资流向|northbound capital|southbound capital)/ => 资金流向
+/(游资|量化交易|量化基金|公募|私募|hot money|quant(?:itative)? trading|quant fund)/ => 资金类型
+/((?<![a-z0-9])(?:ETF|REITs)(?![a-z0-9])|交易所交易基金|房地产投资信托(?:基金)?|黄金ETF)/ => ETF/REITs
+/(?<![a-z0-9])IPO(?![a-z0-9])|A股.*上市|港股.*上市|美股.*上市|上市.*(?:被否|过会|募资)|注册制|借壳|退市|ST.*退市/ => 上市退市
+/(分红|回购|增持|减持|大宗交易|buyback|stake increase|stake reduction)/ => 股东动作
+/(新晋.*独角兽|最年轻.*上市|刚.*融资|(?<![a-z0-9])unicorn(?![a-z0-9])|Pre[ .]?IPO|newly listed|funding)/ => 融资
+/(高股息|红利.*(?:指数|ETF)|破净|回购增持再贷款|互换便利|平准基金|耐心资本|中特估|券商.*(?:合并|重组|自营)|(?<![a-z0-9])(?:PSL|REITs)(?![a-z0-9])|high dividend|patient capital)/ => 红利/政策资金
+/(上证综指|深证成指|沪深两市.*(?:成交额|成交)|科创50|北证50|中证A50|中证A500)/ => 宽基指数
+@8
 
-/自动驾驶|无人驾驶|智驾/ => 自动驾驶
+[房地产]
+/(房价|二手房|新房|房企|房价收入比|home prices)/ => 房价
+/(楼市|房地产|去库存|housing market|real estate)/ => 楼市
+/(恒大|碧桂园|万科|融创|保利|中海|绿城|Evergrande|Country Garden|Vanke|Sunac)/ => 开发商
+/(首付|房贷|公积金|LPR.*房贷|down payment|mortgage|housing provident fund)/ => 房贷
+/(限购|限售|限价|放开.*限购|取消.*限购|home purchase restriction)/ => 限购限售
+/(认房不认贷|存量房贷|首套房|二套房|recognize homes not loans|existing mortgage)/ => 房贷政策
+/(保交楼|保交付|烂尾楼|ensure delivery of homes|unfinished building)/ => 交付
+/(土地.*出让|土拍|收储|土地财政|land auction)/ => 土地
+/(城市更新|旧改|保障性住房|保障房|保障性租赁住房|住房租赁|房屋养老金|好房子|收储.*(?:商品房|存量房)|再融资|商业地产|写字楼|urban renewal|affordable housing|housing pension)/ => 地产新模式
+/(公摊|得房率|物业|物业费|不动产登记|shared floor area|net usable ratio|property management)/ => 物业/公摊
+@8
 
-机器人
-/机械狗|四足/ => 机器狗
-具身智能
+[加密货币]
+/(比特币|(?<![a-z0-9])Bitcoin(?![a-z0-9])|(?<![a-z0-9])BTC(?![a-z0-9])|比特币减半)/ => 比特币
+/(以太坊|(?<![a-z0-9])Ethereum(?![a-z0-9])|(?<![a-z0-9])ETH(?![a-z0-9])|以太坊质押)/ => 以太坊
+/(加密货币|数字货币|数字人民币|(?<![a-z0-9])(?:cryptocurrency|CBDC)(?![a-z0-9]))/ => 加密货币
+/(稳定币|(?<![a-z0-9])(?:USDT|USDC|stablecoin)(?![a-z0-9])|稳定币监管)/ => 稳定币
+/((?<![a-z0-9])(?:DeFi|Web3|DAO|NFT|RWA)(?![a-z0-9])|去中心化金融|去中心化自治组织|非同质化代币|真实世界资产)/ => Web3
+/(铭文|符文.*(?:协议|空投|比特币)|加密.*空投|(?<![a-z0-9])Airdrop(?![a-z0-9])|(?<![a-z0-9])Meme Coin(?![a-z0-9])|MEME币)/ => 铭文空投
+/(Layer.?2|zk.*Rollup|Optimistic.?Rollup|二层网络|二层扩容|乐观卷积|(?<![a-z0-9])Arbitrum(?![a-z0-9])|(?<![a-z0-9])Base(?![a-z0-9]))/ => L2
+/((?<![a-z0-9])(?:Solana|Avalanche|Polygon|Sui|Aptos)(?![a-z0-9]))/ => 公链
+/(币安|(?<![a-z0-9])(?:Binance|Coinbase|OKX|Bybit|FTX)(?![a-z0-9]))/ => 交易所
+/(现货ETF.*比特|现货ETF.*以太|比特币ETF.*获批|spot ETF.*bitcoin|spot ETF.*ether)/ => 现货ETF
+@8
 
-/月球|登月|火星|宇宙|飞船|航天|空间站|卫星/ => 航天
+[出海与跨境电商]
+/(出海|品牌出海|跨境电商|cross-?border e-?commerce)/ => 出海
+/(TikTok.*Shop|亚马逊.*卖家|速卖通|SHEIN|Temu|阿里巴巴国际站|(?<![a-z0-9])(?:Shopee|Lazada)(?![a-z0-9])|Amazon.*seller|AliExpress)/ => 跨境电商平台
+/(海外仓|跨境物流|关税.*跨境|出口退税|欧盟.*合规|东南亚.*市场|overseas warehouse|cross-?border logistics)/ => 出海政策
+/(新茶饮.*出海|汽车.*出海|制造业出海|auto(?:mobile)? export|brand.*going global)/ => 中国企业出海
+@6
 
-# 前沿科技
-量子
-脑机
-基因
+[消费零售]
+/(茶饮|咖啡.*(?:价格|上市|联名|扩张)|瑞幸|库迪|(?<![a-z0-9])Manner(?![a-z0-9])|蜜雪冰城|喜茶|奈雪|霸王茶姬|古茗|茶百道|沪上阿姨|(?<![a-z0-9])(?:Luckin|Cotti)(?![a-z0-9]))/ => 茶咖新消费
+/(山姆|(?<![a-z0-9])Costco(?![a-z0-9])|胖东来|永辉|大润发|折扣店|折扣零售|会员店|零售.*(?:转型|调改|爆改))/ => 线下零售
+/(直播带货|仅退款|电商.*(?:价格战|GMV|退货|大促)|百亿补贴|618|双11|双十二)/ => 电商
+/(国货|潮玩|新消费|谷子经济|泡泡玛特|(?<![a-z0-9])Pop[ .]?Mart(?![a-z0-9])|谷子|二次元.*(?:消费|店铺))/ => 国货潮玩
+/(即时零售|前置仓|社区团购|消费券|以旧换新|县域.*消费|首店|离境退税|即时配送|instant retail|community group buy)/ => 零售渠道/政策
+/(黄金.*(?:消费|价格|品牌)|周大福|老铺黄金|高级珠宝|名表|烈酒|奢侈品涨价|high-end consumption|luxury)/ => 高端消费
+@6
 
-# 产业政策
-生产力
+[知名企业家/科技人物]
+/(黄仁勋|Jensen[ .]?Huang)/ => 英伟达动态
+/(马斯克|Elon[ .]?Musk)/ => 马斯克动态
+/(山姆.?奥特曼|Sam[ .]?Altman|OpenAI.*(?:换帅|融资|发布))/ => OpenAI动态
+/(雷军|任正非|余承东|王传福|Lei[ .]?Jun|Ren[ .]?Zhengfei)/ => 国内科技人
+/(马云|Jack[ .]?Ma|马化腾|Pony[ .]?Ma|张一鸣|王兴|李彦宏|Robin[ .]?Li|刘强东|黄峥)/ => 国内互联网人
+/(巴菲特|Warren[ .]?Buffett|贝索斯|Jeff[ .]?Bezos|比尔盖茨|Bill[ .]?Gates|蒂姆库克|Tim[ .]?Cook|扎克伯格|Mark[ .]?Zuckerberg|纳德拉|Satya[ .]?Nadella|苏姿丰|Lisa[ .]?Su|桑达尔皮查伊|Sundar[ .]?Pichai)/ => 海外企业家
+/(乔布斯|Steve[ .]?Jobs)/ => 乔布斯
+@8
+
+# ═══════════════════════════════════════════════════════════════
+#                    政治 / 国际 / 军事
+# ═══════════════════════════════════════════════════════════════
+
+[中美关系]
+/(中美.*关系|中美.*对话|中美.*会晤|中美.*(?:贸易|科技|关税)|U\.?S\.?-?China.*(?:relations|talks|meeting))/ => 中美关系
+/(关税|贸易战|科技战|trade war|tech war)/ => 关税/贸易战
+/(芯片.*禁令|实体清单|对华.*制裁|制裁.*中国|出口管制|chip.*ban|entity list|China.*sanctions?|export control)/ => 制裁
+/(脱钩|去风险化|(?<![a-z0-9])(?:decoupling|de-?risking)(?![a-z0-9]))/ => 脱钩
+/(南海|南中国海|南海.*(?:仲裁|岛礁|巡航)|South China Sea)/ => 南海
+/(国务卿|白宫|五角大楼|Secretary of State|White House|(?<![a-z0-9])Pentagon(?![a-z0-9]))/ => 美方动态
+@8
+
+[台海两岸]
+/(台海|台湾.{0,12}(?:问题|选举|弹劾|民意机构|政党|施政|防务|兵役)|对台.{0,8}(?:军售|政策)|Taiwan Strait|Taiwan.{0,12}(?:election|impeachment|defense)|arms sales?.{0,8}Taiwan)/ => 台海政治
+/(两岸.{0,12}(?:关系|交流|经贸|融合|航线|和平发展)|海峡两岸|cross-?strait.{0,12}(?:relations|trade|exchanges))/ => 两岸关系
+/(?:赖清德|民进党|国民党).{0,12}(?:讲话|政策|选举|弹劾|罢免|两岸|台海)|(?:弹劾|罢免).{0,8}赖清德/ => 岛内政治
+@6
+
+[俄乌欧洲]
+/(俄乌|乌克兰|俄罗斯.*战|俄军|乌军|亚速营|Russia-?Ukraine)/ => 俄乌战争
+/(北约|(?<![a-z0-9])NATO(?![a-z0-9])|欧盟.*(?:制裁|外交|军援)|EU.*diplomacy)/ => 北约欧盟
+/(欧洲.*能源|能源危机|天然气.*欧洲|energy crisis)/ => 能源危机
+/(援助.*乌克兰|军援.*乌克兰|防空.*援助|military aid.*Ukraine)/ => 军援
+@8
+
+[中东局势]
+/(以色列|巴勒斯坦|哈马斯|加沙|中东和平|(?<![a-z0-9])(?:Israel|Palestine|Hamas|Gaza)(?![a-z0-9]))/ => 以巴
+/(黎巴嫩|真主党|(?<![a-z0-9])(?:Lebanon|Hezbollah)(?![a-z0-9]))/ => 黎巴嫩
+/(伊朗|胡塞|也门|伊朗核.*(?:谈判|问题)|(?<![a-z0-9])(?:Iran|Houthi|Yemen)(?![a-z0-9]))/ => 伊朗胡塞
+/(沙特|(?<![a-z0-9])Saudi(?![a-z0-9]))/ => 沙特
+/(红海.*(?:危机|航运|袭击|封锁)|霍尔木兹|波斯湾|Red Sea|Strait of Hormuz)/ => 红海
+@8
+
+[韩国与朝鲜]
+/(韩国|首尔|尹锡悦|李在明|韩元|中韩.*(?:关系|对话)|(?<![a-z0-9])(?:Korea|Seoul|KRW)(?![a-z0-9]))/ => 韩国
+/(朝鲜|半岛|朝核|平壤|朝美.*(?:对话|会谈)|(?<![a-z0-9])(?:North Korea|DPRK|Pyongyang)(?![a-z0-9]))/ => 朝鲜
+@6
+
+[日本]
+/(日本|岸田|石破|日元|日本.{0,12}(?:央行|加息|经团联)|中日.{0,12}(?:关系|对话|航线|经贸|外交)|(?<![a-z0-9])(?:BOJ|Tokyo|Japan)(?![a-z0-9]))/ => 日本
+@6
+
+[东南亚]
+/(东盟|菲律宾|越南|马来|印尼|南海.*(?:菲律宾|越南)|RCEP|(?<![a-z0-9])(?:ASEAN|Philippines|Vietnam|Indonesia)(?![a-z0-9]))/ => 东南亚
+@6
+
+[亚太安全与盟友]
+/(印太|美日韩|美菲|(?<![a-z0-9])(?:AUKUS|QUAD|Indo[- ]Pacific)(?![a-z0-9]))/ => 亚太安全
+/(澳大利亚|新西兰|加拿大|(?<![a-z0-9])(?:Australia|Canada|New Zealand)(?![a-z0-9]))/ => 盟友动态
+@6
+
+[国内政策]
+/(两会|Two Sessions|人大.*(?:报告|会议)|政协.*(?:提案|会议))/ => 两会
+/(三中全会|中央经济工作会议|经济工作会议|政治局.*会议|国常会|Third Plenum|Central Economic Work Conference)/ => 重大会议
+/(政府工作报告|十四五|十五五|中长期规划|14th Five-?Year Plan|15th Five-?Year Plan)/ => 规划
+/(高质量发展|中国式现代化|新质生产力|现代化产业体系|high-?quality development|Chinese modernization)/ => 发展战略
+/(共同富裕|乡村振兴|城乡融合|common prosperity|rural revitalization)/ => 共富/乡村
+/(民营经济|以旧换新|提振消费|促消费|消费券|稳就业.*(?:政策|举措)|childcare subsidy|trade-?in program)/ => 当前政策
+@10
+
+[政务纪检]
+/(纪委监委|纪检监察|接受.{0,10}(?:审查调查|纪律审查|监察调查)|涉嫌严重违纪违法|discipline inspection|supervision commission)/ => 审查调查
+/(?:书记|市长|局长|厅长|主席|主任|干部|官员).{0,12}(?:被查|落马|留置)|(?:被查|落马|留置).{0,12}(?:书记|市长|局长|厅长|主席|主任|干部|官员)/ => 官员违纪
+/(巡视组|中央巡视|巡视整改|巡察整改|反腐败.{0,8}(?:斗争|治理)|anti-?corruption)/ => 巡视反腐
+@6
+
+[国资央企]
+/(中央企业|央企|国资委|国企改革|国有资本.{0,8}(?:投资|运营|布局)|state-?owned enterprise|(?<![a-z0-9])SOE(?:s)?(?![a-z0-9]))/ => 国资央企
+/(央企.{0,10}(?:重组|整合|并购|考核|市值管理)|国企.{0,10}(?:混改|重组|整合|治理)|国有经济.{0,8}(?:布局|结构优化))/ => 国企改革
+@6
+
+[军事国防]
+/(航母|驱逐舰|护卫舰|潜艇|两栖攻击舰|aircraft carrier|destroyer|frigate|submarine|amphibious assault ship)/ => 海军舰艇
+/(歼-?\d{1,2}|轰-?[6-8]|运-?2\d|直-?2\d|(?<![a-z0-9])(?:j-?20|j-?35|j-?16|j-?10|h-?6|y-?20|z-?20|f-?16|f-?35|f-?22)(?![a-z0-9]))/ => 军机
+/(高超音速|(?<![a-z0-9])hypersonic(?![a-z0-9])|滑翔飞行器)/ => 高超音速
+/(导弹|核武器|反导|洲际.*导弹|巡航.*导弹|潜射导弹|东风-?[0-9]{2}|(?<![a-z0-9])(?:ICBM|cruise missile|SLBM)(?![a-z0-9]))/ => 导弹/核
+/(无人机.*作战|无人机.*蜂群|察打一体.*无人机|drone.*(?:combat|swarm|reconnaissance))/ => 无人机
+/(军演|环台.*军演|南海.*军演|东海.*军演|联合军演|military drill|Taiwan.*drill)/ => 军演
+/(解放军|国防|军费|军工|defense budget|military spending)/ => 国防
+/(火箭军|战略.*支援|信息.*支援|电磁.*对抗|PLA Rocket Force)/ => 新域新质
+/(电子战|网络战|太空.*军事|electronic warfare|cyber warfare)/ => 新战场
+/(珠海航展|矢量发动机|涡扇.*发动机|涡喷.*发动机|Airshow China|Zhuhai Airshow)/ => 航展/发动机
+@10
+
+# ═══════════════════════════════════════════════════════════════
+#                    社会 / 民生
+# ═══════════════════════════════════════════════════════════════
+
+[法治]
+/(最高法|最高检|司法部|Supreme People's Court|Supreme People's Procuratorate)/ => 最高法检
+/(刑法|刑法修正案|指导性案例|司法解释|Criminal Law Amendment|guiding case)/ => 修法与案例
+/(正当防卫.*认定|正当防卫.*判|正当防卫|防卫过当|justifiable defense|self-?defense.*(?:ruling|verdict))/ => 正当防卫
+/(未成年人.*保护|未成年人.*犯罪|juvenile protection)/ => 未保法
+/(反电信诈骗|反诈中心|anti-?telecom fraud)/ => 反诈
+/(反垄断|行政垄断|平台经济.*(?:垄断|反垄断)|antitrust)/ => 反垄断
+/(知识产权|数据安全法|专利诉讼|intellectual property|Data Security Law)/ => 知识产权/数据法
+/(网暴|网络暴力|名誉权|诽谤|人肉搜索|cyberbullying|online harassment)/ => 网络暴力
+/(公益诉讼|精神损害赔偿|检察建议|public interest litigation)/ => 公益诉讼
+@8
+
+[文旅出行]
+/(文旅|旅游|出境游|国内游|假期.*(?:出游|消费)|冰雪游|冰雪经济|研学游|City[ .]?Walk)/ => 文旅
+/(哈尔滨|淄博|天水|阿勒泰|泉州|山西.*(?:文旅|古建|旅游)|入境游|China Travel|免签|过境免签|文博热)/ => 旅游热点
+/(酒店.*(?:价格|投诉|改造)|民宿.*(?:涨价|退订)|机票.*(?:涨价|取消|退改)|景区.*(?:限流|预约|免门票|宰客)|景区门票|hotel.*(?:price|complaint|renovation)|homestay.*(?:price|refund|cancel)|flight.*(?:price|refund|cancel)|scenic area.*(?:crowd|reservation|free entry|rip.?off))/ => 出行服务
+/(节假日.*(?:安排|调休|出行预测)|文旅部.*(?:通知|名单)|文旅.*(?:消费券|免签)|文明旅游|holiday.*(?:schedule|adjustment)|ministry of culture and tourism|visa-?free|tourism.*voucher)/ => 文旅政策
+@6
+
+[重大工程交通]
+/(?:高铁|铁路).{0,12}(?:开通|投运|建设|试运行|提速)|(?:开通|投运).{0,8}(?:高铁|铁路)|high-?speed rail.{0,12}(?:open|construction|operation)/ => 铁路工程
+/(?:高速公路|隧道|大桥|跨海桥).{0,12}(?:通车|贯通|开工|建成)|(?:通车|贯通).{0,8}(?:高速公路|隧道|大桥)/ => 路桥隧道
+/(?:港口|机场).{0,12}(?:扩建|投运|吞吐量|枢纽|重大工程)|(?:新建|扩建).{0,8}(?:港口|机场)/ => 港口机场
+/(城市轨道交通|轨道交通.{0,10}(?:规划|建设|开通)|地铁.{0,10}(?:开通|延伸|建设)|urban rail transit)/ => 城市轨道
+/(交通强国|国家综合立体交通网|重大工程.{0,10}(?:开工|投产|建成)|国家重大项目)/ => 重大工程
+@6
+
+[教育就业]
+/(高考|中考|考研|考公|国考|省考|考编|专升本|四六级|(?<![a-z0-9])(?:gaokao|college entrance exam|civil service exam|postgraduate entrance exam)(?![a-z0-9]))/ => 考试
+/(教师|教师资格证|师范生|(?<![a-z0-9])(?:teacher|teaching certificate|teaching qualification)(?![a-z0-9]))/ => 教师
+/(校招|社招|春招|秋招|面试|简历|campus recruitment|social recruitment)/ => 招聘
+/(就业|失业|失业率|稳就业|青年失业率|unemployment rate|youth.*unemployment)/ => 就业
+/(公务员|事业编|遴选|civil servant|public institution staff)/ => 公职
+/(裁员|降薪|降本增效|灵活就业|(?<![a-z0-9])layoff(?![a-z0-9])|pay cut|gig work)/ => 裁员降薪
+/(外卖.*骑手|网约车.*司机|灵活用工|food delivery.*rider|ride-?hailing.*driver)/ => 新就业形态
+/(双减|学区房|教培|教师轮岗|Double Reduction|school-?district housing)/ => 教育政策
+/(职业教育|产教融合|新工科|本科层次职业教育|vocational education|industry-?education integration)/ => 职教工科
+/(延迟退休|渐进式延迟退休|社保|五险一金|delayed retirement)/ => 养老社保
+/(?<![a-z0-9])AI(?![a-z0-9]).*取代.*工作|AI.*替代.*岗位|AI.*失业|AI.*replac(?:e|ing).*(?:jobs|roles)|AI.*(?:就业|职场)冲击/ => AI冲击就业
+@8
+
+[人口与家庭]
+/(人口.*(?:负增长|红利|结构|普查)|出生率|生育率|总和生育率|(?<![a-z0-9])(?:birth rate|fertility rate)(?![a-z0-9]))/ => 人口
+/(生育|育儿|托育|三孩|育儿补贴|辅助生殖|生育友好|出生.*(?:登记|地)|(?<![a-z0-9])(?:fertility|childcare|parenting|assisted reproduction)(?![a-z0-9]))/ => 生育育儿
+/(养老|养老金|个人养老金|长期护理|银发经济|适老化|居家养老|社区.*(?:养老|食堂)|(?<![a-z0-9])pension(?![a-z0-9]))/ => 养老
+/(结婚|离婚率|婚姻登记|彩礼|婚恋|婚育|不婚不育|marriage|divorce rate|bride price)/ => 婚育
+/(儿童.*(?:友好|补贴|医疗)|母婴|养儿成本|教育.*(?:开支|负担)|(?<![a-z0-9])family.*(?:subsidy|economic)(?![a-z0-9]))/ => 家庭负担
+@6
+
+[医疗健康]
+/(医保|集采|医保谈判|医保目录|(?:医保|医疗|医院|支付).{0,12}(?<![a-z0-9])(?:DRG|DIP)(?![a-z0-9])|(?<![a-z0-9])(?:DRG|DIP)(?![a-z0-9]).{0,12}(?:医保|支付|付费|改革|医院)|volume-?based procurement)/ => 医保集采
+/(癌症|创新药|仿制药|仿制药替代|抗癌药|靶向药|罕见病|处方药|(?<![a-z0-9])OTC(?![a-z0-9])|临床试验|(?<![a-z0-9])(?:FDA|NMPA)(?![a-z0-9]))/ => 药品
+/(mRNA|疫苗|新冠|流感|丙流|支原体|猴痘|登革热|(?<![a-z0-9])(?:COVID|mpox|dengue)(?![a-z0-9]))/ => 传染病
+/(呼吸道.*感染|疫情|聚集性疫情|respiratory.*infection)/ => 疫情
+/(三甲医院|分级诊疗|医院.*(?:事故|改革|暴雷)|医疗反腐|tertiary Grade-?A|tiered care)/ => 医院
+/(互联网.*医疗|互联网医院|(?<![a-z0-9])AI(?![a-z0-9]).*医疗|医疗.*AI|medical.*AI)/ => 数字医疗
+/(手术机器人|国产手术机器人|surgical robot)/ => 手术机器人
+/(阿尔茨海默|渐冻症|白血病|罕见病目录|CAR-?T.*治疗|Alzheimer's|(?<![a-z0-9])ALS(?![a-z0-9]))/ => 疑难病
+/(PD.?1|PD.?L1|PD-1抑制剂)/ => 免疫治疗
+/(基因治疗|细胞治疗|癌症早筛|生物类似药|突破性疗法|药械.*审批|临床.*获批|gene therapy|cell therapy|breakthrough therapy)/ => 新药械
+/(细胞基因治疗|(?<![a-z0-9])CAR-?NK(?![a-z0-9])|肿瘤疫苗|数字疗法|(?<![a-z0-9])AI(?![a-z0-9]).*(?:诊断|影像|病理|辅诊)|AI影像|手术机器人.*(?:国产|获批|订单)|medical.*AI|digital therapeutics)/ => 新药械/诊疗
+/(GLP.?1|GLP类|司美格鲁肽|替尔泊肽|减肥药|医美|轻医美|减重.*(?:药|市))/ => 减重医美
+/(国家卫健委|国家疾控局|国家药监局|卫健委.{0,10}(?:发布|通知|回应)|疾控.{0,10}(?:预警|监测|通报)|health commission|disease control authority)/ => 医疗主管部门
+/(医院.{0,10}(?:门诊押金|退费|收费改革|预交金)|门诊.{0,8}(?:押金|预交金|退费)|医疗服务价格.{0,8}(?:改革|调整))/ => 医疗服务治理
+@8
+
+[农业水利]
+/(粮食|粮价|收粮|种业|耕地|food.*security|seed industry)/ => 粮食
+/(生猪.*(?:价格|周期)|猪粮比|种质资源|高标准农田|数字农业|粮食.*(?:安全|储备|保障)|玉米.*(?:价格|进口)|转基因.*(?:玉米|大豆)|食品浪费|hogs?.*(?:price|cycle)|high-?standard farmland|food waste)/ => 农粮深度
+/(水资源|南水北调|水灾|South-?North Water Transfer)/ => 水资源
+@6
+
+[公共安全]
+/(食品安全|添加剂|瘦肉精|预制菜|地沟油|food safety|pre-?made meal|gutter oil)/ => 食品安全
+/(过期.*食品|造假.*食品|硫磺熏|expired.*food|counterfeit.*food)/ => 食品造假
+/([3３][·.．]15|315晚会|315打假|消费者权益日|消费者.*权益|消费者.*维权|黑猫投诉|consumer.*rights)/ => 315维权
+/(塌方|矿难|火灾|踩踏|交通事故|燃气爆炸|危化品.*爆炸|工厂.*爆炸|仓库.*爆炸|爆炸事故|发生爆炸|mine collapse|stampede|road accident|gas explosion)/ => 安全事故
+/(群体.*事件|信访|上访|维权.*(?:集会|游行)|mass (?:incident|unrest)|petitioning)/ => 群体事件
+/(冤案|错案|冤假错案|平反|wrongful conviction|miscarriage of justice)/ => 司法公正
+/(见义勇为|好人法|Good Samaritan|act of bravery)/ => 见义勇为
+/(有限空间|粉尘爆炸|厂房火灾|商场.*(?:火灾|爆炸)|矿难.*(?:透水|冒顶|瓦斯)|危化品.*(?:泄漏|燃爆)|危化事故|油罐.*(?:燃烧|爆炸)|燃气.*(?:泄漏|闪爆)|confined space|dust explosion|warehouse fire)/ => 事故细分
+@8
+
+# ═══════════════════════════════════════════════════════════════
+#                    环境 / 能源
+# ═══════════════════════════════════════════════════════════════
+
+[气候环境]
+/(气候.*变化|全球变暖|极端气候变化|climate.*change|global warming)/ => 气候变化
+/(极端天气|暴雨|洪涝|干旱|高温|热浪|强对流天气|extreme weather|heatwave)/ => 极端天气
+/(台风|飓风|地震|海啸|山火|泥石流|暴雪|冰雹|寒潮|沙尘暴|滑坡|崩塌|龙卷风|typhoon|hurricane|earthquake|tsunami|wildfire|mudslide|tornado)/ => 自然灾害
+/(雾霾|PM2[.]5|空气污染|空气质量|air quality)/ => 空气质量
+/(碳中和|碳达峰|碳足迹|碳汇|(?<![a-z0-9])ESG(?![a-z0-9])|双碳|carbon neutrality|carbon peak|carbon sink)/ => 双碳
+/(碳捕集|(?<![a-z0-9])CCUS(?![a-z0-9])|carbon capture)/ => 碳捕集
+/(CCER|碳市场|碳配额|碳税|绿色金融|气候投融资|(?<![a-z0-9])EU[ .]ETS(?![a-z0-9]))/ => 碳市场
+@8
+
+[能源矿产]
+/(油价|原油|石油.*价格|原油.*价格|布伦特|(?<![a-z0-9])(?:WTI|OPEC)(?![a-z0-9])|页岩油|页岩气|成品油.*调价|oil.*price|crude.*price|(?<![a-z0-9])Brent(?![a-z0-9]))/ => 石油
+/(天然气|北溪|液化天然气|natural gas|Nord Stream|(?<![a-z0-9])LNG(?![a-z0-9]))/ => 天然气
+/(煤炭|电网|电力|储能|新型储能|虚拟电厂|energy storage|virtual power plant)/ => 电力/储能
+/(稀土|稀土永磁|rare earth)/ => 稀土
+/(锂矿|锂.*资源|钴矿|镍矿|铜矿|铁矿石|铜矿.*资源|lithium mine|cobalt mine|iron ore)/ => 矿产
+/(光伏.*组件|光伏.*装机|风电.*装机|海上风电|大基地.*(?:光伏|风电)|offshore wind)/ => 新能源装机
+/(光伏|风电|水电|核电|氢能|绿色.*能源|可再生能源|solar (?:power|panel)|wind power|hydropower|nuclear power|renewable energy)/ => 清洁能源
+/(氢能.*产业链|氢能.*制|氢能.*储|氢能.*运|绿氢|hydrogen.*(?:value chain|produc|stor|transport)|green hydrogen)/ => 氢能
+/(能源.*安全|能源.*自主|战略.*储备|能源转型|energy.*security|strategic.*reserve)/ => 能源安全
+/(特高压|风光大基地|零碳园区|绿电|绿证|分布式光伏|(?<![a-z0-9])UHV(?![a-z0-9])|ultra-?high voltage)/ => 电力新基建
+@8
+
+# ═══════════════════════════════════════════════════════════════
+#                    体育 / 电竞
+# ═══════════════════════════════════════════════════════════════
+
+[足球]
+/(足球|世界杯|世俱杯|(?<![a-z0-9])(?:football|soccer|World Cup)(?![a-z0-9]))/ => 足球/世界杯
+/(国足|中国男足|中国女足|女足.*世界杯|中超|Chinese Super League)/ => 中国足球
+/(金球奖|世界足球先生|Ballon d'Or)/ => 金球奖
+/(欧冠|英超|西甲|意甲|德甲|法甲|欧联杯|Champions League|Premier League|La Liga|Serie A|Bundesliga|Ligue 1)/ => 欧洲联赛
+/(亚洲杯|欧洲杯|世预赛|亚冠|美洲杯|AFC Asian Cup|UEFA Euro|World Cup qualifier)/ => 杯赛
+/((?<![a-z0-9])FIFA(?![a-z0-9])|国际足联|亚足联|(?<![a-z0-9])VAR(?![a-z0-9])|视频助理裁判|半自动越位)/ => FIFA/VAR
+@8
+
+[篮球]
+/(篮球|(?<![a-z0-9])NBA(?![a-z0-9])|WNBA)/ => 篮球/NBA
+/((?<![a-z0-9])CBA(?![a-z0-9])|中国男子篮球职业联赛|中国女篮)/ => CBA
+/(FIBA|世界杯.*篮球|奥运会.*篮球|亚洲杯.*篮球|男篮世界杯)/ => 篮球大赛
+/(篮球.*(?:季后赛|总决赛|全明星|附加赛)|NBA.*(?:季后赛|总决赛|全明星))/ => 赛程
+/(选秀|状元签|摆烂|工资帽|奢侈税|交易截止日|NBA draft|salary cap|luxury tax)/ => 交易选秀
+@8
+
+[电竞游戏]
+/(3A大作|(?<![a-z0-9])(?:TGA|Steam|Epic Games)(?![a-z0-9])|任天堂|(?<![a-z0-9])(?:Switch|PlayStation|PS5|PS6|Xbox|Nintendo)(?![a-z0-9]))/ => 主机/平台
+/(电竞|电子竞技|亚运电竞|(?<![a-z0-9])esports(?![a-z0-9]))/ => 电竞
+/(主机游戏|独立游戏|游戏.*发布|游戏.*获奖|Steam.*在线|太空狼人杀|indie game|game awards?)/ => 游戏动态
+/(王者荣耀|英雄联盟|原神|米哈游|黑神话|(?<![a-z0-9])(?:LoL|DOTA2?|Genshin|CS2)(?![a-z0-9]))/ => 热门游戏
+@8
+
+[综合体育]
+/(奥运会|亚运会|冬奥|大运会|(?<![a-z0-9])(?:Olympics|Asian Games|Winter Olympics)(?![a-z0-9]))/ => 奥运亚运
+/(超级碗|温网|美网|大师赛|环法|世界杯.*(?:橄榄球|板球)|Super Bowl|(?<![a-z0-9])Wimbledon(?![a-z0-9])|US Open|Tour de France)/ => 国际赛事
+/((?<![a-z0-9])UFC(?![a-z0-9])|拳击|综合格斗|自由搏击|格斗游戏)/ => 格斗
+/(田径|游泳|跳水|乒乓球|羽毛球|国乒|网球|斯诺克|花样游泳|athletics|swimming|diving|table tennis|badminton|tennis|snooker)/ => 传统项目
+/(?<![a-z0-9])F1(?![a-z0-9])|一级方程式|拉力赛|F1中国大奖赛/ => 赛车
+@8
+
+# ═══════════════════════════════════════════════════════════════
+#                    娱乐 / 文化
+# ═══════════════════════════════════════════════════════════════
+
+[电影]
+/(电影|新片|票房|年度票房|(?<![a-z0-9])(?:film|movie)(?![a-z0-9]))/ => 电影
+/(春节档|暑期档|国庆档|贺岁档|元旦档|Lunar New Year window|summer window)/ => 热门档期
+/(院线|(?<![a-z0-9])IMAX(?![a-z0-9])|首映|box office)/ => 院线
+/(导演|编剧|制片人|director|screenwriter|producer)/ => 导演编剧
+/(奥斯卡|戛纳|柏林电影节|威尼斯电影节|圣丹斯电影节|(?<![a-z0-9])(?:Oscars|Cannes)(?![a-z0-9])|Berlin Film Festival|Venice Film Festival|Sundance Film Festival)/ => 电影节
+/(金像奖|金马奖|Hong Kong Film Awards|Golden Horse)/ => 华语电影奖
+/(国产.*电影|好莱坞|(?<![a-z0-9])Hollywood(?![a-z0-9]))/ => 国产/好莱坞
+/(漫威|(?<![a-z0-9])Marvel(?![a-z0-9])|DC Comics|DC宇宙|华纳DC|MCU)/ => 超英
+/(科幻.*电影|动画.*电影|纪录.*电影|纪录.*片|悬疑.*电影|sci-?fi.*(?:film|movie)|animated film|documentary film)/ => 类型片
+@8
+
+[剧集综艺]
+/(电视剧|网剧|短剧|微短剧|TV series|web series)/ => 剧集
+/(综艺|真人秀|慢综艺|variety show|reality show)/ => 综艺
+/(脱口秀|喜剧.*大会|吐槽大会|一年一度喜剧|stand-?up comedy|单口喜剧)/ => 喜剧节目
+/(第[一二三四五六七八九十百0-9]+.*季.*定档|第[一二三四五六七八九十百0-9]+.*季.*开播|Season[ .]?[2-9].*续订|续作.*定档|回归.*开播)/ => 续作上线
+/(艾美奖|(?<![a-z0-9])Emmy(?![a-z0-9])|电视节)/ => 电视奖
+/(浪姐|披哥|歌手[ .]?(?:[1-9]|[1-9][0-9])|歌手[ .]?202[0-9]|Sisters Who Make Waves|Call Me by Fire|Singer[ .]?20[0-9][0-9]|无限超越班)/ => 热门综艺
+/(热播剧|爆款剧|收视率|播放量.*破|三体.*剧|待播剧|hit series|ratings|viewership|Three-?Body Problem)/ => 热门剧集
+@8
+
+[音乐演出]
+/(格莱美|(?<![a-z0-9])Grammy(?![a-z0-9])|金音奖)/ => 音乐奖
+/(音乐|音乐节|演唱会|巡演|音乐会|虚拟演唱会|(?<![a-z0-9])livehouse(?![a-z0-9])|music festival)/ => 音乐
+/(专辑|单曲|新歌|(?<![a-z0-9])album(?![a-z0-9])|(?<![a-z0-9])single(?![a-z0-9])|new song)/ => 新作品
+/(乐队|说唱|嘻哈|(?<![a-z0-9])rap(?![a-z0-9])|摇滚|民谣|电子.*音乐|古典.*音乐|爵士|国风音乐)/ => 音乐类型
+/(新专辑|新单曲|乐坛|音乐节.*阵容|new album|new single)/ => 乐坛动态
+/(演唱会.*门票|黄牛|票务.*演出|抢票|退票|concert.*ticket|(?<![a-z0-9])scalper(?![a-z0-9]))/ => 演出票务
+@8
+
+[文学出版]
+/(茅盾文学奖|鲁迅文学奖|雨果奖|星云奖|诺贝尔.*文学|普利策奖|德国图书奖|Mao Dun Literature Prize|Hugo Award|Nebula Award|Nobel.*[Ll]iterature|(?<![a-z0-9])Pulitzer(?![a-z0-9]))/ => 文学奖
+/(新书|畅销.*书|年度好书|new book|best-?seller)/ => 新书
+/(作家|小说|散文|诗歌|科幻小说|writer|novel|essay|poetry)/ => 文学体裁
+/(全民阅读|书店|书香|读书日|世界读书日|national reading|bookstore|World Book Day)/ => 阅读推广
+/(图书|童书|绘本|有声书|电子书|出版物|盲文图书|picture book|audiobook|e-?book|publication)/ => 图书
+/(作协|作家.*新作|长篇小说|年度图书|writers.?association|new novel|book of the year)/ => 文学动态
+/(网文|网络.*文学|IP.*改编|短篇网文)/ => 网文IP
+/(出版|版权|书展|图书.*排行|版权纠纷|publishing|copyright|book fair|book ranking)/ => 出版业
+@8
+
+# ═══════════════════════════════════════════════════════════════
+#                    科学 / 学术
+# ═══════════════════════════════════════════════════════════════
+
+[前沿科学]
+/(量子|量子霸权|量子纠错|quantum.*(?:comput|commun|entangle|supremacy))/ => 量子
+/(超导|室温.*超导|高温超导|superconduct(?:or|ivity)|room-?temperature.*superconduct|high-?temperature superconduct)/ => 超导
+/(核聚变|人造太阳|托卡马克|东方超环|(?<![a-z0-9])ITER(?![a-z0-9])|controlled nuclear fusion|tokamak)/ => 核聚变
+/(中微子|暗物质|暗能量|引力波|黑洞|中子星|脉冲星|宇宙线|dark matter|gravitational wave|black hole|neutron star)/ => 天体物理
+/(光子.*芯片|光计算|光量子.*(?:芯片|计算)|photonic.*chip|optical computing)/ => 光芯片
+/(拓扑.*绝缘体|二维材料|石墨烯|纳米材料|纳米芯片|钙钛矿.*(?:光伏|电池)|topological.*insulator|graphene)/ => 新材料
+/(合成生物|人造生命|细胞工厂|synthetic biology|artificial life)/ => 合成生物
+/(?<![a-z0-9])LHC(?![a-z0-9])/ => 对撞机
+/(冷冻电镜|超分辨.*显微镜|光镊|cryo-?EM|super-?resolution microscopy)/ => 成像技术
+/(诺贝尔|诺奖|诺奖.*(?:得主|公布)|(?<![a-z0-9])Nobel(?![a-z0-9]))/ => 诺贝尔
+/(爱因斯坦|(?<![a-z0-9])Albert[ .]?Einstein(?![a-z0-9])|图灵|(?<![a-z0-9])Alan[ .]?Turing(?![a-z0-9]))/ => 科学人物
+@8
+
+[生命科学]
+/(基因|基因编辑|(?<![a-z0-9])CRISPR(?![a-z0-9])|蛋白质.*结构|(?<![a-z0-9])AlphaFold(?![a-z0-9]))/ => 基因
+/(干细胞|免疫.*疗法|CAR-T|CAR.?T(?:细胞|疗法|治疗)|免疫细胞.*治疗|stem cell|immuno.*therap)/ => 干细胞免疫
+/(mRNA.*疫苗|mRNA.*肿瘤|环状RNA|mRNA.*vaccine|mRNA.*cancer|circRNA)/ => mRNA技术
+/(神经.*科学|脑科学|脑机接口|临床脑机|(?<![a-z0-9])Neuralink(?![a-z0-9])|brain-?computer interface)/ => 神经脑科学
+/(衰老.*研究|长寿.*科学|抗衰老.*(?:研究|科学)|aging.*research|longevity.*science)/ => 衰老研究
+/(器官.*移植|克隆人|器官.*克隆|异种移植|organ.*transplant|xenotransplant)/ => 器官移植
+/(合成.*生物学|微生物组|肠道菌群|microbiome|gut flora)/ => 合成生物/菌群
+/(精准医疗|个体化治疗|precision medicine|personalized medicine)/ => 精准医疗
+@8
+
+[数学计算机]
+/(数学.*证明|黎曼猜想|哥德巴赫|图灵完备|P.?vs.?NP|P\/NP|Riemann hypothesis|Goldbach)/ => 数学前沿
+/(开源.*(?:项目|软件|模型|社区|协议|许可证)|(?<![a-z0-9])(?:GitHub|Github|Hugging[ -]?Face|GitLab)(?![a-z0-9])|open.?source)/ => 开源
+/(图灵奖|开源许可证|开发者大会|技术标准|AI大会|Turing Award|developer conference)/ => 计算机动态
+/(密码学|后量子.*密码|零知识证明|同态加密|多方安全计算|cryptography|post-?quantum cryptography|zero-?knowledge proof|homomorphic encryption|multi-?party computation)/ => 密码学
+/(形式化验证|自动推理|formal verification)/ => 形式化验证
+/(编程|编程语言|(?<![a-z0-9])(?:Rust|Go|Golang|Python|JavaScript|TypeScript|Java|Swift|Kotlin)(?![a-z0-9])|(?<![a-z0-9])(?:C\+\+|C\#)(?![a-z0-9]))/ => 编程语言
+/(算法|信息学|LeetCode|编程竞赛|黑客松|算法竞赛)/ => 算法
+/(Copilot.*代码|Cursor.*(?:AI|人工智能|编辑器|IDE|代码)|(?:AI|代码|编程).*Devin|(?<![a-z0-9])Devin(?![a-z0-9]).*(?:AI|代码|编程|Agent))/ => AI编程
+/((?<![a-z0-9])Linux(?![a-z0-9])|(?<![a-z0-9])LLVM(?![a-z0-9])|WebAssembly|(?<![a-z0-9])WASM(?![a-z0-9])|编译.*优化|性能优化)/ => 底层技术
+@8
+
+# ═══════════════════════════════════════════════════════════════
+#                         时效词说明
+# ═══════════════════════════════════════════════════════════════
+# 具体产品型号、人物、影视、赛事和季度热点请放到：
+#   config/custom/keyword/<profile>.txt
+# 再通过 config/timeline.yaml 的 frequency_file 选择，避免默认词库长期积累失效项。

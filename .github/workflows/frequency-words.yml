@@ -1,0 +1,45 @@
+name: Validate Frequency Words
+
+on:
+  push:
+    paths:
+      - "config/frequency_words.txt"
+      - "config/frequency_words.en.txt"
+      - "trendradar/core/frequency.py"
+      - "trendradar/core/analyzer.py"
+      - "mcp_server/services/parser_service.py"
+      - "mcp_server/services/data_service.py"
+      - "scripts/validate_frequency_words.py"
+      - "scripts/audit_frequency_words.py"
+      - "tests/test_frequency.py"
+      - ".github/workflows/frequency-words.yml"
+  pull_request:
+    paths:
+      - "config/frequency_words.txt"
+      - "config/frequency_words.en.txt"
+      - "trendradar/core/frequency.py"
+      - "trendradar/core/analyzer.py"
+      - "mcp_server/services/parser_service.py"
+      - "mcp_server/services/data_service.py"
+      - "scripts/validate_frequency_words.py"
+      - "scripts/audit_frequency_words.py"
+      - "tests/test_frequency.py"
+      - ".github/workflows/frequency-words.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Validate configuration
+        run: |
+          python scripts/validate_frequency_words.py --strict
+          python scripts/validate_frequency_words.py config/frequency_words.en.txt --strict
+      - name: Run frequency rule tests
+        run: python -m unittest discover -s tests -v

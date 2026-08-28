@@ -66,41 +66,219 @@ platforms:
   api_url: ""                            # 热榜数据 API 地址（留空使用默认地址）
                                         # 如果你自行部署了 newsnow，填入你的地址，如: https://your-domain.com/api/s
   sources:
-    - id: "toutiao"
-      name: "今日头条"
-      expected_domain: "toutiao.com"
-    - id: "baidu"
-      name: "百度热搜"
-      expected_domain: "baidu.com"
-    - id: "wallstreetcn-hot"
-      name: "华尔街见闻"
+# ========== 科技 · 开发者 ==========
+#    - id: "v2ex-share"
+#      name: "V2EX-最新分享"
+#      expected_domain: "v2ex.com"
+
+    - id: "hackernews"
+      name: "Hacker News"
+      expected_domain: "ycombinator.com"
+
+#    - id: "producthunt"
+#      name: "Product Hunt"
+#      expected_domain: "producthunt.com"
+
+#    - id: "github-trending-today"
+#      name: "Github-Today"
+#      expected_domain: "github.com"
+
+    - id: "juejin"
+      name: "稀土掘金"
+      expected_domain: "juejin.cn"
+
+    - id: "sspai"
+      name: "少数派"
+      expected_domain: "sspai.com"
+
+    - id: "solidot"
+      name: "Solidot"
+      expected_domain: "solidot.org"
+
+    - id: "ithome"
+      name: "IT之家"
+      expected_domain: "ithome.com"
+
+#    - id: "coolapk"
+#      name: "酷安-今日最热"
+#      expected_domain: "coolapk.com"
+
+#!    - id: "aihot"
+#!      name: "AIHOT"
+#!      expected_domain: "virxact.com"
+
+#    - id: "pcbeta-windows11"
+#      name: "远景论坛-Win11"
+#      expected_domain: "pcbeta.com"
+
+# ========== 财经 ==========
+#    - id: "mktnews-flash"
+#      name: "MKTNews-快讯"
+#      expected_domain: "mktnews.net"
+
+##    - id: "wallstreetcn-quick"
+##      name: "华尔街见闻-快讯"
+##      expected_domain: "wallstreetcn.com"
+
+    - id: "wallstreetcn-news"
+      name: "华尔街见闻-最新"
       expected_domain: "wallstreetcn.com"
-    - id: "thepaper"
-      name: "澎湃新闻"
-      expected_domain: "thepaper.cn"
-    - id: "bilibili-hot-search"
-      name: "bilibili 热搜"
-      expected_domain: "bilibili.com"
+
+##    - id: "wallstreetcn-hot"
+##      name: "华尔街见闻-最热"
+##      expected_domain: "wallstreetcn.com"
+
+#!    - id: "36kr-quick"
+#!      name: "36氪-快讯"
+#!      expected_domain: "36kr.com"
+
+#!    - id: "36kr-renqi"
+#!      name: "36氪-人气榜"
+#!      expected_domain: "36kr.com"
+
+##    - id: "cls-telegraph"
+##      name: "财联社-电报"
+##      expected_domain: "cls.cn"
+
+##    - id: "cls-depth"
+##      name: "财联社-深度"
+##      expected_domain: "cls.cn"
+
     - id: "cls-hot"
-      name: "财联社热门"
+      name: "财联社-热门"
       expected_domain: "cls.cn"
-    - id: "ifeng"
-      name: "凤凰网"
-      expected_domain: "ifeng.com"
-    - id: "tieba"
-      name: "贴吧"
-      expected_domain: "baidu.com"
-    - id: "weibo"
-      name: "微博"
-      expected_domain: "weibo.com"
-    - id: "douyin"
-      name: "抖音"
-      expected_domain: "douyin.com"
+
+#    - id: "xueqiu-hotstock"
+#      name: "雪球-热门股票"
+#      expected_domain: "xueqiu.com"
+
+#    - id: "gelonghui"
+#      name: "格隆汇-事件"
+#      expected_domain: "gelonghui.com"
+
+#    - id: "fastbull-express"
+#      name: "法布财经-快讯"
+#      expected_domain: "fastbull.cn"
+
+#    - id: "fastbull-news"
+#      name: "法布财经-头条"
+#      expected_domain: "fastbull.cn"
+
+#    - id: "jin10"
+#      name: "金十数据"
+#      expected_domain: "jin10.com"
+
+# ========== 综合资讯 ==========
     - id: "zhihu"
       name: "知乎"
       expected_domain: "zhihu.com"
 
+    - id: "weibo"
+      name: "微博-实时热搜"
+      expected_domain: "weibo.com"
 
+#!    - id: "zaobao"
+#!      name: "联合早报"
+#!      expected_domain: "zaobao.com"
+
+    - id: "tieba"
+      name: "百度贴吧-热议"
+      expected_domain: "baidu.com"
+
+    - id: "toutiao"
+      name: "今日头条"
+      expected_domain: "toutiao.com"
+
+    - id: "thepaper"
+      name: "澎湃新闻-热榜"
+      expected_domain: "thepaper.cn"
+
+    - id: "sputniknewscn"
+      name: "卫星通讯社"
+      expected_domain: "sputniknews.cn"
+
+#!    - id: "cankaoxiaoxi"
+#!      name: "参考消息"
+#!      expected_domain: "cankaoxiaoxi.com"
+
+    - id: "kaopu"
+      name: "靠谱新闻"
+      expected_domain: "kaopu.news"
+
+    - id: "baidu"
+      name: "百度热搜"
+      expected_domain: "baidu.com"
+
+#    - id: "nowcoder"
+#      name: "牛客"
+#      expected_domain: "nowcoder.com"
+
+    - id: "ifeng"
+      name: "凤凰网-热点资讯"
+      expected_domain: "ifeng.com"
+
+##    - id: "tencent-hot"
+##      name: "腾讯新闻-综合早报"
+##      expected_domain: "qq.com"
+
+##    - id: "chongbuluo-latest"
+##      name: "虫部落-最新"
+##      expected_domain: "chongbuluo.com"
+
+##    - id: "chongbuluo-hot"
+##      name: "虫部落-最热"
+##      expected_domain: "chongbuluo.com"
+
+# ========== 社区 · 内容平台 ==========
+    - id: "hupu"
+      name: "虎扑-主干道热帖"
+      expected_domain: "hupu.com"
+
+#    - id: "dongqiudi"
+#      name: "懂球帝-头条"
+#      expected_domain: "dongqiudi.com"
+
+    - id: "bilibili-hot-search"
+      name: "哔哩哔哩-热搜"
+      expected_domain: "bilibili.com"
+
+#!    - id: "bilibili-hot-video"
+#!      name: "哔哩哔哩-热门视频"
+#!      expected_domain: "bilibili.com"
+
+#!    - id: "bilibili-ranking"
+#!      name: "哔哩哔哩-排行榜"
+#!      expected_domain: "bilibili.com"
+
+    - id: "douyin"
+      name: "抖音"
+      expected_domain: "douyin.com"
+
+#!    - id: "kuaishou"
+#!      name: "快手"
+#!      expected_domain: "kuaishou.com"
+
+    - id: "douban"
+      name: "豆瓣-热门电影"
+      expected_domain: "douban.com"
+
+#    - id: "steam"
+#      name: "Steam-在线人数"
+#      expected_domain: "steampowered.com"
+
+# ========== 视频 · 影音 ==========
+#    - id: "qqvideo-tv-hotsearch"
+#      name: "腾讯视频-热搜榜"
+#      expected_domain: "qq.com"
+
+#    - id: "iqiyi-hot-ranklist"
+#      name: "爱奇艺-热播榜"
+#      expected_domain: "iqiyi.com"
+
+# ========== 安全 ==========
+    - id: "freebuf"
+      name: "Freebuf-网络安全"
+      expected_domain: "freebuf.com"
 
 # ===============================================================
 # 3. 数据源 - RSS 订阅
@@ -127,9 +305,48 @@ rss:
   # - 正整数：覆盖全局设置，只推送此天数内的文章
   # - 0：禁用此频道的新鲜度过滤，推送所有文章
   feeds:
-    - id: "hacker-news"
-      name: "Hacker News"
-      url: "https://hnrss.org/frontpage"
+  
+    - id: "CnBeta"
+      name: "CnBeta"
+      url: "https://feeds2.feedburner.com/cnbeta-full"
+
+    - id: "scmp"
+      name: "South China Morning Post"
+      url: "https://www.scmp.com/rss/91/feed/"
+
+    - id: "NYT-Time"
+      name: "NYTime"
+      url: "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+
+    - id: "Al-Jazeera-English"
+      name: "Al Jazeera English"
+      url: "https://www.aljazeera.com/xml/rss/all.xml"
+      
+    - id: "The-Hacker-News"
+      name: "The Hacker News"
+      url: "https://feeds.feedburner.com/TheHackersNews"
+
+    - id: "HowToGeek"
+      name: "HowToGeek"
+      url: "https://feeds.howtogeek.com/HowToGeek"
+
+    - id: "Quartz"
+      name: "Quartz"
+      url: "https://qz.com/feed/"
+
+    - id: "huxiu"
+      name: "Hu Xiu"
+      url: "https://rss.huxiu.com/"
+
+    - id: "idaily"
+      name: "idaily"
+      url: "https://plink.anyfeeder.com/idaily/today"
+      enabled: false                  # 禁用
+ 
+    - id: "zaihuapd"
+      name: "科技圈在花频道"
+      url: "https://rsshub.gujiakai.top/telegram/channel/zaihuapd"
+      enabled: false                  # 禁用
 
     - id: "ruanyifeng"
       name: "阮一峰的网络日志"
@@ -137,10 +354,6 @@ rss:
       enabled: false                  # 禁用
       # max_age_days: 3               # 示例：推送 3 天内的文章（更新较慢的博客）
      
-    - id: "yahoo-finance"
-      name: "雅虎财经"
-      url: "https://finance.yahoo.com/news/rssindex"
-
     # 自定义源示例
     # - id: "custom-feed"
     #   name: "自定义源"

@@ -20,6 +20,7 @@ from trendradar.utils.time import (
     is_within_days,
 )
 from trendradar.core import (
+    RuleConfig,
     load_frequency_words,
     matches_word_groups,
     read_all_today_titles,
@@ -236,7 +237,7 @@ class AppContext:
 
     def load_frequency_words(
         self, frequency_file: Optional[str] = None
-    ) -> Tuple[List[Dict], List[str], List[str]]:
+    ) -> Tuple[List[Dict], List[RuleConfig], List[RuleConfig]]:
         """加载频率词配置"""
         return load_frequency_words(frequency_file)
 
@@ -244,8 +245,8 @@ class AppContext:
         self,
         title: str,
         word_groups: List[Dict],
-        filter_words: List[str],
-        global_filters: Optional[List[str]] = None,
+        filter_words: List[RuleConfig],
+        global_filters: Optional[List[RuleConfig]] = None,
     ) -> bool:
         """检查标题是否匹配词组规则"""
         return matches_word_groups(title, word_groups, filter_words, global_filters)
@@ -256,12 +257,12 @@ class AppContext:
         self,
         results: Dict,
         word_groups: List[Dict],
-        filter_words: List[str],
+        filter_words: List[RuleConfig],
         id_to_name: Dict,
         title_info: Optional[Dict] = None,
         new_titles: Optional[Dict] = None,
         mode: str = "daily",
-        global_filters: Optional[List[str]] = None,
+        global_filters: Optional[List[RuleConfig]] = None,
         quiet: bool = False,
     ) -> Tuple[List[Dict], int]:
         """统计词频"""

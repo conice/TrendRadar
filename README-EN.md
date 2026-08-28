@@ -2104,7 +2104,7 @@ Configure monitoring keywords in `frequency_words.txt` with seven syntax types, 
 |------------|--------|---------|---------|----------------|
 | **Normal** | None | Basic matching | `Huawei` | Match any one |
 | **Required** | `+` | Scope limiting | `+phone` | Must include both |
-| **Filter** | `!` | Noise exclusion | `!ad` | Exclude if included |
+| **Filter** | `!` | Noise exclusion | `!ad` | Exclude from current group |
 | **Count Limit** | `@` | Control display count | `@10` | Max 10 news (v3.2.0 new) |
 | **Global Filter** | `[GLOBAL_FILTER]` | Globally exclude content | See example below | Filter under any circumstances (v3.5.0 new) |
 | **Regex** | `/pattern/` | Precise matching | `/\bai\b/` | Match using regex (v4.7.0 new) |
@@ -2141,7 +2141,7 @@ Huawei
 !fruit
 !price
 ```
-**Effect:** News containing filter words will be **excluded**, even if it contains keywords
+**Effect:** A matching filter excludes the title from the **current group only**; it may still enter another matching group
 
 ##### 4. **Count Limit** `@number` - Control Display Count (v3.2.0 new)
 ```txt
@@ -2156,11 +2156,8 @@ Musk
 ##### 5. **Global Filter** `[GLOBAL_FILTER]` - Globally Exclude Content (v3.5.0 new)
 ```txt
 [GLOBAL_FILTER]
-advertisement
-promotion
-marketing
-shocking
-clickbait
+/^shocking[!:]/ => Clickbait
+/(?:join|add).{0,12}(?:group|channel).{0,12}(?:free|profit)/ => Private traffic
 
 [WORD_GROUPS]
 technology
@@ -2173,9 +2170,9 @@ HarmonyOS
 **Effect:** Filters news containing specified words under **any circumstances**, with **highest priority**
 
 **Use Cases:**
-- Filter low-quality content: shocking, clickbait, breaking news, etc.
-- Filter marketing content: advertisement, promotion, sponsorship, etc.
-- Filter specific topics: entertainment, gossip (based on needs)
+- Filter high-confidence clickbait, marketing, and private-traffic phrases
+- Combine behavior and context words instead of filtering a topic with one broad token
+- Control topic preferences through keyword groups rather than an exhaustive blacklist
 
 **Filter Priority:** Global Filter > Group Filter(`!`) > Group Matching
 
@@ -2187,13 +2184,13 @@ HarmonyOS
 **Matching Examples:**
 ```txt
 [GLOBAL_FILTER]
-advertisement
+/advertisement.{0,8}(?:discount|promotion)/ => Advertisement
 
 [WORD_GROUPS]
 technology
 AI
 ```
-- ❌ "Advertisement: Latest tech product launch" ← Contains global filter word "advertisement", rejected
+- ❌ "AI advertisement discount promotion" ← Matches the global filter and is rejected
 - ✅ "Tech company launches new AI product" ← No global filter words, matches "technology" group
 - ✅ "AI technology breakthrough draws attention" ← No global filter words, matches "AI" in "technology" group
 
