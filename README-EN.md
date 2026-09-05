@@ -1145,13 +1145,11 @@ AI conversational analysis system based on MCP (Model Context Protocol), enablin
 
 ### **Web Deployment**
 
-After running, the `index.html` generated in the root directory is the complete news report page.
+Each run generates `output/index.html` and a root `index.html` for local viewing. GitHub Actions saves the latest complete report as `index.html` on the `data` branch, then explicitly deploys it to GitHub Pages. Generated homepages are not tracked on the code branch. If no new report is available, the previous homepage is retained.
 
 > **Deployment**: Click **Use this template** to create your repository, then deploy to Cloudflare Pages or GitHub Pages.
 >
-> **💡 Tip**: Enable GitHub Pages for an online URL. Go to Settings → Pages to enable. [Preview Effect](https://sansan0.github.io/TrendRadar/)
->
-> ⚠️ The GitHub Actions auto-storage feature has been discontinued (this approach caused excessive load on GitHub servers, affecting platform stability).
+> **GitHub Pages setup**: Open **Settings → Pages → Source**, select **GitHub Actions**, then manually run **Get Hot News** once. Your existing site URL stays the same. See [Homepage and GitHub Pages](docs/data-branch.md#首页与-github-pages) for details. A branch push made with `GITHUB_TOKEN` does not trigger a Pages build; the workflow publishes the saved homepage explicitly.
 
 <a id="cloudflare-deploy"></a>
 
@@ -2905,12 +2903,13 @@ Generated reports and data are saved in `./output` directory by default. Data pe
 
 **📊 Web Report Access Paths**:
 
-TrendRadar generates daily summary HTML reports to two locations simultaneously:
+The latest HTML report is available at these locations:
 
 | File Location | Access Method | Use Case |
 |--------------|---------------|----------|
 | `output/index.html` | Direct host access | **Docker Deployment** (via Volume mount, visible on host) |
-| `index.html` | Root directory access | **GitHub Pages** (repository root, auto-detected by Pages) |
+| `index.html` | Local root directory access | Generated locally; not committed to the code branch |
+| `index.html` on `data` | GitHub Pages site | **GitHub Actions** explicitly deploys the saved homepage |
 | `output/html/YYYY-MM-DD/当日汇总.html` | Historical reports | All environments (archived by date) |
 
 **Local Access Examples**:
@@ -2931,9 +2930,9 @@ xdg-open ./output/index.html         # Linux
 open ./output/html/2025-xx-xx/当日汇总.html
 ```
 
-**Why two index.html files?**
+**Why two local index.html files?**
 - `output/index.html`: Docker Volume mounted to host, can be opened locally
-- `index.html`: Pushed to repository by GitHub Actions, auto-deployed by GitHub Pages
+- `index.html`: Convenient access from the project root; Actions saves `output/index.html` to the data branch before publishing it to Pages
 
 > 💡 **Tip**: Both files have identical content, choose either one to access.
 

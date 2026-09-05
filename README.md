@@ -1201,13 +1201,11 @@ ai_translation:
 
 ### **网页部署**
 
-运行后根目录生成 `index.html`，即为完整的新闻报告页面。
+运行后会生成 `output/index.html` 和根目录 `index.html`，可在本地直接打开。GitHub Actions 将最新完整报告保存到 `data` 分支的 `index.html`，然后显式部署到 GitHub Pages；代码分支不再跟踪生成的首页。没有新报告时保留上一版。
 
 > **部署方式**：点击 **Use this template** 创建仓库，可部署到 Cloudflare Pages 或 GitHub Pages 等静态托管平台。
 >
-> **💡 提示**：启用 GitHub Pages 可获得在线访问地址，进入仓库 Settings → Pages 即可开启。[效果预览](https://sansan0.github.io/TrendRadar/)
->
-> ⚠️ 原 GitHub Actions 自动存储功能已下线（该方案曾导致 GitHub 服务器负载过高，影响平台稳定性）。
+> **GitHub Pages 设置**：进入仓库 **Settings → Pages → Source**，选择 **GitHub Actions**，再手动运行一次 **Get Hot News**。已有站点地址不变；无需把发布来源设置为 `master` 或 `data` 分支。详见 [首页与 GitHub Pages](docs/data-branch.md#首页与-github-pages)。
 
 <a id="cloudflare-deploy"></a>
 
@@ -2957,12 +2955,13 @@ docker rm trendradar
 
 **📊 网页版报告访问路径**：
 
-TrendRadar 生成的当日汇总 HTML 报告会同时保存到两个位置：
+TrendRadar 生成的最新 HTML 报告可通过以下位置访问：
 
 | 文件位置 | 访问方式 | 适用场景 |
 |---------|---------|---------|
 | `output/index.html` | 宿主机直接访问 | **Docker 部署**（通过 Volume 挂载，宿主机可见） |
-| `index.html` | 根目录访问 | **GitHub Pages**（仓库根目录，Pages 自动识别） |
+| `index.html` | 本地根目录访问 | 本地生成，不提交到代码分支 |
+| `data` 分支的 `index.html` | GitHub Pages 站点 | **GitHub Actions** 显式部署已保存的首页 |
 | `output/html/YYYY-MM-DD/当日汇总.html` | 历史报告访问 | 所有环境（按日期归档） |
 
 **本地访问示例**：
@@ -2983,9 +2982,9 @@ xdg-open ./output/index.html         # Linux
 open ./output/html/2025-xx-xx/当日汇总.html
 ```
 
-**为什么有两个 index.html？**
+**为什么本地有两个 index.html？**
 - `output/index.html`：Docker Volume 挂载到宿主机，本地可直接打开
-- `index.html`：GitHub Actions 推送到仓库，GitHub Pages 自动部署
+- `index.html`：方便在项目根目录直接打开；Actions 从 `output/index.html` 保存数据分支首页，再部署到 Pages
 
 > 💡 **提示**：两个文件内容完全相同，选择任意一个访问即可。
 

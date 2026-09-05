@@ -51,6 +51,8 @@ jobs:
   crawl:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      pages_ready: ${{ steps.upload_pages.outcome == 'success' }}
     env:
       STORAGE_BACKEND: local
       STORAGE_DATA_DIR: output
@@ -136,7 +138,7 @@ jobs:
             exit 1
           fi
 
-      - name: Restore databases from data branch
+      - name: Restore runtime data from data branch
         id: restore_data
         if: success()
         run: python scripts/sync_data_branch.py restore --manifest "$RUNNER_TEMP/trendradar-data.json"
@@ -179,26 +181,40 @@ jobs:
           GITHUB_ACTIONS: true
         run: uv run python -m trendradar
 
-      - name: Save databases to data branch
+      - name: Save runtime data to data branch
         id: save_data
         if: ${{ !cancelled() && steps.restore_data.outcome == 'success' && steps.crawl.outcome != 'skipped' }}
-        run: python scripts/sync_data_branch.py save --manifest "$RUNNER_TEMP/trendradar-data.json"
+        run: |
+          python scripts/sync_data_branch.py save \
+            --manifest "$RUNNER_TEMP/trendradar-data.json" \
+            --site-dir "$RUNNER_TEMP/trendradar-pages"
+          if [ -f "$RUNNER_TEMP/trendradar-pages/index.html" ]; then
+            echo "has_page=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Preserve databases if branch save fails
+      - name: Preserve runtime data if branch save fails
         if: ${{ !cancelled() && steps.save_data.outcome == 'failure' }}
         uses: actions/upload-artifact@v4
         with:
-          name: trendradar-databases-${{ github.run_id }}-${{ github.run_attempt }}
+          name: trendradar-runtime-data-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             output/news/*.db
             output/rss/*.db
             output/state.db
+            output/index.html
           retention-days: 7
+
+      - name: Upload GitHub Pages artifact
+        id: upload_pages
+        if: ${{ !cancelled() && steps.save_data.outcome == 'success' && steps.save_data.outputs.has_page == 'true' }}
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/trendradar-pages
 
       # --------------------------------------------------------------------------------
       # ☁️ CLOUDFLARE PAGES DEPLOY / 部署到 Cloudflare Pages（可选）
       # --------------------------------------------------------------------------------
-      # 将爬虫生成的 index.html 自动部署到 Cloudflare Pages，国内访问比 GitHub Pages 更快。
+      # 将 data 分支保存成功的首页部署到 Cloudflare Pages。
       # 仅当下面三个 Secrets 均已配置时才会执行，缺任意一个则自动跳过，不影响其它流程：
       #   - CLOUDFLARE_API_TOKEN     权限：Account → Cloudflare Pages → Edit
       #   - CLOUDFLARE_ACCOUNT_ID    Cloudflare 账户 ID
@@ -222,20 +238,37 @@ jobs:
           fi
 
       - name: Prepare Cloudflare Pages assets
-        if: success() && steps.cf_check.outputs.enabled == 'true'
+        if: success() && steps.cf_check.outputs.enabled == 'true' && steps.save_data.outputs.has_page == 'true'
         run: |
-          if [ ! -f index.html ]; then
-            echo "❌ 未找到 index.html，请确认爬虫已生成网页报告"
-            exit 1
-          fi
           rm -rf cloudflare_dist
           mkdir -p cloudflare_dist
-          cp index.html cloudflare_dist/index.html
+          cp "$RUNNER_TEMP/trendradar-pages/index.html" cloudflare_dist/index.html
 
       - name: Deploy to Cloudflare Pages
-        if: success() && steps.cf_check.outputs.enabled == 'true'
+        if: success() && steps.cf_check.outputs.enabled == 'true' && steps.save_data.outputs.has_page == 'true'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy cloudflare_dist --project-name=${{ secrets.CLOUDFLARE_PROJECT_NAME }}
+
+  deploy_pages:
+    name: Publish GitHub Pages
+    needs: crawl
+    if: ${{ !cancelled() && needs.crawl.outputs.pages_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

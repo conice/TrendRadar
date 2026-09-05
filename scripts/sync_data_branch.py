@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Restore and save SQLite snapshots on a dedicated Git branch (stdlib only)."""
+"""Restore and save databases and the latest report on a Git branch (stdlib only)."""
 
 import argparse
 from contextlib import closing
@@ -13,19 +13,32 @@ import subprocess
 import tempfile
 
 
-BRANCH_README = """# TrendRadar runtime databases
+BRANCH_README = """# TrendRadar runtime data
 
 This branch is managed by the Get Hot News workflow.
 
+- `index.html`: latest complete news report, published by GitHub Actions to Pages.
 - `output/news/YYYY-MM-DD.db`: daily hot-list data and AI filter cache.
 - `output/rss/YYYY-MM-DD.db`: daily RSS data.
 - `output/state.db`: cross-day delivery history, pending recommendations, cleanup time.
 
 Each update is a normal Git commit. The workflow restores this branch before
 crawling and saves committed SQLite snapshots even if recommendation delivery
-fails. Expired files and state are cleaned every 30 days, retaining 30 days of
-data. Git commit history is retained for recovery; cleanup does not shrink it.
+fails. If no complete report is generated, the previous homepage is retained.
+Only the saved homepage is included in the Pages deployment artifact.
+Expired files and state are cleaned every 30 days, retaining 30 days of data.
+Git commit history is retained for recovery; cleanup does not shrink it.
 """
+
+
+def is_complete_report(content: bytes) -> bool:
+    """Reject empty or interrupted report writes before replacing the homepage."""
+    try:
+        html = content.decode("utf-8")
+    except UnicodeDecodeError:
+        return False
+    return re.search(r"<html\b[^>]*>.*<body\b[^>]*>.*</body>\s*</html>\s*\Z",
+                     html, re.IGNORECASE | re.DOTALL) is not None
 
 
 def is_database_path(path: str) -> bool:
@@ -107,6 +120,20 @@ class DataBranchSync:
             "code_commit": self.git("rev-parse", "HEAD").stdout.decode().strip(),
         }), encoding="utf-8")
 
+    def _read_homepage(self, commit) -> bytes | None:
+        if not commit:
+            return None
+        entry = self.git("ls-tree", "-z", commit, "--", "index.html").stdout
+        if not entry:
+            return None
+        mode, kind, oid = entry.split(b"\t", 1)[0].split()
+        if mode != b"100644" or kind != b"blob":
+            raise RuntimeError("Unexpected homepage entry on the data branch")
+        content = self.git("cat-file", "blob", oid.decode()).stdout
+        if not is_complete_report(content):
+            raise RuntimeError("The saved homepage is not a complete HTML report")
+        return content
+
     def restore(self) -> None:
         # A failed restore must never leave an earlier run's save authorization.
         self.manifest.unlink(missing_ok=True)
@@ -137,6 +164,7 @@ class DataBranchSync:
                 snapshots[relative] = oid.decode()
         if not snapshots:
             raise RuntimeError("The data branch contains no databases; refusing an empty restore")
+        homepage = self._read_homepage(parent)
 
         self.data_dir.parent.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="trendradar-restore-", dir=self.data_dir.parent) as tmp:
@@ -159,6 +187,14 @@ class DataBranchSync:
             for relative, file in previous.items():
                 if relative not in snapshots:
                     file.unlink()
+            # Replace stale local reports too, so a later save cannot publish one
+            # over the restored homepage when the crawler generates no report.
+            report_path = self.data_dir / "index.html"
+            if homepage is None:
+                report_path.unlink(missing_ok=True)
+            else:
+                (staging / "index.html").write_bytes(homepage)
+                os.replace(staging / "index.html", report_path)
 
         self._write_manifest(parent)
         print(f"Restored {len(snapshots)} databases from {self.branch} ({parent[:12]}).")
@@ -181,28 +217,41 @@ class DataBranchSync:
         files = database_files(self.data_dir)
         if not files:
             raise RuntimeError("No databases to save; refusing to overwrite the data branch")
+        parent = manifest.get("parent")
+        report_path = self.data_dir / "index.html"
+        if report_path.is_symlink():
+            raise RuntimeError("HTML report must not be a symbolic link")
+        homepage = report_path.read_bytes() if report_path.is_file() else None
+        if homepage is not None and not is_complete_report(homepage):
+            print("Ignoring incomplete HTML report; retaining the previous homepage.")
+            homepage = None
+        if homepage is None:
+            homepage = self._read_homepage(parent)
 
         with tempfile.TemporaryDirectory(prefix="trendradar-save-") as tmp:
             staging = Path(tmp)
             for relative, file in files.items():
                 snapshot_database(file, staging / "output" / relative)
             (staging / "README.md").write_text(BRANCH_README, encoding="utf-8")
+            if homepage is not None:
+                (staging / "index.html").write_bytes(homepage)
 
             env = {"GIT_INDEX_FILE": str(staging / "index")}
             self.git("read-tree", "--empty", env=env)
             names = ["README.md", *(f"output/{relative}" for relative in sorted(files))]
+            if homepage is not None:
+                names.append("index.html")
             for name in names:
                 oid = self.git("hash-object", "-w", "--stdin", input=(staging / name).read_bytes()).stdout.decode().strip()
                 self.git("update-index", "--add", "--cacheinfo", f"100644,{oid},{name}", env=env)
             tree = self.git("write-tree", env=env).stdout.decode().strip()
-            parent = manifest.get("parent")
             if parent and tree == self.git("rev-parse", f"{parent}^{{tree}}").stdout.decode().strip():
                 if local_only:
                     self._prepare_local_branch(parent, parent)
-                print("Database snapshots are unchanged; no commit needed.")
+                print("Runtime data is unchanged; no commit needed.")
                 return parent
             now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-            message = f"Update databases ({now})\n\nCode: {manifest['code_commit']}\n"
+            message = f"Update runtime data ({now})\n\nCode: {manifest['code_commit']}\n"
             identity = {
                 "GIT_AUTHOR_NAME": "github-actions[bot]",
                 "GIT_AUTHOR_EMAIL": "41898282+github-actions[bot]@users.noreply.github.com",
@@ -223,6 +272,20 @@ class DataBranchSync:
             print(f"Saved {len(files)} databases to {self.branch} ({commit[:12]}).")
             return commit
 
+    def export_site(self, commit: str, directory: Path) -> bool:
+        """Export only the committed homepage, never databases or working files."""
+        homepage = self._read_homepage(commit)
+        if homepage is None:
+            print("No saved homepage yet; skipping site export.")
+            return False
+        if directory.is_symlink() or (directory.exists() and
+                                     (not directory.is_dir() or any(directory.iterdir()))):
+            raise RuntimeError(f"Site directory must be empty: {directory}")
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "index.html").write_bytes(homepage)
+        print(f"Exported homepage from {self.branch} ({commit[:12]}).")
+        return True
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -233,16 +296,22 @@ def main():
     parser.add_argument("--branch", default="data")
     parser.add_argument("--remote", default="origin")
     parser.add_argument("--local-only", action="store_true", help="Prepare a local data branch without pushing")
+    parser.add_argument("--site-dir", type=Path, help="Export the saved homepage to an empty directory")
     args = parser.parse_args()
+    if args.site_dir is not None and args.action != "save":
+        parser.error("--site-dir can only be used with save")
     data_dir = args.data_dir if args.data_dir.is_absolute() else args.repo / args.data_dir
     sync = DataBranchSync(args.repo, data_dir, args.manifest, args.branch, args.remote)
     try:
         if args.action == "restore":
             sync.restore()
         else:
-            sync.save(local_only=args.local_only)
+            commit = sync.save(local_only=args.local_only)
+            if args.site_dir is not None:
+                site_dir = args.site_dir if args.site_dir.is_absolute() else args.repo / args.site_dir
+                sync.export_site(commit, site_dir)
     except (RuntimeError, OSError, sqlite3.Error) as error:
-        parser.exit(1, f"Database sync failed: {error}\n")
+        parser.exit(1, f"Runtime data sync failed: {error}\n")
 
 
 if __name__ == "__main__":

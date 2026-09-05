@@ -33,7 +33,7 @@ def _metadata_html(item, mode, **options):
 def _news_item_html(item, index, mode, **options):
     style = MessageStyle("html")
     url = item.get("mobile_url") or item.get("mobileUrl") or item.get("url", "")
-    title = style.link(item.get("title", "") or url, url).replace('<a ', '<a class="news-link" target="_blank" ')
+    title = style.link(item.get("title", "") or url, url).replace('<a ', '<a class="news-link" target="_blank" rel="noopener noreferrer" ')
     metadata = _metadata_html(item, mode, **options)
     return (
         f'<div class="news-item"><div class="news-number">{index}</div>'
@@ -84,64 +84,100 @@ def render_html_content(
 
     html = """
     <!DOCTYPE html>
-    <html>
+    <html lang="zh-CN">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>热点新闻分析</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <style>
-            * { box-sizing: border-box; }
-            body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-                margin: 0;
-                padding: 16px;
-                background: #fafafa;
-                color: #333;
-                line-height: 1.5;
+            :root {
+                color-scheme: light;
+                --page-bg: #f3f5f9;
+                --surface: #ffffff;
+                --surface-muted: #f7f9fc;
+                --ink: #202b40;
+                --muted: #667085;
+                --line: #e5eaf2;
+                --accent: #4f46e5;
+                --accent-soft: #eef2ff;
             }
+            *, *::before, *::after { box-sizing: border-box; }
+            html { scroll-behavior: smooth; scroll-padding-top: 80px; }
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+                margin: 0;
+                padding: 28px 20px 80px;
+                background: var(--page-bg);
+                color: var(--ink);
+                line-height: 1.65;
+                -webkit-text-size-adjust: 100%;
+            }
+            button, input { font: inherit; }
+            button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+            :focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; }
+            .skip-link {
+                position: fixed;
+                top: -80px;
+                left: 16px;
+                padding: 10px 16px;
+                background: var(--surface);
+                color: var(--accent);
+                z-index: 10000;
+            }
+            .skip-link:focus { top: 12px; }
 
             .container {
-                max-width: 600px;
+                max-width: 780px;
                 margin: 0 auto;
-                background: white;
-                border-radius: 12px;
-                overflow: hidden;
-                box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+                background: var(--surface);
+                border: 1px solid var(--line);
+                border-radius: 20px;
+                box-shadow: 0 12px 40px rgba(32,43,64,0.04);
             }
 
             .header {
-                background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-                color: white;
-                padding: 32px 24px;
-                text-align: center;
+                background: var(--surface);
+                color: var(--ink);
+                padding: 28px 32px;
+                border-radius: 20px 20px 0 0;
+                border-bottom: 1px solid var(--line);
                 position: relative;
                 overflow: visible;
             }
-
-            .header-watermark {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-size: clamp(40px, 8vw, 80px);
-                font-weight: 900;
-                letter-spacing: 0.05em;
-                color: rgba(255, 255, 255, 0.15);
-                pointer-events: none;
-                z-index: 1;
-                white-space: nowrap;
-                -webkit-mask-image: radial-gradient(circle 0px at 50% 50%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
-                mask-image: radial-gradient(circle 0px at 50% 50%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
-                transition: -webkit-mask-image 0.3s ease, mask-image 0.3s ease;
-                user-select: none;
+            .header-topline {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 12px;
+                margin-bottom: 24px;
+            }
+            .header-brand {
+                display: flex;
+                align-items: center;
+                gap: 9px;
+                font-size: 17px;
+                font-weight: 750;
+                letter-spacing: -0.4px;
+            }
+            .brand-symbol {
+                display: grid;
+                place-items: center;
+                width: 30px;
+                height: 30px;
+                border-radius: 9px;
+                background: var(--accent);
+                color: white;
+            }
+            .header-subtitle {
+                margin: 6px 0 22px;
+                font-size: 13px;
+                color: var(--muted);
             }
 
             .save-buttons {
-                position: absolute;
-                top: 16px;
-                right: 16px;
                 display: flex;
+                align-items: center;
                 gap: 8px;
                 z-index: 10;
             }
@@ -152,23 +188,22 @@ def render_html_content(
             }
 
             .save-btn {
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
+                background: #4f46e5;
+                border: 1px solid #4f46e5;
                 color: white;
-                padding: 10px 18px;
-                border-radius: 6px 0 0 6px;
+                padding: 9px 16px;
+                border-radius: 10px 0 0 10px;
                 cursor: pointer;
                 font-size: 13px;
                 font-weight: 500;
                 transition: all 0.2s ease;
-                backdrop-filter: blur(10px);
                 white-space: nowrap;
-                min-height: 38px;
+                min-height: 40px;
                 border-right: none;
             }
 
             .save-btn:hover {
-                background: rgba(255, 255, 255, 0.3);
+                background: #4338ca;
             }
 
             .save-btn:active {
@@ -181,35 +216,36 @@ def render_html_content(
             }
 
             .save-dropdown-trigger {
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
+                background: #4f46e5;
+                border: 1px solid #4f46e5;
+                border-left-color: rgba(255,255,255,0.3);
                 color: white;
                 padding: 10px 10px;
-                border-radius: 0 6px 6px 0;
+                border-radius: 0 10px 10px 0;
                 cursor: pointer;
                 font-size: 11px;
                 transition: all 0.2s ease;
-                backdrop-filter: blur(10px);
-                min-height: 38px;
+                min-height: 40px;
+                min-width: 36px;
                 display: flex;
                 align-items: center;
+                justify-content: center;
             }
 
             .save-dropdown-trigger:hover {
-                background: rgba(255, 255, 255, 0.35);
+                background: #4338ca;
             }
 
             .save-dropdown-menu {
                 position: absolute;
                 top: 100%;
                 right: 0;
-                margin-top: 4px;
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(16px);
-                border: 1px solid rgba(0, 0, 0, 0.08);
+                margin-top: 8px;
+                background: var(--surface);
+                border: 1px solid var(--line);
                 border-radius: 10px;
-                padding: 4px;
-                min-width: 140px;
+                padding: 6px;
+                min-width: 166px;
                 opacity: 0;
                 visibility: hidden;
                 transform: translateY(-4px);
@@ -217,8 +253,7 @@ def render_html_content(
                 box-shadow: 0 8px 24px rgba(0,0,0,0.12);
             }
 
-            .save-btn-group:hover .save-dropdown-menu,
-            .save-dropdown-menu:hover {
+            .save-btn-group.menu-open .save-dropdown-menu {
                 opacity: 1;
                 visibility: visible;
                 transform: translateY(0);
@@ -227,10 +262,10 @@ def render_html_content(
             .save-dropdown-item {
                 display: block;
                 width: 100%;
-                padding: 9px 14px;
+                padding: 12px 14px;
                 background: none;
                 border: none;
-                color: #374151;
+                color: var(--ink);
                 font-size: 13px;
                 cursor: pointer;
                 border-radius: 6px;
@@ -253,9 +288,11 @@ def render_html_content(
             }
 
             .header-title {
-                font-size: 22px;
+                font-size: 32px;
                 font-weight: 700;
-                margin: 0 0 20px 0;
+                line-height: 1.3;
+                letter-spacing: -0.8px;
+                margin: 0;
                 position: relative;
                 z-index: 2;
             }
@@ -264,34 +301,41 @@ def render_html_content(
                 position: relative;
                 z-index: 2;
                 display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 16px;
+                grid-template-columns: repeat(4, minmax(0, 1fr));
+                gap: 10px;
                 font-size: 14px;
-                opacity: 0.95;
             }
 
             .info-item {
-                text-align: center;
+                min-width: 0;
+                text-align: left;
+                padding: 12px 14px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: var(--surface-muted);
+                overflow-wrap: anywhere;
             }
 
             .info-label {
                 display: block;
                 font-size: 12px;
-                opacity: 0.8;
-                margin-bottom: 4px;
+                color: var(--muted);
+                margin-bottom: 5px;
             }
 
             .info-value {
                 font-weight: 600;
                 font-size: 16px;
+                font-variant-numeric: tabular-nums;
+                line-height: 1.5;
             }
 
             .content {
-                padding: 24px;
+                padding: 24px 32px 12px;
             }
 
             .word-group {
-                margin-bottom: 40px;
+                margin-bottom: 28px;
             }
 
             .word-group:first-child {
@@ -302,21 +346,27 @@ def render_html_content(
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                margin-bottom: 20px;
-                padding-bottom: 8px;
-                border-bottom: 1px solid #f0f0f0;
+                gap: 12px;
+                margin-bottom: 4px;
+                padding: 12px 14px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: var(--surface-muted);
             }
 
             .word-info {
                 display: flex;
                 align-items: center;
-                gap: 12px;
+                flex-wrap: wrap;
+                min-width: 0;
+                gap: 4px 12px;
             }
 
             .word-name {
                 font-size: 17px;
                 font-weight: 600;
-                color: #1a1a1a;
+                color: var(--ink);
+                overflow-wrap: anywhere;
             }
 
             .word-count {
@@ -329,18 +379,20 @@ def render_html_content(
             .word-count.warm { color: #ea580c; font-weight: 600; }
 
             .word-index {
-                color: #999;
+                color: var(--muted);
                 font-size: 12px;
+                flex-shrink: 0;
+                font-variant-numeric: tabular-nums;
             }
 
             .news-item {
-                margin-bottom: 20px;
-                padding: 16px 0;
-                border-bottom: 1px solid #f5f5f5;
+                margin: 0;
+                padding: 18px 2px;
+                border-bottom: 1px solid var(--line);
                 position: relative;
                 display: flex;
                 gap: 12px;
-                align-items: center;
+                align-items: flex-start;
             }
 
             .news-item:last-child {
@@ -362,21 +414,21 @@ def render_html_content(
             }
 
             .news-number {
-                color: #999;
+                color: var(--muted);
                 font-size: 13px;
                 font-weight: 600;
                 min-width: 20px;
                 text-align: center;
                 flex-shrink: 0;
-                background: #f8f9fa;
-                border-radius: 50%;
-                width: 24px;
-                height: 24px;
+                background: var(--surface-muted);
+                border-radius: 8px;
+                width: 28px;
+                height: 28px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 align-self: flex-start;
-                margin-top: 8px;
+                margin-top: 1px;
                 position: relative;
                 cursor: pointer;
                 transition: background 0.15s, color 0.15s;
@@ -409,7 +461,7 @@ def render_html_content(
             .news-content {
                 flex: 1;
                 min-width: 0;
-                padding-right: 40px;
+                overflow-wrap: anywhere;
             }
 
             .news-item.new .news-content {
@@ -419,13 +471,13 @@ def render_html_content(
             .news-header {
                 display: flex;
                 align-items: center;
-                gap: 8px;
-                margin-top: 6px;
+                gap: 6px 10px;
+                margin-top: 8px;
                 flex-wrap: wrap;
             }
 
             .source-name {
-                color: #666;
+                color: var(--muted);
                 font-size: 12px;
                 font-weight: 500;
             }
@@ -440,18 +492,18 @@ def render_html_content(
             }
 
             .rank-num {
-                color: #fff;
-                background: #6b7280;
-                font-size: 10px;
-                font-weight: 700;
+                color: #4338ca;
+                background: var(--accent-soft);
+                font-size: 11px;
+                font-weight: 500;
                 padding: 2px 6px;
-                border-radius: 10px;
+                border-radius: 5px;
                 min-width: 18px;
                 text-align: center;
             }
 
-            .rank-num.top { background: #dc2626; }
-            .rank-num.high { background: #ea580c; }
+            .rank-num.top { background: #fee2e2; color: #b91c1c; }
+            .rank-num.high { background: #ffedd5; color: #9a3412; }
 
             .trend-up, .trend-down {
                 font-size: 12px;
@@ -460,8 +512,8 @@ def render_html_content(
             }
 
             .time-info {
-                color: #999;
-                font-size: 11px;
+                color: var(--muted);
+                font-size: 12px;
             }
 
             .count-info {
@@ -471,30 +523,32 @@ def render_html_content(
             }
 
             .news-title {
-                font-size: 15px;
-                line-height: 1.4;
-                color: #1a1a1a;
+                font-size: 16px;
+                line-height: 1.75;
+                color: var(--ink);
                 margin: 0;
             }
 
             .news-link {
-                color: #2563eb;
+                color: var(--ink);
                 text-decoration: none;
+                text-underline-offset: 4px;
             }
 
             .news-link:hover {
+                color: var(--accent);
                 text-decoration: underline;
             }
 
             .news-link:visited {
-                color: #7c3aed;
+                color: #75648b;
             }
 
             /* 通用区域分割线样式 */
             .section-divider {
                 margin-top: 32px;
                 padding-top: 24px;
-                border-top: 2px solid #e5e7eb;
+                border-top: 1px solid var(--line);
             }
 
             /* 热榜统计区样式 */
@@ -611,10 +665,11 @@ def render_html_content(
             }
 
             .footer {
-                margin-top: 32px;
+                margin-top: 8px;
                 padding: 20px 24px;
-                background: #f8f9fa;
-                border-top: 1px solid #e5e7eb;
+                background: var(--surface-muted);
+                border-top: 1px solid var(--line);
+                border-radius: 0 0 20px 20px;
                 text-align: center;
             }
 
@@ -639,34 +694,6 @@ def render_html_content(
             .project-name {
                 font-weight: 600;
                 color: #374151;
-            }
-
-            @media (max-width: 480px) {
-                body { padding: 12px; }
-                .header { padding: 24px 20px; }
-                .content { padding: 20px; }
-                .footer { padding: 16px 20px; }
-                .header-info { grid-template-columns: 1fr; gap: 12px; }
-                .news-header { gap: 6px; }
-                .news-content { padding-right: 45px; }
-                .news-item { gap: 8px; }
-                .new-item { gap: 8px; }
-                .news-number { width: 20px; height: 20px; font-size: 12px; }
-                .save-buttons {
-                    position: static;
-                    margin-bottom: 16px;
-                    display: flex;
-                    gap: 8px;
-                    justify-content: center;
-                    width: 100%;
-                }
-                .save-btn-group {
-                    flex: 1;
-                }
-                .save-btn {
-                    width: 100%;
-                    border-radius: 6px 0 0 6px;
-                }
             }
 
             /* RSS 订阅内容样式 */
@@ -838,9 +865,9 @@ def render_html_content(
             .ai-section {
                 margin-top: 32px;
                 padding: 24px;
-                background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+                background: var(--surface-muted);
                 border-radius: 12px;
-                border: 1px solid #bae6fd;
+                border: 1px solid var(--line);
             }
 
             .ai-section-header {
@@ -922,13 +949,13 @@ def render_html_content(
 
             /* 宽屏模式 - 基础 */
             body.wide-mode .container { max-width: 1200px; }
-            body.wide-mode .header-info { grid-template-columns: repeat(4, 1fr); }
+            body.wide-mode .header-info { grid-template-columns: repeat(4, minmax(0, 1fr)); }
             body.wide-mode .content { padding: 32px 40px; }
 
             /* 宽屏模式 - RSS feed-group 两列 */
             body.wide-mode .rss-feeds-grid {
                 display: grid;
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
                 gap: 24px;
             }
             body.wide-mode .feed-group { margin-bottom: 0; }
@@ -960,13 +987,13 @@ def render_html_content(
             /* Tab 栏 */
             .tab-bar-wrapper {
                 position: sticky;
-                top: 0;
+                top: 12px;
                 z-index: 10;
-                background: white;
+                background: var(--surface);
                 display: none;
                 margin-bottom: 20px;
                 align-items: stretch;
-                border-bottom: 2px solid #e5e7eb;
+                border-bottom: 1px solid var(--line);
             }
             body.wide-mode .tab-bar-wrapper { display: flex; }
             body.wide-mode .tab-bar-wrapper.tab-hidden { display: none; }
@@ -1056,19 +1083,22 @@ def render_html_content(
             .tab-btn.active .tab-count { background: rgba(255,255,255,0.3); }
 
             /* 搜索栏 */
-            .search-bar { display: none; padding: 0 0 16px 0; }
+            .search-bar { display: none; padding: 0 0 20px 0; }
             .search-input {
                 width: 100%;
-                padding: 10px 16px;
-                border: 1px solid #e5e7eb;
-                border-radius: 8px;
-                font-size: 14px;
+                min-height: 46px;
+                padding: 12px 16px;
+                border: 1px solid var(--line);
+                border-radius: 10px;
+                background: var(--surface-muted);
+                color: var(--ink);
+                font-size: 16px;
                 outline: none;
                 transition: border-color 0.2s;
                 box-sizing: border-box;
             }
             .search-input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
-            .search-input::placeholder { color: #9ca3af; }
+            .search-input::placeholder { color: var(--muted); }
 
             /* 右下角悬浮工具栏 */
             .fab-bar {
@@ -1164,10 +1194,7 @@ def render_html_content(
             .word-header.collapsible { cursor: pointer; }
             .word-header.collapsible .collapse-icon { display: inline; }
             .word-header.collapsible:hover {
-                background: #f9fafb;
-                border-radius: 6px;
-                margin: 0 -8px 20px -8px;
-                padding: 8px;
+                background: var(--accent-soft);
             }
             .word-group.collapsed .news-item { display: none; }
             .word-group.collapsed .collapse-icon { transform: rotate(-90deg); }
@@ -1179,40 +1206,48 @@ def render_html_content(
                 to { opacity: 1; transform: translateY(0); }
             }
 
-            /* 宽屏切换按钮 */
-            .toggle-wide-btn {
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                color: white;
-                padding: 10px 14px;
-                border-radius: 6px;
+            /* 阅读偏好按钮 */
+            .toggle-wide-btn, .toggle-dark-btn {
+                background: var(--surface-muted);
+                border: 1px solid var(--line);
+                color: var(--ink);
+                padding: 8px;
+                border-radius: 10px;
                 cursor: pointer;
-                font-size: 15px;
-                transition: all 0.2s ease;
-                backdrop-filter: blur(10px);
+                font-size: 20px;
+                transition: background 0.2s ease;
                 line-height: 1;
-                min-height: 38px;
+                width: 40px;
+                min-height: 40px;
             }
-            .toggle-wide-btn:hover {
-                background: rgba(255, 255, 255, 0.3);
-                border-color: rgba(255, 255, 255, 0.5);
-                transform: translateY(-1px);
+            .toggle-wide-btn:hover, .toggle-dark-btn:hover {
+                background: var(--accent-soft);
+                color: var(--accent);
             }
 
             /* ===== 暗色模式 ===== */
             body.dark-mode {
-                background: #0f172a;
-                color: #e2e8f0;
+                color-scheme: dark;
+                --page-bg: #101722;
+                --surface: #182231;
+                --surface-muted: #202d3f;
+                --ink: #e2e8f0;
+                --muted: #a0aec0;
+                --line: #314056;
+                --accent: #818cf8;
+                --accent-soft: #293353;
+                background: var(--page-bg);
+                color: var(--ink);
             }
             body.dark-mode .container {
-                background: #1e293b;
+                background: var(--surface);
                 box-shadow: 0 4px 24px rgba(0,0,0,0.4);
             }
             body.dark-mode .header {
-                background: linear-gradient(135deg, #3730a3 0%, #7c3aed 100%);
+                background: var(--surface);
             }
             body.dark-mode .content {
-                background: #1e293b;
+                background: var(--surface);
             }
 
             /* 文字颜色 */
@@ -1235,13 +1270,16 @@ def render_html_content(
             body.dark-mode .rss-author,
             body.dark-mode .rss-summary { color: #94a3b8; }
             body.dark-mode .info-value { color: white; }
+            body.dark-mode .rank-num { color: #c7d2fe; background: #293353; }
+            body.dark-mode .rank-num.top { color: #fca5a5; background: #45252d; }
+            body.dark-mode .rank-num.high { color: #fdba74; background: #423022; }
 
             /* 链接 */
             body.dark-mode .news-title a,
             body.dark-mode .rss-title a,
             body.dark-mode .new-item a,
             body.dark-mode .standalone-item a,
-            body.dark-mode .rss-link { color: #93c5fd; }
+            body.dark-mode .rss-link { color: #e2e8f0; }
             body.dark-mode .news-title a:visited { color: #c4b5fd; }
             body.dark-mode .rss-link:hover { color: #6ee7b7; }
 
@@ -1320,7 +1358,7 @@ def render_html_content(
 
             /* AI 分析区 */
             body.dark-mode .ai-section {
-                background: linear-gradient(135deg, #1e1b4b 0%, #1e293b 100%);
+                background: var(--surface-muted);
                 border-color: #334155;
             }
             body.dark-mode .ai-section-title { color: #a5b4fc; }
@@ -1383,26 +1421,6 @@ def render_html_content(
                 color: #c4b5fd;
             }
 
-            /* 暗色模式切换按钮 */
-            .toggle-dark-btn {
-                background: rgba(255, 255, 255, 0.2);
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                color: white;
-                padding: 10px 14px;
-                border-radius: 6px;
-                cursor: pointer;
-                font-size: 15px;
-                transition: all 0.2s ease;
-                backdrop-filter: blur(10px);
-                line-height: 1;
-                min-height: 38px;
-            }
-            .toggle-dark-btn:hover {
-                background: rgba(255, 255, 255, 0.3);
-                border-color: rgba(255, 255, 255, 0.5);
-                transform: translateY(-1px);
-            }
-
             /* 快捷键面板已集成到 fab-tooltip */
 
             /* 阅读进度条 */
@@ -1439,27 +1457,90 @@ def render_html_content(
             body.dark-mode .badge-new {
                 background: linear-gradient(135deg, #be185d, #9333ea);
             }
+
+            .empty-state {
+                padding: 40px 20px;
+                text-align: center;
+                color: var(--muted);
+            }
+            .empty-state h2 { margin: 0 0 8px; font-size: 18px; color: var(--ink); }
+            .empty-state p { margin: 0; font-size: 14px; }
+
+            @media (max-width: 900px) {
+                body.wide-mode .content { padding: 24px 28px 12px; }
+                body.wide-mode .rss-feeds-grid,
+                body.wide-mode .ai-section .ai-blocks-grid,
+                body.wide-mode .new-section .new-sources-grid,
+                body.wide-mode .standalone-section .standalone-groups-grid {
+                    grid-template-columns: minmax(0, 1fr);
+                }
+            }
+            @media (max-width: 640px) {
+                body { padding: 8px 8px 76px; }
+                .container { border-radius: 14px; }
+                .header { padding: 18px 16px; border-radius: 14px 14px 0 0; }
+                .header-topline { gap: 10px; margin-bottom: 20px; }
+                .header-brand { gap: 7px; font-size: 15px; }
+                .brand-symbol { width: 28px; height: 28px; }
+                .header-title { font-size: 26px; }
+                .header-subtitle { margin-bottom: 18px; font-size: 12px; }
+                .header-info, body.wide-mode .header-info {
+                    grid-template-columns: repeat(2, minmax(0, 1fr));
+                    gap: 8px;
+                }
+                .info-item { padding: 9px 11px; }
+                .info-label { margin-bottom: 2px; font-size: 11px; }
+                .info-value { font-size: 14px; }
+                .content, body.wide-mode .content { padding: 20px 16px 8px; }
+                .save-buttons { gap: 6px; }
+                .save-btn { padding: 9px 12px; }
+                .toggle-wide-btn { display: none; }
+                .word-header { padding: 10px 12px; }
+                .word-info { gap: 2px 8px; }
+                .word-name { font-size: 16px; }
+                .word-count { font-size: 12px; }
+                .news-item { padding: 16px 0; gap: 9px; }
+                .news-number { width: 26px; height: 26px; font-size: 12px; }
+                .news-header { gap: 5px 8px; }
+                .new-item { align-items: flex-start; gap: 8px; }
+                .rss-section-header, .standalone-section-header { flex-wrap: wrap; gap: 6px; }
+                .ai-section { padding: 16px; }
+                .footer { padding: 18px 16px; border-radius: 0 0 14px 14px; }
+                .fab-bar { bottom: 18px; right: 16px; }
+                .fab-btn { width: 42px; height: 42px; }
+            }
+            @media (prefers-reduced-motion: reduce) {
+                html { scroll-behavior: auto; }
+                *, *::before, *::after { animation: none !important; transition: none !important; }
+            }
         </style>
     </head>
     <body>
+        <a class="skip-link" href="#report-content">跳到新闻正文</a>
         <div class="reading-progress"></div>
         <div class="container">
             <div class="header">
-                <div class="header-watermark">TrendRadar</div>
-                <div class="save-buttons">
-                    <button class="toggle-wide-btn" onclick="toggleWideMode()" title="切换宽屏/窄屏">⛶</button>
-                    <button class="toggle-dark-btn" onclick="toggleDarkMode()" title="切换暗色/亮色">☽</button>
-                    <div class="save-btn-group">
-                        <button class="save-btn" onclick="saveAsImage(event)">导出</button>
-                        <button class="save-dropdown-trigger">▾</button>
-                        <div class="save-dropdown-menu">
-                            <button class="save-dropdown-item" onclick="saveAsImage(event)"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="7.5" r="2.5"/><path d="M12 4h.01"/></svg>整页截图</button>
-                            <button class="save-dropdown-item" onclick="saveAsMultipleImages(event)"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="10" height="10" rx="1.5"/><path d="M5 4V2.5A1.5 1.5 0 016.5 1h7A1.5 1.5 0 0115 2.5v7a1.5 1.5 0 01-1.5 1.5H12"/></svg>分段截图</button>
-                            <button class="save-dropdown-item" onclick="saveAsMarkdown()"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 2h11A1.5 1.5 0 0115 3.5v9a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9A1.5 1.5 0 012.5 2z"/><path d="M4 11V5l2.5 3L9 5v6"/><path d="M11.5 8v3m0 0l-1.5-2m1.5 2l1.5-2"/></svg>Markdown</button>
+                <div class="header-topline">
+                    <div class="header-brand">
+                        <span class="brand-symbol" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12l7-7"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg></span>
+                        <span>TrendRadar</span>
+                    </div>
+                    <div class="save-buttons">
+                        <button class="toggle-wide-btn" onclick="toggleWideMode()" title="切换宽屏/窄屏" aria-label="切换宽屏阅读" aria-pressed="false">⛶</button>
+                        <button class="toggle-dark-btn" onclick="toggleDarkMode()" title="切换暗色/亮色" aria-label="切换深色模式" aria-pressed="false">☽</button>
+                        <div class="save-btn-group">
+                            <button class="save-btn" onclick="saveAsImage(event)">导出</button>
+                            <button class="save-dropdown-trigger" onclick="toggleExportMenu()" aria-label="选择导出格式" aria-expanded="false" aria-controls="export-menu">▾</button>
+                            <div class="save-dropdown-menu" id="export-menu" role="group" aria-label="导出格式">
+                                <button class="save-dropdown-item" onclick="saveAsImage(event)"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><circle cx="8" cy="7.5" r="2.5"/><path d="M12 4h.01"/></svg>整页截图</button>
+                                <button class="save-dropdown-item" onclick="saveAsMultipleImages(event)"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="10" height="10" rx="1.5"/><path d="M5 4V2.5A1.5 1.5 0 016.5 1h7A1.5 1.5 0 0115 2.5v7a1.5 1.5 0 01-1.5 1.5H12"/></svg>分段截图</button>
+                                <button class="save-dropdown-item" onclick="saveAsMarkdown()"><svg class="dropdown-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2.5 2h11A1.5 1.5 0 0115 3.5v9a1.5 1.5 0 01-1.5 1.5h-11A1.5 1.5 0 011 12.5v-9A1.5 1.5 0 012.5 2z"/><path d="M4 11V5l2.5 3L9 5v6"/><path d="M11.5 8v3m0 0l-1.5-2m1.5 2l1.5-2"/></svg>Markdown</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="header-title">热点新闻分析</div>
+                <h1 class="header-title">热点新闻分析</h1>
+                <p class="header-subtitle">__REPORT_DATE__ · 热榜与订阅资讯</p>
                 <div class="header-info">"""
 
     # 使用提供的时间函数或默认 datetime.now
@@ -1471,7 +1552,8 @@ def render_html_content(
     mode_display = report_label(mode)
     page_title = html_escape(f"TrendRadar · {mode_display}")
     html = html.replace("<title>热点新闻分析</title>", f"<title>{page_title}</title>")
-    html = html.replace('<div class="header-title">热点新闻分析</div>', f'<div class="header-title">{page_title}</div>')
+    html = html.replace('<h1 class="header-title">热点新闻分析</h1>', f'<h1 class="header-title">{html_escape(mode_display)}</h1>')
+    html = html.replace("__REPORT_DATE__", now.strftime("%Y 年 %m 月 %d 日"))
     reference_date = now.strftime("%Y-%m-%d")
 
     # RSS 的平铺旧数据与按主题统计数据先归一化，计数和正文使用同一分组。
@@ -1594,9 +1676,9 @@ def render_html_content(
                 </div>
             </div>
 
-            <div class="content">
+            <main class="content" id="report-content" tabindex="-1">
                 <div class="search-bar">
-                    <input type="text" class="search-input" placeholder="搜索新闻标题..." oninput="handleSearch(this.value)">
+                    <input type="search" class="search-input" aria-label="搜索新闻标题" placeholder="搜索新闻标题…" oninput="handleSearch(this.value)">
                 </div>"""
 
     # 处理失败ID错误信息
@@ -1973,8 +2055,15 @@ def render_html_content(
             html += content
             has_previous_content = True
 
+    if not has_previous_content:
+        html += """
+                <div class="empty-state">
+                    <h2>本次暂无可展示的新闻</h2>
+                    <p>可以稍后查看下一份报告。</p>
+                </div>"""
+
     html += f"""
-            </div>
+            </main>
 
             <div class="footer">
                 <div class="footer-content">
@@ -2019,7 +2108,10 @@ def render_html_content(
                 var isWide = document.body.classList.contains('wide-mode');
                 try { localStorage.setItem('trendradar-wide-mode', isWide ? '1' : '0'); } catch(e) {}
                 var btn = document.querySelector('.toggle-wide-btn');
-                if (btn) btn.textContent = isWide ? '⊡' : '⛶';
+                if (btn) {
+                    btn.textContent = isWide ? '⊡' : '⛶';
+                    btn.setAttribute('aria-pressed', String(isWide));
+                }
                 initTabVisibility();
                 initCollapseVisibility();
                 initStandaloneTabVisibility();
@@ -2029,7 +2121,17 @@ def render_html_content(
                 var isDark = document.body.classList.toggle('dark-mode');
                 try { localStorage.setItem('trendradar-dark-mode', isDark ? '1' : '0'); } catch(e) {}
                 var btn = document.querySelector('.toggle-dark-btn');
-                if (btn) btn.textContent = isDark ? '☀' : '☽';
+                if (btn) {
+                    btn.textContent = isDark ? '☀' : '☽';
+                    btn.setAttribute('aria-pressed', String(isDark));
+                }
+            }
+
+            function toggleExportMenu(forceOpen) {
+                var group = document.querySelector('.save-btn-group');
+                var open = typeof forceOpen === 'boolean' ? forceOpen : !group.classList.contains('menu-open');
+                group.classList.toggle('menu-open', open);
+                group.querySelector('.save-dropdown-trigger').setAttribute('aria-expanded', String(open));
             }
 
             function initTabScroll(tabBar) {
@@ -2143,7 +2245,7 @@ def render_html_content(
                 var hash = window.location.hash;
                 if (hash === '#all') { activateTab('all'); }
                 else if (hash.indexOf('#tab-') === 0) { activateTab(parseInt(hash.replace('#tab-', ''))); }
-                else { activateTab(0, false); }
+                else { activateTab('all', false); }
             }
 
             function initTabVisibility() {
@@ -2201,11 +2303,21 @@ def render_html_content(
 
             function initCollapse() {
                 document.querySelectorAll('.word-header').forEach(function(header) {
-                    header.addEventListener('click', function() {
+                    function toggleGroup() {
                         var wrapper = document.querySelector('.tab-bar-wrapper');
                         if (document.body.classList.contains('wide-mode') && wrapper && !wrapper.classList.contains('tab-hidden')) return;
                         var group = header.closest('.word-group');
-                        if (group) group.classList.toggle('collapsed');
+                        if (group) {
+                            var collapsed = group.classList.toggle('collapsed');
+                            header.setAttribute('aria-expanded', String(!collapsed));
+                        }
+                    }
+                    header.addEventListener('click', toggleGroup);
+                    header.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleGroup();
+                        }
                     });
                 });
                 initCollapseVisibility();
@@ -2216,8 +2328,16 @@ def render_html_content(
                 var wrapper = document.querySelector('.tab-bar-wrapper');
                 var isTabMode = document.body.classList.contains('wide-mode') && wrapper && !wrapper.classList.contains('tab-hidden');
                 headers.forEach(function(h) {
-                    if (isTabMode) { h.classList.remove('collapsible'); }
-                    else { h.classList.add('collapsible'); }
+                    h.classList.toggle('collapsible', !isTabMode);
+                    if (isTabMode) {
+                        h.removeAttribute('role');
+                        h.removeAttribute('tabindex');
+                        h.removeAttribute('aria-expanded');
+                    } else {
+                        h.setAttribute('role', 'button');
+                        h.setAttribute('tabindex', '0');
+                        h.setAttribute('aria-expanded', String(!h.closest('.word-group').classList.contains('collapsed')));
+                    }
                 });
                 if (isTabMode) {
                     document.querySelectorAll('.word-group.collapsed').forEach(function(g) {
@@ -2300,7 +2420,6 @@ def render_html_content(
                     el.dataset.prevDisplay = el.style.display || ''; el.style.display = 'none';
                 });
                 document.querySelectorAll('.reading-progress').forEach(function(el) { el.style.display = 'none'; });
-                document.querySelectorAll('.header-watermark').forEach(function(el) { el.style.display = 'none'; });
                 return state;
             }
 
@@ -2325,7 +2444,6 @@ def render_html_content(
                     el.style.display = el.dataset.prevDisplay || ''; delete el.dataset.prevDisplay;
                 });
                 document.querySelectorAll('.reading-progress').forEach(function(el) { el.style.display = ''; });
-                document.querySelectorAll('.header-watermark').forEach(function(el) { el.style.display = ''; });
                 initTabVisibility();
                 initCollapseVisibility();
                 initStandaloneTabVisibility();
@@ -2335,6 +2453,30 @@ def render_html_content(
 
             // ===== 截图功能 =====
 
+            // 阅读页面无需等待截图依赖；仅在用户导出图片时加载。
+            var imageExporterPromise = null;
+            function loadImageExporter() {
+                if (typeof window.html2canvas === 'function') return Promise.resolve();
+                if (imageExporterPromise) return imageExporterPromise;
+                imageExporterPromise = new Promise(function(resolve, reject) {
+                    var script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                    script.integrity = 'sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA==';
+                    script.crossOrigin = 'anonymous';
+                    script.referrerPolicy = 'no-referrer';
+                    var timeout = setTimeout(function() { script.onerror(); }, 15000);
+                    script.onload = function() { clearTimeout(timeout); resolve(); };
+                    script.onerror = function() {
+                        clearTimeout(timeout);
+                        script.remove();
+                        imageExporterPromise = null;
+                        reject(new Error('无法加载截图工具，请稍后重试'));
+                    };
+                    document.head.appendChild(script);
+                });
+                return imageExporterPromise;
+            }
+
             async function saveAsImage(e) {
                 const button = e.target.closest('.save-dropdown-item') || e.target;
                 const originalHTML = button.innerHTML;
@@ -2343,6 +2485,7 @@ def render_html_content(
                 try {
                     button.textContent = '生成中...';
                     button.disabled = true;
+                    await loadImageExporter();
                     window.scrollTo(0, 0);
 
                     // 等待页面稳定
@@ -2421,9 +2564,10 @@ def render_html_content(
                 var screenshotState2 = null;
 
                 try {
-                    screenshotState2 = prepareForScreenshot();
                     button.textContent = '分析中...';
                     button.disabled = true;
+                    await loadImageExporter();
+                    screenshotState2 = prepareForScreenshot();
 
                     // 获取所有可能的分割元素
                     const newsItems = Array.from(container.querySelectorAll('.news-item'));
@@ -2861,21 +3005,32 @@ def render_html_content(
                 if (savedMode === '1' || (savedMode === null && window.innerWidth > 768)) {
                     document.body.classList.add('wide-mode');
                     var btn = document.querySelector('.toggle-wide-btn');
-                    if (btn) btn.textContent = '⊡';
+                    if (btn) { btn.textContent = '⊡'; btn.setAttribute('aria-pressed', 'true'); }
                 }
 
                 // 暗色模式恢复
                 var savedDark = null;
                 try { savedDark = localStorage.getItem('trendradar-dark-mode'); } catch(e) {}
-                if (savedDark === '1') {
+                if (savedDark === '1' || (savedDark === null && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                     document.body.classList.add('dark-mode');
                     var darkBtn = document.querySelector('.toggle-dark-btn');
-                    if (darkBtn) darkBtn.textContent = '☀';
+                    if (darkBtn) { darkBtn.textContent = '☀'; darkBtn.setAttribute('aria-pressed', 'true'); }
                 }
 
                 // 启用搜索栏
                 var searchBar = document.querySelector('.search-bar');
-                if (searchBar) searchBar.style.display = 'block';
+                if (searchBar && document.querySelector('.news-item, .rss-item, .new-item')) searchBar.style.display = 'block';
+
+                // 导出菜单支持触摸、键盘和点击外部关闭。
+                document.addEventListener('click', function(e) {
+                    if (!e.target.closest('.save-btn-group') || e.target.closest('.save-dropdown-item')) toggleExportMenu(false);
+                });
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && document.querySelector('.save-btn-group.menu-open')) {
+                        toggleExportMenu(false);
+                        document.querySelector('.save-dropdown-trigger').focus();
+                    }
+                });
 
                 // 初始化增强功能
                 initTabs();
@@ -2930,6 +3085,12 @@ def render_html_content(
                     var numText = numEl.textContent.trim();
                     numEl.innerHTML = '<span class="num-text">' + numText + '</span><span class="copy-icon">' + copySvg + '</span>';
                     numEl.title = '点击复制标题和链接';
+                    numEl.setAttribute('role', 'button');
+                    numEl.setAttribute('tabindex', '0');
+                    numEl.setAttribute('aria-label', '复制：' + titleEl.textContent.trim());
+                    numEl.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); numEl.click(); }
+                    });
                     numEl.addEventListener('click', function(e) {
                         e.stopPropagation();
                         var text = titleEl.textContent.trim() + ' ' + titleEl.href;
@@ -2960,30 +3121,6 @@ def render_html_content(
 
 
 
-                // Header watermark 鼠标跟随揭示
-                (function() {
-                    var header = document.querySelector('.header');
-                    var watermark = document.querySelector('.header-watermark');
-                    if (!header || !watermark) return;
-
-                    var radius = 100;
-
-                    header.addEventListener('mousemove', function(e) {
-                        var rect = watermark.getBoundingClientRect();
-                        var x = e.clientX - rect.left;
-                        var y = e.clientY - rect.top;
-                        var maskVal = 'radial-gradient(circle ' + radius + 'px at ' + x + 'px ' + y + 'px, rgba(0,0,0,1) 0%, rgba(0,0,0,0.3) 50%, rgba(0,0,0,0) 100%)';
-                        watermark.style.webkitMaskImage = maskVal;
-                        watermark.style.maskImage = maskVal;
-                        watermark.style.color = 'rgba(255, 255, 255, 0.25)';
-                    });
-
-                    header.addEventListener('mouseleave', function() {
-                        watermark.style.webkitMaskImage = 'radial-gradient(circle 0px at 50% 50%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)';
-                        watermark.style.maskImage = 'radial-gradient(circle 0px at 50% 50%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%)';
-                        watermark.style.color = 'rgba(255, 255, 255, 0.15)';
-                    });
-                })();
             });
         </script>
     </body>

@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -65,6 +66,14 @@ class DataBranchTests(unittest.TestCase):
         self.sync.restore()
         return self.sync.save()
 
+    @staticmethod
+    def write_homepage(repo, title="Latest report"):
+        content = f"<!DOCTYPE html><html><body>{title}</body></html>"
+        path = repo / "output/index.html"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+        return content
+
     def test_bootstrap_is_orphan_and_only_contains_databases(self):
         (self.repo / "output/secret.txt").write_text("not runtime data")
         commit = self.seed()
@@ -74,6 +83,96 @@ class DataBranchTests(unittest.TestCase):
         self.assertEqual(self.git(self.remote, "rev-parse", "master"), self.code_commit)
         self.assertEqual(self.git(self.repo, "symbolic-ref", "--short", "HEAD"), "master")
         self.assertEqual(self.git(self.repo, "diff", "--cached", "--name-only"), "")
+
+    def test_homepage_is_saved_with_databases_and_exported_from_the_saved_commit(self):
+        content = self.write_homepage(self.repo)
+        (self.repo / "index.html").write_text("Old code-branch homepage")
+        (self.repo / "output/other.html").write_text("Not part of the site")
+        commit = self.seed()
+        self.assertEqual(self.git(self.remote, "show", "data:index.html"), content)
+        self.assertEqual(self.git(self.remote, "ls-tree", "-r", "--name-only", "data").splitlines(),
+                         ["README.md", "index.html", "output/news/2026-09-05.db"])
+        self.assertEqual(self.git(self.remote, "rev-parse", "master"), self.code_commit)
+
+        # Deployment must use the saved snapshot, even if local output changes.
+        self.write_homepage(self.repo, "Not saved yet")
+        site = self.root / "site"
+        self.assertTrue(self.sync.export_site(commit, site))
+        self.assertEqual((site / "index.html").read_text(), content)
+        self.assertEqual([path.name for path in site.iterdir()], ["index.html"])
+
+    def test_homepage_only_update_creates_a_commit(self):
+        self.write_homepage(self.repo, "First report")
+        first = self.seed()
+        content = self.write_homepage(self.repo, "Second report")
+        second = self.sync.save()
+        self.assertNotEqual(first, second)
+        self.assertEqual(self.git(self.remote, "rev-parse", f"{second}^"), first)
+        self.assertEqual(self.git(self.remote, "show", "data:index.html"), content)
+        self.assertEqual(self.git(self.remote, "rev-parse", f"{first}:output"),
+                         self.git(self.remote, "rev-parse", f"{second}:output"))
+        self.assertEqual(self.sync.save(), second)
+
+    def test_fresh_runner_restores_homepage_and_preserves_it_without_a_new_report(self):
+        content = self.write_homepage(self.repo)
+        self.seed()
+        fresh = self.clone_code("fresh")
+        self.write_homepage(fresh, "Stale local report")
+        sync = self.make_sync(fresh)
+        sync.restore()
+        self.assertEqual((fresh / "output/index.html").read_text(), content)
+
+        # A failed or skipped generation must not remove the published page.
+        (fresh / "output/index.html").unlink()
+        self.append(fresh / "output/news/2026-09-05.db")
+        sync.save()
+        self.assertEqual(self.git(self.remote, "show", "data:index.html"), content)
+        sync.restore()
+        with closing(sqlite3.connect(fresh / "output/news/2026-09-05.db")) as conn:
+            self.assertEqual(conn.execute("SELECT title FROM items").fetchall(), [("first",), ("second",)])
+
+    def test_incomplete_report_preserves_homepage_without_blocking_database_save(self):
+        content = self.write_homepage(self.repo)
+        self.seed()
+        (self.repo / "output/index.html").write_text("<!DOCTYPE html><html><body>Interrupted")
+        self.append(self.db)
+        self.sync.save()
+        self.assertEqual(self.git(self.remote, "show", "data:index.html"), content)
+        self.sync.restore()
+        with closing(sqlite3.connect(self.db)) as conn:
+            self.assertEqual(conn.execute("SELECT title FROM items").fetchall(), [("first",), ("second",)])
+
+    def test_database_only_branch_does_not_export_a_site(self):
+        (self.repo / "output/index.html").write_text("Incomplete report")
+        commit = self.seed()
+        site = self.root / "site"
+        self.assertFalse(self.sync.export_site(commit, site))
+        self.assertFalse(site.exists())
+
+    def test_restore_without_a_homepage_removes_stale_local_report(self):
+        self.seed()
+        self.write_homepage(self.repo, "Stale local report")
+        self.sync.restore()
+        self.assertFalse((self.repo / "output/index.html").exists())
+
+    def test_site_export_refuses_a_directory_containing_other_files(self):
+        self.write_homepage(self.repo)
+        commit = self.seed()
+        with self.assertRaisesRegex(RuntimeError, "empty"):
+            self.sync.export_site(commit, self.repo / "output")
+        self.assertTrue(self.db.is_file())
+
+    def test_save_cli_exports_the_committed_homepage(self):
+        content = self.write_homepage(self.repo)
+        self.sync.restore()
+        site = self.root / "site"
+        subprocess.run([
+            sys.executable, str(ROOT / "scripts/sync_data_branch.py"), "save",
+            "--repo", str(self.repo), "--manifest", str(self.sync.manifest),
+            "--site-dir", str(site),
+        ], capture_output=True, text=True, check=True)
+        self.assertEqual((site / "index.html").read_text(), content)
+        self.assertEqual(self.git(self.remote, "show", "data:index.html"), content)
 
     def test_local_bootstrap_does_not_push_or_replace_unpublished_data(self):
         self.sync.restore()

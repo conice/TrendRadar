@@ -240,12 +240,12 @@ def generate_html_report(
         f.write(html_content)
 
     # 3. 复制到 index.html（入口）
-    # output/index.html（供 Docker Volume 挂载访问）
+    # output/index.html（供 Docker 访问，并由工作流保存到 data 分支首页）
     output_index = Path(output_dir) / "index.html"
     with open(output_index, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    # 根目录 index.html（供 GitHub Pages 访问）
+    # 根目录 index.html（供本地直接访问，不提交到代码分支）
     root_index = Path("index.html")
     with open(root_index, "w", encoding="utf-8") as f:
         f.write(html_content)
