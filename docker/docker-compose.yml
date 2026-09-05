@@ -39,6 +39,7 @@ services:
       # 通用Webhook配置
       - GENERIC_WEBHOOK_URL=${GENERIC_WEBHOOK_URL:-}
       - GENERIC_WEBHOOK_TEMPLATE=${GENERIC_WEBHOOK_TEMPLATE:-}
+      - GENERIC_WEBHOOK_FORMAT=${GENERIC_WEBHOOK_FORMAT:-}
       # AI 配置（ai_analysis 和 ai_translation 共享模型配置）
       - AI_ANALYSIS_ENABLED=${AI_ANALYSIS_ENABLED:-}
       - AI_API_KEY=${AI_API_KEY:-}

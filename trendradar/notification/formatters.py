@@ -5,7 +5,46 @@
 提供不同推送平台间的格式转换功能
 """
 
+import html
+from html.parser import HTMLParser
 import re
+
+
+class _VisibleText(HTMLParser):
+    def __init__(self, keep_urls=False):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.keep_urls = keep_urls
+        self.url = ""
+
+    def handle_data(self, data):
+        self.parts.append(data)
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a" and self.keep_urls:
+            self.url = dict(attrs).get("href", "")
+        elif tag == "br":
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag == "a" and self.url:
+            self.parts.append(" " + self.url)
+            self.url = ""
+
+
+def telegram_text_length(content: str) -> int:
+    """按解析后的文字计量，UTF-16 长度也覆盖 emoji 的实体偏移要求。"""
+    parser = _VisibleText()
+    parser.feed(content)
+    return len("".join(parser.parts).encode("utf-16-le")) // 2
+
+
+def plain_text(content: str) -> str:
+    """兼容旧预渲染内容，保留 HTML、Markdown、Slack 链接的 URL。"""
+    content = re.sub(r"<(https?://[^|>]+)\|([^>]+)>", r"\2 \1", content)
+    parser = _VisibleText(keep_urls=True)
+    parser.feed(content)
+    return html.unescape(strip_markdown("".join(parser.parts)))
 
 
 def strip_markdown(text: str) -> str:

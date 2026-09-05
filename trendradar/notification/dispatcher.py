@@ -358,9 +358,26 @@ class NotificationDispatcher:
             and self.config.get("EMAIL_PASSWORD")
             and self.config.get("EMAIL_TO")
         ):
-            results["email"] = self._send_email(report_type, html_file_path)
+            rd, ri, rn, ai, sd = self._apply_display_regions(
+                report_data, display_regions, rss_items, rss_new_items, ai_analysis, standalone_data
+            )
+            plain_content = "\n\n".join(self.split_content_func(
+                rd, "plain", update_info, max_bytes=2 ** 31, mode=mode,
+                rss_items=ri, rss_new_items=rn, ai_analysis=ai,
+                standalone_data=sd, report_type=report_type,
+            ))
+            results["email"] = self._send_email(report_type, html_file_path, plain_content)
 
         return results
+
+    @staticmethod
+    def _send_account(channel_name, send_func, *args, **kwargs) -> bool:
+        """某个账号的内容无法安全分批时，继续处理其余账号和渠道。"""
+        try:
+            return send_func(*args, **kwargs)
+        except ValueError as error:
+            print(f"{channel_name}{kwargs.get('account_label', '')}内容无法发送：{error}")
+            return False
 
     def _send_to_multi_accounts(
         self,
@@ -391,7 +408,9 @@ class NotificationDispatcher:
         for i, account in enumerate(accounts):
             if account:
                 account_label = f"账号{i+1}" if len(accounts) > 1 else ""
-                result = send_func(account, account_label=account_label, **kwargs)
+                result = self._send_account(
+                    channel_name, send_func, account, account_label=account_label, **kwargs
+                )
                 results.append(result)
 
         return any(results) if results else False
@@ -408,7 +427,7 @@ class NotificationDispatcher:
         """根据 display_regions 过滤各区域数据，返回 (report_data, rss_items, rss_new_items, ai_analysis, standalone_data)"""
         display_regions = display_regions or {}
         if not display_regions.get("HOTLIST", True):
-            report_data = {"stats": [], "failed_ids": [], "new_titles": [], "id_to_name": {}}
+            report_data = {**report_data, "stats": [], "new_titles": [], "total_new_count": 0}
         show_rss = display_regions.get("RSS", True)
         return (
             report_data,
@@ -582,7 +601,8 @@ class NotificationDispatcher:
             chat_id = telegram_chat_ids[i]
             if token and chat_id:
                 account_label = f"账号{i+1}" if len(telegram_tokens) > 1 else ""
-                result = send_to_telegram(
+                result = self._send_account(
+                    "Telegram", send_to_telegram,
                     bot_token=token,
                     chat_id=chat_id,
                     report_data=report_data,
@@ -645,7 +665,8 @@ class NotificationDispatcher:
             if topic:
                 token = get_account_at_index(ntfy_tokens, i, "") if ntfy_tokens else ""
                 account_label = f"账号{i+1}" if len(ntfy_topics) > 1 else ""
-                result = send_to_ntfy(
+                result = self._send_account(
+                    "ntfy", send_to_ntfy,
                     server_url=ntfy_server_url,
                     topic=topic,
                     token=token,
@@ -788,9 +809,11 @@ class NotificationDispatcher:
 
             account_label = f"账号{i+1}" if len(urls) > 1 else ""
 
-            result = send_to_generic_webhook(
+            result = self._send_account(
+                "通用Webhook", send_to_generic_webhook,
                 webhook_url=url,
                 payload_template=template,
+                message_format=self.config.get("GENERIC_WEBHOOK_FORMAT", "markdown"),
                 report_data=report_data,
                 report_type=report_type,
                 update_info=update_info,
@@ -814,6 +837,7 @@ class NotificationDispatcher:
         self,
         report_type: str,
         html_file_path: Optional[str],
+        plain_content: Optional[str] = None,
     ) -> bool:
         """发送邮件（保持原有逻辑，已支持多收件人）
 
@@ -829,5 +853,5 @@ class NotificationDispatcher:
             custom_smtp_server=self.config.get("EMAIL_SMTP_SERVER", ""),
             custom_smtp_port=self.config.get("EMAIL_SMTP_PORT", ""),
             get_time_func=self.get_time_func,
+            plain_content=plain_content,
         )
-

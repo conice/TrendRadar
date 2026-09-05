@@ -18,6 +18,7 @@
 import smtplib
 import time
 import json
+import re
 from datetime import datetime
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
@@ -29,40 +30,38 @@ from urllib.parse import urlparse
 
 import requests
 
-from .batch import add_batch_headers, get_max_batch_header_size
-from .formatters import convert_markdown_to_mrkdwn, strip_markdown
+from trendradar.report.presentation import report_label
+from .formatters import plain_text
 
 
-def _extract_ai_stats(ai_analysis) -> Optional[Dict]:
-    """从 AI 分析结果中提取统计数据"""
-    if not ai_analysis or not getattr(ai_analysis, "success", False):
-        return None
-    return {
-        "total_news": getattr(ai_analysis, "total_news", 0),
-        "analyzed_news": getattr(ai_analysis, "analyzed_news", 0),
-        "max_news_limit": getattr(ai_analysis, "max_news_limit", 0),
-        "hotlist_count": getattr(ai_analysis, "hotlist_count", 0),
-        "rss_count": getattr(ai_analysis, "rss_count", 0),
-        "hotlist_analyzed": getattr(ai_analysis, "hotlist_analyzed", 0),
-        "rss_analyzed": getattr(ai_analysis, "rss_analyzed", 0),
-        "standalone_analyzed": getattr(ai_analysis, "standalone_analyzed", 0),
-        "ai_mode": getattr(ai_analysis, "ai_mode", ""),
-        "include_rss": getattr(ai_analysis, "include_rss", True),
-        "include_standalone": getattr(ai_analysis, "include_standalone", False),
-    }
+def _encode_payload(payload) -> bytes:
+    return json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
-def _render_ai_analysis(ai_analysis: Any, channel: str) -> str:
-    """渲染 AI 分析内容为指定渠道格式"""
-    if not ai_analysis:
-        return ""
+def _notification_title(report_type: str, content: str) -> str:
+    header = plain_text("\n".join(content.splitlines()[:2])).splitlines()
+    stamp = re.findall(r"\d{2}-\d{2}|\d{2}:\d{2}", header[1] if len(header) > 1 else "")
+    page = re.search(r"（\d+/\d+）", header[0] if header else "")
+    return f"{report_type}{page.group() if page else ''}" + (" · " + " ".join(stamp) if stamp else "")
 
-    try:
-        from trendradar.ai.formatter import get_ai_analysis_renderer
-        renderer = get_ai_analysis_renderer(channel)
-        return renderer(ai_analysis)
-    except ImportError:
-        return ""
+
+def _feishu_payload(webhook_url: str, content: str) -> Dict:
+    if urlparse(webhook_url).hostname == "www.feishu.cn":
+        return {"msg_type": "text", "content": {"text": content}}
+    return {"msg_type": "interactive", "card": {
+        "schema": "2.0", "body": {"elements": [{"tag": "markdown", "content": content}]},
+    }}
+
+
+def _dingtalk_payload(report_type: str, content: str) -> Dict:
+    return {"msgtype": "markdown", "markdown": {
+        "title": _notification_title(report_type, content), "text": content,
+    }}
+
+
+def _bark_payload(device_key: str, report_type: str, content: str) -> Dict:
+    return {"title": _notification_title(report_type, content), "markdown": content,
+            "device_key": device_key, "sound": "default", "group": "TrendRadar", "action": "none"}
 
 
 # === SMTP 邮件配置 ===
@@ -140,29 +139,24 @@ def send_to_feishu(
 
     # 日志前缀
     log_prefix = f"飞书{account_label}" if account_label else "飞书"
+    report_type = report_label(mode, report_type)
 
-    # 渲染 AI 分析内容并提取统计数据
-    ai_content = _render_ai_analysis(ai_analysis, "feishu") if ai_analysis else None
-    ai_stats = _extract_ai_stats(ai_analysis)
+    format_type = "feishu_text" if urlparse(webhook_url).hostname == "www.feishu.cn" else "feishu"
 
-    # 预留批次头部空间，避免添加头部后超限
-    header_reserve = get_max_batch_header_size("feishu")
     batches = split_content_func(
         report_data,
-        "feishu",
+        format_type,
         update_info,
-        max_bytes=batch_size - header_reserve,
+        max_bytes=min(batch_size, 30000),
+        content_measure=lambda content: len(_encode_payload(_feishu_payload(webhook_url, content))),
         mode=mode,
         rss_items=rss_items,
         rss_new_items=rss_new_items,
-        ai_content=ai_content,
+        ai_analysis=ai_analysis,
         standalone_data=standalone_data,
-        ai_stats=ai_stats,
         report_type=report_type,
     )
 
-    # 统一添加批次头部（已预留空间，不会超限）
-    batches = add_batch_headers(batches, "feishu", batch_size)
 
     print(f"{log_prefix}消息分为 {len(batches)} 批次发送 [{report_type}]")
 
@@ -173,31 +167,11 @@ def send_to_feishu(
             f"发送{log_prefix}第 {i}/{len(batches)} 批次，大小：{content_size} 字节 [{report_type}]"
         )
 
-        # 根据 webhook 域名选择 payload 格式
-        # www.feishu.cn 使用纯文本格式，其他域名（open.feishu.cn/open.larksuite.com）使用卡片 2.0
-        if "www.feishu.cn" in webhook_url:
-            payload = {
-                "msg_type": "text",
-                "content": {
-                    "text": batch_content,
-                },
-            }
-        else:
-            payload = {
-                "msg_type": "interactive",
-                "card": {
-                    "schema": "2.0",
-                    "body": {
-                        "elements": [
-                            {"tag": "markdown", "content": batch_content}
-                        ]
-                    },
-                },
-            }
+        payload = _feishu_payload(webhook_url, batch_content)
 
         try:
             response = requests.post(
-                webhook_url, headers=headers, json=payload, proxies=proxies, timeout=30
+                webhook_url, headers=headers, data=_encode_payload(payload), proxies=proxies, timeout=30
             )
             if response.status_code == 200:
                 result = response.json()
@@ -272,29 +246,23 @@ def send_to_dingtalk(
 
     # 日志前缀
     log_prefix = f"钉钉{account_label}" if account_label else "钉钉"
+    report_type = report_label(mode, report_type)
 
-    # 渲染 AI 分析内容并提取统计数据
-    ai_content = _render_ai_analysis(ai_analysis, "dingtalk") if ai_analysis else None
-    ai_stats = _extract_ai_stats(ai_analysis)
 
-    # 预留批次头部空间，避免添加头部后超限
-    header_reserve = get_max_batch_header_size("dingtalk")
     batches = split_content_func(
         report_data,
         "dingtalk",
         update_info,
-        max_bytes=batch_size - header_reserve,
+        max_bytes=min(batch_size, 20000),
+        content_measure=lambda content: len(_encode_payload(_dingtalk_payload(report_type, content))),
         mode=mode,
         rss_items=rss_items,
         rss_new_items=rss_new_items,
-        ai_content=ai_content,
+        ai_analysis=ai_analysis,
         standalone_data=standalone_data,
-        ai_stats=ai_stats,
         report_type=report_type,
     )
 
-    # 统一添加批次头部（已预留空间，不会超限）
-    batches = add_batch_headers(batches, "dingtalk", batch_size)
 
     print(f"{log_prefix}消息分为 {len(batches)} 批次发送 [{report_type}]")
 
@@ -305,17 +273,11 @@ def send_to_dingtalk(
             f"发送{log_prefix}第 {i}/{len(batches)} 批次，大小：{content_size} 字节 [{report_type}]"
         )
 
-        payload = {
-            "msgtype": "markdown",
-            "markdown": {
-                "title": f"TrendRadar 热点分析报告 - {report_type}",
-                "text": batch_content,
-            },
-        }
+        payload = _dingtalk_payload(report_type, batch_content)
 
         try:
             response = requests.post(
-                webhook_url, headers=headers, json=payload, proxies=proxies, timeout=30
+                webhook_url, headers=headers, data=_encode_payload(payload), proxies=proxies, timeout=30
             )
             if response.status_code == 200:
                 result = response.json()
@@ -390,6 +352,7 @@ def send_to_wework(
 
     # 日志前缀
     log_prefix = f"企业微信{account_label}" if account_label else "企业微信"
+    report_type = report_label(mode, report_type)
 
     # 获取消息类型配置（markdown 或 text）
     is_text_mode = msg_type.lower() == "text"
@@ -402,24 +365,16 @@ def send_to_wework(
     # text 模式使用 wework_text，markdown 模式使用 wework
     header_format_type = "wework_text" if is_text_mode else "wework"
 
-    # 渲染 AI 分析内容并提取统计数据
-    ai_content = _render_ai_analysis(ai_analysis, "wework") if ai_analysis else None
-    ai_stats = _extract_ai_stats(ai_analysis)
 
-    # 获取分批内容，预留批次头部空间
-    header_reserve = get_max_batch_header_size(header_format_type)
     batches = split_content_func(
-        report_data, "wework", update_info, max_bytes=batch_size - header_reserve, mode=mode,
+        report_data, header_format_type, update_info, max_bytes=min(batch_size, 2048 if is_text_mode else 4096), mode=mode,
         rss_items=rss_items,
         rss_new_items=rss_new_items,
-        ai_content=ai_content,
+        ai_analysis=ai_analysis,
         standalone_data=standalone_data,
-        ai_stats=ai_stats,
         report_type=report_type,
     )
 
-    # 统一添加批次头部（已预留空间，不会超限）
-    batches = add_batch_headers(batches, header_format_type, batch_size)
 
     print(f"{log_prefix}消息分为 {len(batches)} 批次发送 [{report_type}]")
 
@@ -427,8 +382,8 @@ def send_to_wework(
     for i, batch_content in enumerate(batches, 1):
         # 根据消息类型构建 payload
         if is_text_mode:
-            # text 格式：去除 markdown 语法
-            plain_content = strip_markdown(batch_content)
+            # text 格式已在渲染前选定，保留原文链接和所有字面字符。
+            plain_content = batch_content
             payload = {"msgtype": "text", "text": {"content": plain_content}}
             content_size = len(plain_content.encode("utf-8"))
         else:
@@ -442,7 +397,7 @@ def send_to_wework(
 
         try:
             response = requests.post(
-                webhook_url, headers=headers, json=payload, proxies=proxies, timeout=30
+                webhook_url, headers=headers, data=_encode_payload(payload), proxies=proxies, timeout=30
             )
             if response.status_code == 200:
                 result = response.json()
@@ -519,25 +474,18 @@ def send_to_telegram(
 
     # 日志前缀
     log_prefix = f"Telegram{account_label}" if account_label else "Telegram"
+    report_type = report_label(mode, report_type)
 
-    # 渲染 AI 分析内容并提取统计数据
-    ai_content = _render_ai_analysis(ai_analysis, "telegram") if ai_analysis else None
-    ai_stats = _extract_ai_stats(ai_analysis)
 
-    # 获取分批内容，预留批次头部空间
-    header_reserve = get_max_batch_header_size("telegram")
     batches = split_content_func(
-        report_data, "telegram", update_info, max_bytes=batch_size - header_reserve, mode=mode,
+        report_data, "telegram", update_info, max_bytes=batch_size, mode=mode,
         rss_items=rss_items,
         rss_new_items=rss_new_items,
-        ai_content=ai_content,
+        ai_analysis=ai_analysis,
         standalone_data=standalone_data,
-        ai_stats=ai_stats,
         report_type=report_type,
     )
 
-    # 统一添加批次头部（已预留空间，不会超限）
-    batches = add_batch_headers(batches, "telegram", batch_size)
 
     print(f"{log_prefix}消息分为 {len(batches)} 批次发送 [{report_type}]")
 
@@ -557,7 +505,7 @@ def send_to_telegram(
 
         try:
             response = requests.post(
-                url, headers=headers, json=payload, proxies=proxies, timeout=30
+                url, headers=headers, data=_encode_payload(payload), proxies=proxies, timeout=30
             )
             if response.status_code == 200:
                 result = response.json()
@@ -595,6 +543,7 @@ def send_to_email(
     custom_smtp_port: Optional[int] = None,
     *,
     get_time_func: Callable = None,
+    plain_content: Optional[str] = None,
 ) -> bool:
     """
     发送邮件通知
@@ -665,7 +614,8 @@ def send_to_email(
 
         # 设置邮件主题
         now = get_time_func() if get_time_func else datetime.now()
-        subject = f"TrendRadar 热点分析报告 - {report_type} - {now.strftime('%m月%d日 %H:%M')}"
+        report_type = report_label("", report_type)
+        subject = f"TrendRadar · {report_type} · {now.strftime('%m-%d %H:%M')}"
         msg["Subject"] = Header(subject, "utf-8")
 
         # 设置其他标准 header
@@ -682,7 +632,7 @@ TrendRadar 热点分析报告
 
 请使用支持HTML的邮件客户端查看完整报告内容。
         """
-        text_part = MIMEText(text_content, "plain", "utf-8")
+        text_part = MIMEText(plain_content if plain_content is not None else text_content, "plain", "utf-8")
         msg.attach(text_part)
 
         html_part = MIMEText(html_content, "html", "utf-8")
@@ -786,12 +736,13 @@ def send_to_ntfy(
     """
     # 日志前缀
     log_prefix = f"ntfy{account_label}" if account_label else "ntfy"
+    report_type = report_label(mode, report_type)
 
     # 避免 HTTP header 编码问题
     report_type_en_map = {
-        "全天汇总": "Daily Summary",
+        "当日汇总": "Daily Summary",
         "当前榜单": "Current Ranking",
-        "增量分析": "Incremental Update",
+        "增量更新": "Incremental Update",
         "通知连通性测试": "Notification Test",
     }
     report_type_en = report_type_en_map.get(report_type, "News Report")
@@ -817,24 +768,16 @@ def send_to_ntfy(
     if proxy_url:
         proxies = {"http": proxy_url, "https": proxy_url}
 
-    # 渲染 AI 分析内容并提取统计数据
-    ai_content = _render_ai_analysis(ai_analysis, "ntfy") if ai_analysis else None
-    ai_stats = _extract_ai_stats(ai_analysis)
 
-    # 获取分批内容，预留批次头部空间
-    header_reserve = get_max_batch_header_size("ntfy")
     batches = split_content_func(
-        report_data, "ntfy", update_info, max_bytes=batch_size - header_reserve, mode=mode,
+        report_data, "ntfy", update_info, max_bytes=min(batch_size, 4096), mode=mode,
         rss_items=rss_items,
         rss_new_items=rss_new_items,
-        ai_content=ai_content,
+        ai_analysis=ai_analysis,
         standalone_data=standalone_data,
-        ai_stats=ai_stats,
         report_type=report_type,
     )
 
-    # 统一添加批次头部（已预留空间，不会超限）
-    batches = add_batch_headers(batches, "ntfy", batch_size)
 
     total_batches = len(batches)
     print(f"{log_prefix}消息分为 {total_batches} 批次发送 [{report_type}]")
@@ -860,10 +803,9 @@ def send_to_ntfy(
         if content_size > 4096:
             print(f"警告：{log_prefix}第 {actual_batch_num} 批次消息过大（{content_size} 字节），可能被拒绝")
 
-        # 更新 headers 的批次标识
+        # 原生通知标题包含模式、时间和页码；HTTP 头使用 ASCII。
         current_headers = headers.copy()
-        if total_batches > 1:
-            current_headers["Title"] = f"{report_type_en} ({actual_batch_num}/{total_batches})"
+        current_headers["Title"] = _notification_title(report_type_en, batch_content).replace(" · ", " | ").replace("（", " (").replace("）", ")")
 
         try:
             response = requests.post(
@@ -975,6 +917,7 @@ def send_to_bark(
     """
     # 日志前缀
     log_prefix = f"Bark{account_label}" if account_label else "Bark"
+    report_type = report_label(mode, report_type)
 
     proxies = None
     if proxy_url:
@@ -992,24 +935,17 @@ def send_to_bark(
     # 构建正确的 API 端点
     api_endpoint = f"{parsed_url.scheme}://{parsed_url.netloc}/push"
 
-    # 渲染 AI 分析内容并提取统计数据
-    ai_content = _render_ai_analysis(ai_analysis, "bark") if ai_analysis else None
-    ai_stats = _extract_ai_stats(ai_analysis)
 
-    # 获取分批内容，预留批次头部空间
-    header_reserve = get_max_batch_header_size("bark")
     batches = split_content_func(
-        report_data, "bark", update_info, max_bytes=batch_size - header_reserve, mode=mode,
+        report_data, "bark", update_info, max_bytes=min(batch_size, 4096),
+        content_measure=lambda content: len(_encode_payload(_bark_payload(device_key, report_type, content))), mode=mode,
         rss_items=rss_items,
         rss_new_items=rss_new_items,
-        ai_content=ai_content,
+        ai_analysis=ai_analysis,
         standalone_data=standalone_data,
-        ai_stats=ai_stats,
         report_type=report_type,
     )
 
-    # 统一添加批次头部（已预留空间，不会超限）
-    batches = add_batch_headers(batches, "bark", batch_size)
 
     total_batches = len(batches)
     print(f"{log_prefix}消息分为 {total_batches} 批次发送 [{report_type}]")
@@ -1031,26 +967,13 @@ def send_to_bark(
             f"发送{log_prefix}第 {actual_batch_num}/{total_batches} 批次（推送顺序: {idx}/{total_batches}），大小：{content_size} 字节 [{report_type}]"
         )
 
-        # 检查消息大小（Bark使用APNs，限制4KB）
-        if content_size > 4096:
-            print(
-                f"警告：{log_prefix}第 {actual_batch_num}/{total_batches} 批次消息过大（{content_size} 字节），可能被拒绝"
-            )
-
-        # 构建JSON payload
-        payload = {
-            "title": report_type,
-            "markdown": batch_content,
-            "device_key": device_key,
-            "sound": "default",
-            "group": "TrendRadar",
-            "action": "none",  # 点击推送跳到 APP 不弹出弹框,方便阅读
-        }
+        payload = _bark_payload(device_key, report_type, batch_content)
 
         try:
             response = requests.post(
                 api_endpoint,
-                json=payload,
+                headers={"Content-Type": "application/json"},
+                data=_encode_payload(payload),
                 proxies=proxies,
                 timeout=30,
             )
@@ -1142,32 +1065,25 @@ def send_to_slack(
 
     # 日志前缀
     log_prefix = f"Slack{account_label}" if account_label else "Slack"
+    report_type = report_label(mode, report_type)
 
-    # 渲染 AI 分析内容并提取统计数据
-    ai_content = _render_ai_analysis(ai_analysis, "slack") if ai_analysis else None
-    ai_stats = _extract_ai_stats(ai_analysis)
 
-    # 获取分批内容，预留批次头部空间
-    header_reserve = get_max_batch_header_size("slack")
     batches = split_content_func(
-        report_data, "slack", update_info, max_bytes=batch_size - header_reserve, mode=mode,
+        report_data, "slack", update_info, max_bytes=min(batch_size, 40000), mode=mode,
         rss_items=rss_items,
         rss_new_items=rss_new_items,
-        ai_content=ai_content,
+        ai_analysis=ai_analysis,
         standalone_data=standalone_data,
-        ai_stats=ai_stats,
         report_type=report_type,
     )
 
-    # 统一添加批次头部（已预留空间，不会超限）
-    batches = add_batch_headers(batches, "slack", batch_size)
 
     print(f"{log_prefix}消息分为 {len(batches)} 批次发送 [{report_type}]")
 
     # 逐批发送
     for i, batch_content in enumerate(batches, 1):
-        # 转换 Markdown 到 mrkdwn 格式
-        mrkdwn_content = convert_markdown_to_mrkdwn(batch_content)
+        # splitter 已按 Slack 原生语法渲染并计量。
+        mrkdwn_content = batch_content
 
         content_size = len(mrkdwn_content.encode("utf-8"))
         print(
@@ -1179,7 +1095,7 @@ def send_to_slack(
 
         try:
             response = requests.post(
-                webhook_url, headers=headers, json=payload, proxies=proxies, timeout=30
+                webhook_url, headers=headers, data=_encode_payload(payload), proxies=proxies, timeout=30
             )
 
             # Slack Incoming Webhooks 成功时返回 "ok" 文本
@@ -1205,7 +1121,7 @@ def send_to_slack(
 
 def send_to_generic_webhook(
     webhook_url: str,
-    payload_template: Optional[str],
+    payload_template: str,
     report_data: Dict,
     report_type: str,
     update_info: Optional[Dict] = None,
@@ -1215,113 +1131,65 @@ def send_to_generic_webhook(
     *,
     batch_size: int = 4000,
     batch_interval: float = 1.0,
-    split_content_func: Optional[Callable] = None,
+    split_content_func: Callable = None,
     rss_items: Optional[list] = None,
     rss_new_items: Optional[list] = None,
     ai_analysis: Any = None,
     display_regions: Optional[Dict] = None,
     standalone_data: Optional[Dict] = None,
+    message_format: str = "markdown",
 ) -> bool:
-    """
-    发送到通用 Webhook（支持分批发送，支持自定义 JSON 模板，支持热榜+RSS合并+独立展示区）
-
-    Args:
-        webhook_url: Webhook URL
-        payload_template: JSON 模板字符串，支持 {title} 和 {content} 占位符
-        report_data: 报告数据
-        report_type: 报告类型
-        update_info: 更新信息（可选）
-        proxy_url: 代理 URL（可选）
-        mode: 报告模式 (daily/current)
-        account_label: 账号标签（多账号时显示）
-        batch_size: 批次大小（字节）
-        batch_interval: 批次发送间隔（秒）
-        split_content_func: 内容分批函数
-        rss_items: RSS 统计条目列表（可选，用于合并推送）
-        rss_new_items: RSS 新增条目列表（可选，用于新增区块）
-
-    Returns:
-        bool: 发送是否成功
-    """
+    """按接收端能力输出 Markdown / 纯文本，并按完整 JSON 请求体分批。"""
     if split_content_func is None:
         raise ValueError("split_content_func is required")
-
-    headers = {"Content-Type": "application/json"}
-    proxies = None
-    if proxy_url:
-        proxies = {"http": proxy_url, "https": proxy_url}
-
-    # 日志前缀
+    if message_format not in {"markdown", "text"}:
+        raise ValueError("通用 Webhook format 必须是 markdown 或 text")
+    report_type = report_label(mode, report_type)
     log_prefix = f"通用Webhook{account_label}" if account_label else "通用Webhook"
-
-    # 渲染 AI 分析内容并提取统计数据（通用 Webhook 使用 markdown 格式）
-    ai_content = _render_ai_analysis(ai_analysis, "wework") if ai_analysis else None
-    ai_stats = _extract_ai_stats(ai_analysis)
-
-    # 获取分批内容
-    # 使用 'wework' 作为 format_type 以获取 markdown 格式的通用输出
-    # 预留一定空间给模板外壳
-    template_overhead = 200
-    batches = split_content_func(
-        report_data, "wework", update_info, max_bytes=batch_size - template_overhead, mode=mode,
-        rss_items=rss_items,
-        rss_new_items=rss_new_items,
-        ai_content=ai_content,
-        standalone_data=standalone_data,
-        ai_stats=ai_stats,
-        report_type=report_type,
-    )
-
-    # 统一添加批次头部
-    batches = add_batch_headers(batches, "wework", batch_size)
-
-    print(f"{log_prefix}消息分为 {len(batches)} 批次发送 [{report_type}]")
-
-    # 逐批发送
-    for i, batch_content in enumerate(batches, 1):
-        content_size = len(batch_content.encode("utf-8"))
-        print(
-            f"发送{log_prefix}第 {i}/{len(batches)} 批次，大小：{content_size} 字节 [{report_type}]"
-        )
-
+    headers = {"Content-Type": "application/json"}
+    proxies = {"http": proxy_url, "https": proxy_url} if proxy_url else None
+    template = {"title": "{title}", "content": "{content}"}
+    if payload_template:
         try:
-            # 构建 payload
-            if payload_template:
-                # 简单的字符串替换
-                # 注意：content 可能包含 JSON 特殊字符，需要先转义
-                json_content = json.dumps(batch_content)[1:-1] # 去掉首尾引号
-                json_title = json.dumps(report_type)[1:-1]
-                
-                payload_str = payload_template.replace("{content}", json_content).replace("{title}", json_title)
-                
-                # 尝试解析为 JSON 对象以验证有效性
-                try:
-                    payload = json.loads(payload_str)
-                except json.JSONDecodeError as e:
-                    print(f"{log_prefix} JSON 模板解析失败: {e}")
-                    # 回退到默认格式
-                    payload = {"title": report_type, "content": batch_content}
-            else:
-                # 默认格式
-                payload = {"title": report_type, "content": batch_content}
+            template = json.loads(payload_template)
+        except json.JSONDecodeError as error:
+            print(f"{log_prefix} JSON 模板解析失败，使用默认模板：{error}")
 
+    def payload_for(content):
+        title = _notification_title(report_type, content)
+
+        def substitute(value):
+            if isinstance(value, str):
+                # 一次替换，正文中的字面量 {title} / {content} 不会再次被展开。
+                return re.sub(r"\{(title|content)\}", lambda match: title if match[1] == "title" else content, value)
+            if isinstance(value, dict):
+                return {key: substitute(item) for key, item in value.items()}
+            if isinstance(value, list):
+                return [substitute(item) for item in value]
+            return value
+
+        return substitute(template)
+
+    format_type = "generic_text" if message_format == "text" else "generic_webhook"
+    batches = split_content_func(
+        report_data, format_type, update_info, max_bytes=batch_size, mode=mode,
+        rss_items=rss_items, rss_new_items=rss_new_items, ai_analysis=ai_analysis,
+        standalone_data=standalone_data, report_type=report_type,
+        content_measure=lambda content: len(_encode_payload(payload_for(content))),
+    )
+    print(f"{log_prefix}消息分为 {len(batches)} 条发送 [{report_type}]")
+    for index, content in enumerate(batches, 1):
+        try:
             response = requests.post(
-                webhook_url, headers=headers, json=payload, proxies=proxies, timeout=30
+                webhook_url, headers=headers, data=_encode_payload(payload_for(content)),
+                proxies=proxies, timeout=30,
             )
-            
-            if response.status_code >= 200 and response.status_code < 300:
-                print(f"{log_prefix}第 {i}/{len(batches)} 批次发送成功 [{report_type}]")
-                if i < len(batches):
-                    time.sleep(batch_interval)
-            else:
-                print(
-                    f"{log_prefix}第 {i}/{len(batches)} 批次发送失败 [{report_type}]，状态码：{response.status_code}, 响应: {response.text}"
-                )
+            if not 200 <= response.status_code < 300:
+                print(f"{log_prefix}第 {index}/{len(batches)} 条发送失败，状态码：{response.status_code}")
                 return False
-        except Exception as e:
-            print(f"{log_prefix}第 {i}/{len(batches)} 批次发送出错 [{report_type}]：{e}")
+            if index < len(batches):
+                time.sleep(batch_interval)
+        except Exception as error:
+            print(f"{log_prefix}第 {index}/{len(batches)} 条发送失败：{error}")
             return False
-
-    print(f"{log_prefix}所有 {len(batches)} 批次发送完成 [{report_type}]")
-
     return True

@@ -7,7 +7,7 @@
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from trendradar.utils.time import (
     DEFAULT_TIMEZONE,
@@ -380,6 +380,7 @@ class AppContext:
             ai_analysis=ai_analysis,
             show_new_section=self.show_new_section,
             standalone_data=standalone_data,
+            timezone=self.config.get("TIMEZONE", DEFAULT_TIMEZONE),
         )
 
     # === 通知内容渲染 ===
@@ -430,6 +431,8 @@ class AppContext:
         standalone_data: Optional[Dict] = None,
         ai_stats: Optional[Dict] = None,
         report_type: str = "热点分析报告",
+        ai_analysis=None,
+        content_measure: Optional[Callable[[str], int]] = None,
     ) -> List[str]:
         """分批处理消息内容（支持热榜+RSS合并+AI分析+独立展示区）
 
@@ -473,6 +476,8 @@ class AppContext:
             ai_stats=ai_stats,
             report_type=report_type,
             show_new_section=self.show_new_section,
+            ai_analysis=ai_analysis,
+            content_measure=content_measure,
         )
 
     # === 通知发送 ===

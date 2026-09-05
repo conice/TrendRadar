@@ -35,7 +35,7 @@ class NewsAnalyzer:
         "incremental": {
             "mode_name": "增量模式",
             "description": "增量模式（只关注新增新闻，无新增时不推送）",
-            "report_type": "增量分析",
+            "report_type": "增量更新",
             "should_send_notification": True,
         },
         "current": {
@@ -47,7 +47,7 @@ class NewsAnalyzer:
         "daily": {
             "mode_name": "全天汇总模式",
             "description": "全天汇总模式（所有匹配新闻 + 新增新闻区域 + 按时推送）",
-            "report_type": "全天汇总",
+            "report_type": "当日汇总",
             "should_send_notification": True,
         },
     }
@@ -537,6 +537,8 @@ class NewsAnalyzer:
         standalone_data = {
             "platforms": [],
             "rss_feeds": [],
+            "hotlist_mode": "current",
+            "rss_mode": self.report_mode,
         }
 
         # 找出最新批次时间（类似 current 模式的过滤逻辑）
@@ -572,7 +574,11 @@ class NewsAnalyzer:
                 # 使用当前热榜的排名数据（title_data）进行排序
                 # title_data 包含的是爬虫返回的当前排名，用于保证独立展示区的顺序与热榜一致
                 current_ranks = title_data.get("ranks", [])
-                current_rank = current_ranks[-1] if current_ranks else 0
+                current_rank = title_data.get("current_rank")
+                if current_rank is None and meta.get("rank_timeline"):
+                    current_rank = meta["rank_timeline"][-1].get("rank")
+                if current_rank is None:
+                    current_rank = current_ranks[0] if len(set(current_ranks)) == 1 else 0
 
                 # 用于显示的排名范围：合并历史排名和当前排名
                 historical_ranks = meta.get("ranks", []) if meta else []
@@ -593,6 +599,7 @@ class NewsAnalyzer:
                     "last_time": meta.get("last_time", ""),
                     "count": meta.get("count", 1),
                     "rank_timeline": meta.get("rank_timeline", []),
+                    "observed_date": meta.get("observed_date") or self.ctx.format_date(),
                 }
                 items.append(item)
 
@@ -600,6 +607,7 @@ class NewsAnalyzer:
             items.sort(key=lambda x: x["rank"] if x["rank"] > 0 else 9999)
 
             # 限制条数
+            item_count = len(items)
             if max_items > 0:
                 items = items[:max_items]
 
@@ -608,6 +616,7 @@ class NewsAnalyzer:
                     "id": platform_id,
                     "name": platform_name,
                     "items": items,
+                    "count": item_count,
                 })
 
         # 提取 RSS 数据
@@ -641,6 +650,7 @@ class NewsAnalyzer:
                             "id": feed_id,
                             "name": feed_data["name"],
                             "items": items,
+                            "count": len(feed_data["items"]),
                         })
 
         # 如果没有任何数据，返回 None
@@ -706,6 +716,12 @@ class NewsAnalyzer:
             )
 
         self._hotlist_total_count = total_titles
+
+        # 日期随条目一起保存，跨天重试时仍能正确说明首次发现时间。
+        observed_date = self.ctx.format_date()
+        for stat in stats:
+            for item in stat.get("titles", []):
+                item["observed_date"] = item.get("observed_date") or observed_date
 
         # 在 AI 分析、翻译和发送前保存推荐内容，失败的批次可以跨运行、跨天重试。
         state = self.ctx.get_recommendation_state() if mode == "incremental" else None

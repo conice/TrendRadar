@@ -442,6 +442,7 @@ class AIFilterPipeline:
                 "mobile_url": r.get("mobile_url", ""),
                 "rank": r.get("rank", 0),
                 "ranks": r.get("ranks", []),
+                "rank_timeline": r.get("rank_timeline", []),
                 "first_time": r.get("first_time", ""),
                 "last_time": r.get("last_time", ""),
                 "count": r.get("count", 1),
@@ -564,6 +565,11 @@ class AIFilterPipeline:
                     "url": item.get("url", ""),
                     "mobile_url": item.get("mobile_url", ""),
                     "ranks": item.get("ranks", []),
+                    "current_rank": item.get("rank"),
+                    "rank_timeline": item.get("rank_timeline", []),
+                    "first_time": first_time,
+                    "last_time": last_time,
+                    "published_at": first_time if source_type == "rss" else "",
                     "rank_threshold": self._rank_threshold,
                     "count": item.get("count", 1),
                     "is_new": is_new,
@@ -577,23 +583,27 @@ class AIFilterPipeline:
                     hotlist_titles.append(title_entry)
 
             if hotlist_titles:
+                hotlist_matched = len(hotlist_titles)
                 if self._max_news > 0:
                     hotlist_titles = hotlist_titles[:self._max_news]
                 hotlist_stats.append({
                     "word": tag_name,
                     "_max_count": self._max_news,
                     "count": len(hotlist_titles),
+                    "matched_count": hotlist_matched,
                     "position": tag_data.get("position", 9999),
                     "titles": hotlist_titles,
                 })
 
             if rss_titles:
+                rss_matched = len(rss_titles)
                 if self._max_news > 0:
                     rss_titles = rss_titles[:self._max_news]
                 rss_stats.append({
                     "word": tag_name,
                     "_max_count": self._max_news,
                     "count": len(rss_titles),
+                    "matched_count": rss_matched,
                     "position": tag_data.get("position", 9999),
                     "titles": rss_titles,
                 })

@@ -297,6 +297,7 @@ def count_word_frequency(
                     mobile_url = info.get("mobileUrl", source_mobile_url)
                     rank_timeline = info.get("rank_timeline", [])
 
+                rank_is_placeholder = not ranks
                 if not ranks:
                     ranks = [99]
 
@@ -329,6 +330,13 @@ def count_word_frequency(
                         "mobileUrl": mobile_url,
                         "is_new": is_new,
                         "rank_timeline": rank_timeline,
+                        "current_rank": title_data.get("current_rank") or (
+                            title_info.get(source_id, {}).get(title, {}).get("current_rank") if title_info else None
+                        ),
+                        "observed_date": (
+                            title_info.get(source_id, {}).get(title, {}).get("observed_date", "") if title_info else ""
+                        ),
+                        "rank_is_placeholder": rank_is_placeholder,
                     }
                 )
 
@@ -437,6 +445,7 @@ def count_word_frequency(
                 "word": display_word,
                 "_max_count": group_max_count,
                 "count": data["count"],
+                "matched_count": data["count"],
                 "position": group_key_to_position.get(group_key, 999),
                 "titles": sorted_titles,
                 "percentage": (
@@ -595,6 +604,8 @@ def count_rss_frequency(
                 "source_name": item.get("feed_name", item.get("feed_id", "RSS")),
                 "time_display": time_display,
                 "count": 1,  # RSS 条目通常只出现一次
+                "published_at": published_at,
+                "author": item.get("author", ""),
                 "ranks": [rank],
                 "rank_threshold": rank_threshold,
                 "url": url,
@@ -639,6 +650,7 @@ def count_rss_frequency(
             "word": display_word,
             "_max_count": group_max_count,
             "count": data["count"],
+            "matched_count": data["count"],
             "position": group_key_to_position.get(group_key, 999),
             "titles": sorted_titles,
             "percentage": round(data["count"] / total_items * 100, 2) if total_items > 0 else 0,

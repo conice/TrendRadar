@@ -303,6 +303,7 @@ notification:
 
     generic_webhook:
       webhook_url: ""                 # Generic Webhook URL (supports Discord, Matrix, IFTTT, etc.)
+      format: "markdown"              # markdown or text, depending on the receiver
       payload_template: ""            # JSON template, supports {title} and {content} placeholders
                                       # Example: {"content": "{content}"}
                                       # Leave empty to use the default: {"title": "{title}", "content": "{content}"}

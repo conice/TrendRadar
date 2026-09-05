@@ -438,6 +438,7 @@ def _load_webhook_config(config_data: Dict) -> Dict:
         # 通用 Webhook
         "GENERIC_WEBHOOK_URL": _get_env_str("GENERIC_WEBHOOK_URL") or generic.get("webhook_url", ""),
         "GENERIC_WEBHOOK_TEMPLATE": _get_env_str("GENERIC_WEBHOOK_TEMPLATE") or generic.get("payload_template", ""),
+        "GENERIC_WEBHOOK_FORMAT": _get_env_str("GENERIC_WEBHOOK_FORMAT") or generic.get("format", "markdown"),
     }
 
 

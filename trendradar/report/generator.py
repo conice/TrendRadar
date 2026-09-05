@@ -10,6 +10,8 @@
 from pathlib import Path
 from typing import Dict, List, Optional, Callable
 
+from trendradar.report.presentation import snapshot_time
+
 
 def prepare_report_data(
     stats: List[Dict],
@@ -76,7 +78,9 @@ def prepare_report_data(
                 ranks = title_data.get("ranks", [])
 
                 processed_title = {
+                    **title_data,
                     "title": title,
+                    "source_id": source_id,
                     "source_name": source_name,
                     "time_display": "",
                     "count": 1,
@@ -106,6 +110,7 @@ def prepare_report_data(
         processed_titles = []
         for title_data in stat["titles"]:
             processed_title = {
+                **title_data,
                 "title": title_data["title"],
                 "source_name": title_data["source_name"],
                 "time_display": title_data["time_display"],
@@ -113,7 +118,7 @@ def prepare_report_data(
                 "ranks": title_data["ranks"],
                 "rank_threshold": title_data["rank_threshold"],
                 "url": title_data.get("url", ""),
-                "mobile_url": title_data.get("mobileUrl", ""),
+                "mobile_url": title_data.get("mobile_url") or title_data.get("mobileUrl", ""),
                 "is_new": title_data.get("is_new", False),
                 "rank_timeline": title_data.get("rank_timeline", []),
             }
@@ -123,6 +128,7 @@ def prepare_report_data(
             {
                 "word": stat["word"],
                 "count": stat["count"],
+                "matched_count": stat.get("matched_count", stat["count"]),
                 "percentage": stat.get("percentage", 0),
                 "titles": processed_titles,
             }
@@ -136,6 +142,7 @@ def prepare_report_data(
         "new_titles": processed_new_titles,
         "failed_ids": failed_ids or [],
         "total_new_count": total_new_count,
+        "snapshot_time": snapshot_time(processed_stats),
     }
 
 

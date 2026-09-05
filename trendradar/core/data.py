@@ -59,11 +59,14 @@ def read_all_today_titles_from_storage(
 
                 all_results[source_id][title] = {
                     "ranks": ranks,
+                    "current_rank": item.rank,
                     "url": item.url or "",
                     "mobileUrl": item.mobile_url or "",
                 }
 
                 title_info[source_id][title] = {
+                    "current_rank": item.rank,
+                    "observed_date": news_data.date,
                     "first_time": first_time,
                     "last_time": last_time,
                     "count": count,
