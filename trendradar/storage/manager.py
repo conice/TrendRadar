@@ -9,7 +9,8 @@ import os
 from typing import Optional
 
 from trendradar.storage.base import StorageBackend, NewsData, RSSData
-from trendradar.utils.time import DEFAULT_TIMEZONE
+from trendradar.utils.time import DEFAULT_TIMEZONE, get_configured_time
+from trendradar.storage.state import RecommendationState
 
 
 # 存储管理器单例
@@ -39,6 +40,7 @@ class StorageManager:
         pull_enabled: bool = False,
         pull_days: int = 0,
         timezone: str = DEFAULT_TIMEZONE,
+        cleanup_interval_days: int = 0,
     ):
         """
         初始化存储管理器
@@ -54,6 +56,7 @@ class StorageManager:
             pull_enabled: 是否启用启动时自动拉取
             pull_days: 拉取最近 N 天的数据
             timezone: 时区配置
+            cleanup_interval_days: 本地清理间隔天数（0 = 每次运行检查）
         """
         self.backend_type = backend_type
         self.data_dir = data_dir
@@ -65,6 +68,7 @@ class StorageManager:
         self.pull_enabled = pull_enabled
         self.pull_days = pull_days
         self.timezone = timezone
+        self.cleanup_interval_days = cleanup_interval_days
 
         self._backend: Optional[StorageBackend] = None
         self._remote_backend: Optional[StorageBackend] = None
@@ -260,7 +264,16 @@ class StorageManager:
 
         # 清理本地数据
         if self.local_retention_days > 0:
-            total_deleted += self.get_backend().cleanup_old_data(self.local_retention_days)
+            backend = self.get_backend()
+            if backend.backend_name == "local" and self.cleanup_interval_days > 0:
+                state = RecommendationState(
+                    self.data_dir, self.local_retention_days, self.cleanup_interval_days
+                )
+                total_deleted += state.cleanup_if_due(
+                    get_configured_time(self.timezone), backend.cleanup_old_data
+                )
+            else:
+                total_deleted += backend.cleanup_old_data(self.local_retention_days)
 
         # 清理远程数据（如果配置了）
         if self.remote_retention_days > 0 and self._has_remote_config():
@@ -381,6 +394,7 @@ def get_storage_manager(
     pull_days: int = 0,
     timezone: str = DEFAULT_TIMEZONE,
     force_new: bool = False,
+    cleanup_interval_days: int = 0,
 ) -> StorageManager:
     """
     获取存储管理器单例
@@ -397,6 +411,7 @@ def get_storage_manager(
         pull_days: 拉取最近 N 天的数据
         timezone: 时区配置
         force_new: 是否强制创建新实例
+        cleanup_interval_days: 本地清理间隔天数（0 = 每次运行检查）
 
     Returns:
         StorageManager 实例
@@ -415,6 +430,7 @@ def get_storage_manager(
             pull_enabled=pull_enabled,
             pull_days=pull_days,
             timezone=timezone,
+            cleanup_interval_days=cleanup_interval_days,
         )
 
     return _storage_manager

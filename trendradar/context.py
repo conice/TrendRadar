@@ -43,6 +43,7 @@ from trendradar.ai import AITranslator
 from trendradar.ai.filter import AIFilterResult
 from trendradar.ai.filter_pipeline import AIFilterPipeline, _TagExtractionError
 from trendradar.storage import get_storage_manager
+from trendradar.storage.state import RecommendationState
 
 
 class AppContext:
@@ -206,8 +207,21 @@ class AppContext:
                 pull_enabled=pull_config.get("ENABLED", False),
                 pull_days=pull_config.get("DAYS", 7),
                 timezone=self.timezone,
+                cleanup_interval_days=local_config.get("CLEANUP_INTERVAL_DAYS", 0),
             )
         return self._storage_manager
+
+    def get_recommendation_state(self) -> Optional[RecommendationState]:
+        """增量推荐共用的跨天状态，随本地数据库一起持久化。"""
+        if not self.config.get("CROSS_DAY_DEDUP", False):
+            return None
+        storage = self.get_storage_manager()
+        if storage.backend_name != "local":
+            raise ValueError("跨天去重需要 storage.backend=local，并持久化整个数据库目录")
+        return RecommendationState(
+            storage.data_dir, storage.local_retention_days,
+            storage.cleanup_interval_days or 30,
+        )
 
     def get_output_path(self, subfolder: str, filename: str) -> str:
         """获取输出路径（扁平化结构：output/类型/日期/文件名）"""
@@ -533,6 +547,9 @@ class AppContext:
     def cleanup(self):
         """清理资源"""
         if self._storage_manager:
-            self._storage_manager.cleanup_old_data()
-            self._storage_manager.cleanup()
+            storage = self._storage_manager
             self._storage_manager = None
+            try:
+                storage.cleanup_old_data()
+            finally:
+                storage.cleanup()

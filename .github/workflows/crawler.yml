@@ -40,17 +40,20 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: crawler-${{ github.ref_name }}
-  cancel-in-progress: true
+  group: trendradar-data
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
   crawl:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      STORAGE_BACKEND: local
+      STORAGE_DATA_DIR: output
 
     steps:
       - name: Checkout repository
@@ -133,8 +136,14 @@ jobs:
             exit 1
           fi
 
+      - name: Restore databases from data branch
+        id: restore_data
+        if: success()
+        run: python scripts/sync_data_branch.py restore --manifest "$RUNNER_TEMP/trendradar-data.json"
+
       - name: Run crawler
         if: success()
+        id: crawl
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -168,6 +177,22 @@ jobs:
           S3_REGION: ${{ secrets.S3_REGION }}
           GITHUB_ACTIONS: true
         run: uv run python -m trendradar
+
+      - name: Save databases to data branch
+        id: save_data
+        if: ${{ !cancelled() && steps.restore_data.outcome == 'success' && steps.crawl.outcome != 'skipped' }}
+        run: python scripts/sync_data_branch.py save --manifest "$RUNNER_TEMP/trendradar-data.json"
+
+      - name: Preserve databases if branch save fails
+        if: ${{ !cancelled() && steps.save_data.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: trendradar-databases-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            output/news/*.db
+            output/rss/*.db
+            output/state.db
+          retention-days: 7
 
       # --------------------------------------------------------------------------------
       # ☁️ CLOUDFLARE PAGES DEPLOY / 部署到 Cloudflare Pages（可选）

@@ -42,4 +42,4 @@ jobs:
           python scripts/validate_frequency_words.py --strict
           python scripts/validate_frequency_words.py config/frequency_words.en.txt --strict
       - name: Run frequency rule tests
-        run: python -m unittest discover -s tests -v
+        run: python -m unittest discover -s tests -p 'test_frequency.py' -v

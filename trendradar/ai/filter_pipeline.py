@@ -559,6 +559,7 @@ class AIFilterPipeline:
 
                 title_entry = {
                     "title": item.get("title", ""),
+                    "source_id": item.get("source_id", ""),
                     "source_name": item.get("source_name", ""),
                     "url": item.get("url", ""),
                     "mobile_url": item.get("mobile_url", ""),
@@ -580,6 +581,7 @@ class AIFilterPipeline:
                     hotlist_titles = hotlist_titles[:self._max_news]
                 hotlist_stats.append({
                     "word": tag_name,
+                    "_max_count": self._max_news,
                     "count": len(hotlist_titles),
                     "position": tag_data.get("position", 9999),
                     "titles": hotlist_titles,
@@ -590,6 +592,7 @@ class AIFilterPipeline:
                     rss_titles = rss_titles[:self._max_news]
                 rss_stats.append({
                     "word": tag_name,
+                    "_max_count": self._max_news,
                     "count": len(rss_titles),
                     "position": tag_data.get("position", 9999),
                     "titles": rss_titles,

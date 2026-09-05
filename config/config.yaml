@@ -366,10 +366,13 @@ rss:
 # 4. 报告模式
 # ===============================================================
 report:
-  mode: "current"                     # 报告模式（开启 schedule 后作为默认值，会被 timeline 时段覆盖）
+  mode: "incremental"                 # 报告模式（开启 schedule 后作为默认值，会被 timeline 时段覆盖）
                                       # daily = 当日汇总，按时推送当天所有匹配新闻（会包含之前推过的）
                                       # current = 当前榜单，按时推送当前在榜的匹配新闻（持续在榜的每次都出现）
                                       # incremental = 增量监控，只推送新增内容，零重复（没有新增时不推送）
+
+  cross_day_dedup: true                # 增量模式跨天去重，成功推荐后记录到 output/state.db
+                                      # 去重窗口跟随 storage.local.retention_days；发送失败保留待重试内容
 
   display_mode: "keyword"             # 分组维度
                                       # keyword = 按关键词分组显示
@@ -525,7 +528,7 @@ storage:
   # - auto: 自动选择（GitHub Actions 且配置了远程存储 → remote，否则 → local）
   # - local: 本地 SQLite + TXT/HTML 文件
   # - remote: 远程云存储（S3 兼容协议，支持 R2/OSS/COS 等）
-  backend: "auto"
+  backend: "local"
 
   # 数据格式选项
   formats:
@@ -537,7 +540,8 @@ storage:
   # 本地存储配置
   local:
     data_dir: "output"                # 数据目录
-    retention_days: 0                 # 保留天数（0=永久保留）
+    retention_days: 30                # 每日数据库与跨天推荐状态保留天数（0=永久保留）
+    cleanup_interval_days: 30         # 首次运行清理过期数据，此后每 30 天清理一次
 
   # 远程存储配置（S3 兼容协议）
   # 支持: Cloudflare R2, 阿里云 OSS, 腾讯云 COS, AWS S3, MinIO 等

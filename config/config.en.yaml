@@ -154,10 +154,13 @@ rss:
 # 4. Report Mode
 # ===============================================================
 report:
-  mode: "current"                     # Report mode (the default once schedule is on; overridden by timeline periods)
+  mode: "incremental"                 # Report mode (the default once schedule is on; overridden by timeline periods)
                                       # daily = daily summary, push all matched news of the day on schedule (may include previously pushed items)
                                       # current = current ranking, push currently-ranked matched news on schedule (persistent items reappear each time)
                                       # incremental = incremental monitoring, push only new content, zero duplication (no push if nothing new)
+
+  cross_day_dedup: true                # Persist successful recommendations and retries in output/state.db
+                                      # Deduplication window follows storage.local.retention_days
 
   display_mode: "keyword"             # Grouping dimension
                                       # keyword = group by keyword
@@ -313,7 +316,7 @@ storage:
   # - auto: auto-select (uses remote when running in GitHub Actions with remote storage, otherwise local)
   # - local: local SQLite + TXT/HTML files
   # - remote: remote cloud storage (S3-compatible, supports R2/OSS/COS, etc.)
-  backend: "auto"
+  backend: "local"
 
   # Data format options
   formats:
@@ -325,7 +328,8 @@ storage:
   # Local storage configuration
   local:
     data_dir: "output"                # Data directory
-    retention_days: 0                 # Retention days (0=keep forever)
+    retention_days: 30                # Daily databases and recommendation state (0=keep forever)
+    cleanup_interval_days: 30         # Clean expired data on first run, then every 30 days
 
   # Remote storage configuration (S3-compatible)
   # Supports: Cloudflare R2, Alibaba Cloud OSS, Tencent Cloud COS, AWS S3, MinIO, etc.

@@ -76,6 +76,7 @@ def _load_report_config(config_data: Dict) -> Dict:
 
     return {
         "REPORT_MODE": report_config.get("mode", "daily"),
+        "CROSS_DAY_DEDUP": report_config.get("cross_day_dedup", False),
         "DISPLAY_MODE": report_config.get("display_mode", "keyword"),
         "RANK_THRESHOLD": report_config.get("rank_threshold", 10),
         "SORT_BY_POSITION_FIRST": sort_by_position_env if sort_by_position_env is not None else report_config.get("sort_by_position_first", False),
@@ -374,8 +375,9 @@ def _load_storage_config(config_data: Dict) -> Dict:
             "HTML": html_enabled_env if html_enabled_env is not None else formats.get("html", True),
         },
         "LOCAL": {
-            "DATA_DIR": local.get("data_dir", "output"),
+            "DATA_DIR": _get_env_str("STORAGE_DATA_DIR") or local.get("data_dir", "output"),
             "RETENTION_DAYS": local_retention_env if local_retention_env is not None else local.get("retention_days", 0),
+            "CLEANUP_INTERVAL_DAYS": local.get("cleanup_interval_days", 0),
         },
         "REMOTE": {
             "ENDPOINT_URL": _get_env_str("S3_ENDPOINT_URL") or remote.get("endpoint_url", ""),

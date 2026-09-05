@@ -1,0 +1,40 @@
+name: Validate Database Persistence
+
+on:
+  push:
+    paths:
+      - "trendradar/**"
+      - "scripts/sync_data_branch.py"
+      - "tests/**"
+      - "config/config.yaml"
+      - "config/config.en.yaml"
+      - ".github/workflows/crawler.yml"
+      - ".github/workflows/database-tests.yml"
+      - "pyproject.toml"
+      - "uv.lock"
+  pull_request:
+    paths:
+      - "trendradar/**"
+      - "scripts/sync_data_branch.py"
+      - "tests/**"
+      - "config/config.yaml"
+      - "config/config.en.yaml"
+      - ".github/workflows/crawler.yml"
+      - ".github/workflows/database-tests.yml"
+      - "pyproject.toml"
+      - "uv.lock"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --frozen
+      - run: uv run python -m unittest discover -s tests -v

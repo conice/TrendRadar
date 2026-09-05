@@ -317,6 +317,7 @@ def count_word_frequency(
                 word_stats[group_key]["titles"][source_id].append(
                     {
                         "title": title,
+                        "source_id": source_id,
                         "source_name": source_name,
                         "first_time": first_time,
                         "last_time": last_time,
@@ -434,6 +435,7 @@ def count_word_frequency(
         stats.append(
             {
                 "word": display_word,
+                "_max_count": group_max_count,
                 "count": data["count"],
                 "position": group_key_to_position.get(group_key, 999),
                 "titles": sorted_titles,
@@ -588,6 +590,8 @@ def count_rss_frequency(
 
             title_data = {
                 "title": title,
+                "source_id": item.get("feed_id", ""),
+                "guid": item.get("guid", ""),
                 "source_name": item.get("feed_name", item.get("feed_id", "RSS")),
                 "time_display": time_display,
                 "count": 1,  # RSS 条目通常只出现一次
@@ -633,6 +637,7 @@ def count_rss_frequency(
 
         stats.append({
             "word": display_word,
+            "_max_count": group_max_count,
             "count": data["count"],
             "position": group_key_to_position.get(group_key, 999),
             "titles": sorted_titles,

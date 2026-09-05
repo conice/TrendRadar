@@ -7,9 +7,8 @@
 
 import sqlite3
 import shutil
-import pytz
 import re
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -412,22 +411,16 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
             return 0
 
         deleted_count = 0
-        cutoff_date = self._get_configured_time() - timedelta(days=retention_days)
+        cutoff_date = self._get_configured_time().date() - timedelta(days=retention_days - 1)
 
-        def parse_date_from_name(name: str) -> Optional[datetime]:
+        def parse_date_from_name(name: str) -> Optional[date]:
             """从文件名或目录名解析日期 (ISO 格式: YYYY-MM-DD)"""
             # 移除 .db 后缀
-            name = name.replace('.db', '')
+            name = name.removesuffix('.db')
             try:
-                date_match = re.match(r'(\d{4})-(\d{2})-(\d{2})', name)
-                if date_match:
-                    return datetime(
-                        int(date_match.group(1)),
-                        int(date_match.group(2)),
-                        int(date_match.group(3)),
-                        tzinfo=pytz.timezone(self.timezone)
-                    )
-            except Exception:
+                if re.fullmatch(r'\d{4}-\d{2}-\d{2}', name):
+                    return date.fromisoformat(name)
+            except ValueError:
                 pass
             return None
 
@@ -460,6 +453,7 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
                             print(f"[本地存储] 清理过期数据: {db_type}/{db_file.name}")
                         except Exception as e:
                             print(f"[本地存储] 删除文件失败 {db_file}: {e}")
+                            raise
 
             # 清理快照目录 (txt/, html/)
             for snapshot_type in ["txt", "html"]:
@@ -479,6 +473,7 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
                             print(f"[本地存储] 清理过期数据: {snapshot_type}/{date_folder.name}")
                         except Exception as e:
                             print(f"[本地存储] 删除目录失败 {date_folder}: {e}")
+                            raise
 
             if deleted_count > 0:
                 print(f"[本地存储] 共清理 {deleted_count} 个过期文件/目录")
@@ -487,7 +482,7 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
 
         except Exception as e:
             print(f"[本地存储] 清理过期数据失败: {e}")
-            return deleted_count
+            raise
 
     def __del__(self):
         """析构函数，确保关闭连接"""

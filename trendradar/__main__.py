@@ -707,6 +707,24 @@ class NewsAnalyzer:
 
         self._hotlist_total_count = total_titles
 
+        # 在 AI 分析、翻译和发送前保存推荐内容，失败的批次可以跨运行、跨天重试。
+        state = self.ctx.get_recommendation_state() if mode == "incremental" else None
+        if state:
+            regions = self.ctx.config.get("DISPLAY", {}).get("REGIONS", {})
+            scope = f"{self.filter_method}:{self.frequency_file or ''}:{self.interests_file or ''}"
+            stats, rss_items = state.prepare(
+                stats if regions.get("HOTLIST", True) else [],
+                rss_items if regions.get("RSS", True) else [],
+                self.ctx.get_time(), scope=scope,
+                active_sources={
+                    "hotlist": set(self.ctx.platform_ids) if regions.get("HOTLIST", True) else set(),
+                    "rss": {feed["id"] for feed in self.ctx.rss_feeds
+                            if feed.get("enabled", True)}
+                           if self.ctx.rss_enabled and regions.get("RSS", True) else set(),
+                },
+            )
+            rss_new_items = None
+
         # 如果是 platform 模式，转换数据结构
         if self.ctx.display_mode == "platform" and stats:
             stats = convert_keyword_stats_to_platform_stats(
@@ -893,12 +911,16 @@ class NewsAnalyzer:
 
             # 记录推送成功
             if any(results.values()):
+                state = self.ctx.get_recommendation_state() if mode == "incremental" else None
+                if state:
+                    state.mark_delivered(stats, rss_items, self.ctx.get_time())
                 if schedule.once_push and schedule.period_key:
                     scheduler = self.ctx.create_scheduler()
                     date_str = self.ctx.format_date()
                     scheduler.record_execution(schedule.period_key, "push", date_str)
 
-            return True
+                return True
+            raise RuntimeError("所有通知渠道发送失败，推荐内容已保留，等待下次重试")
 
         elif cfg["ENABLE_NOTIFICATION"] and not has_notification:
             print("⚠️ 警告：通知功能已启用但未配置任何通知渠道，将跳过通知发送")
@@ -977,6 +999,8 @@ class NewsAnalyzer:
         # 保存到存储后端（SQLite）
         if self.storage_manager.save_news_data(news_data):
             print(f"数据已保存到存储后端: {self.storage_manager.backend_name}")
+        else:
+            raise RuntimeError("热榜数据库写入失败")
 
         # 保存 TXT 快照（如果启用）
         txt_file = self.storage_manager.save_txt_snapshot(news_data)
@@ -1076,13 +1100,14 @@ class NewsAnalyzer:
                 # 处理 RSS 数据（按模式过滤）并返回用于合并推送
                 return self._process_rss_data_by_mode(rss_data)
             else:
-                print(f"[RSS] 数据保存失败")
-                return None, None, None, set()
+                raise RuntimeError("RSS 数据库写入失败")
 
         except ImportError as e:
             print(f"[RSS] 缺少依赖: {e}")
             print("[RSS] 请安装 feedparser: pip install feedparser")
             return None, None, None, set()
+        except RuntimeError:
+            raise
         except Exception as e:
             print(f"[RSS] 抓取失败: {e}")
             return None, None, None, set()
@@ -1313,6 +1338,7 @@ class NewsAnalyzer:
                     "feed_id": feed_id,
                     "feed_name": id_to_name.get(feed_id, feed_id),
                     "url": item.url,
+                    "guid": item.guid,
                     "published_at": item.published_at,
                     "summary": item.summary,
                     "author": item.author,
@@ -1330,7 +1356,8 @@ class NewsAnalyzer:
                 if len(filtered_details) > 10:
                     print(f"  ... 还有 {len(filtered_details) - 10} 篇被过滤")
 
-        return rss_items
+        state = self.ctx.get_recommendation_state() if self.report_mode == "incremental" else None
+        return state.filter_rss(rss_items, self.ctx.get_time()) if state else rss_items
 
     def _filter_rss_by_keywords(self, rss_items: List[Dict]) -> List[Dict]:
         """使用关键词文件过滤 RSS 条目"""
@@ -1386,20 +1413,8 @@ class NewsAnalyzer:
             print(f"[RSS] 生成 HTML 报告失败: {e}")
             return None
 
-    def _execute_mode_strategy(
-        self, mode_strategy: Dict, results: Dict, id_to_name: Dict, failed_ids: List,
-        rss_items: Optional[List[Dict]] = None,
-        rss_new_items: Optional[List[Dict]] = None,
-        raw_rss_items: Optional[List[Dict]] = None,
-        rss_new_urls: Optional[set] = None,
-    ) -> Optional[str]:
-        """执行模式特定逻辑，支持热榜+RSS合并推送
-
-        简化后的逻辑：
-        - 每次运行都生成 HTML 报告（时间戳快照 + latest/{mode}.html + index.html）
-        - 根据模式发送通知
-        """
-        # 调度系统
+    def _resolve_schedule(self) -> ResolvedSchedule:
+        """在抓取和 RSS 筛选之前统一确定本次使用的模式与筛选配置。"""
         scheduler = self.ctx.create_scheduler()
         schedule = scheduler.resolve()
 
@@ -1408,9 +1423,6 @@ class NewsAnalyzer:
         if effective_mode != self.report_mode:
             print(f"[调度] 报告模式覆盖: {self.report_mode} -> {effective_mode}")
         self.report_mode = effective_mode
-
-        # 重新获取 mode_strategy，确保 report_type 与覆盖后的 report_mode 一致
-        mode_strategy = self._get_mode_strategy()
 
         # 使用 schedule 决定的 frequency_file 覆盖默认值
         self.frequency_file = schedule.frequency_file
@@ -1421,6 +1433,20 @@ class NewsAnalyzer:
         # 使用 schedule 决定的 AI 筛选兴趣文件覆盖默认值
         self.interests_file = schedule.interests_file
 
+        return schedule
+
+    def _execute_mode_strategy(
+        self, mode_strategy: Dict, results: Dict, id_to_name: Dict, failed_ids: List,
+        rss_items: Optional[List[Dict]] = None,
+        rss_new_items: Optional[List[Dict]] = None,
+        raw_rss_items: Optional[List[Dict]] = None,
+        rss_new_urls: Optional[set] = None,
+        schedule: Optional[ResolvedSchedule] = None,
+    ) -> Optional[str]:
+        """生成本次报告并推送；增量推荐成功后确认跨天状态。"""
+        schedule = schedule or self._resolve_schedule()
+        mode_strategy = self._get_mode_strategy()
+
         # 如果调度器说不采集，则直接跳过
         if not schedule.collect:
             print("[调度] 当前时间段不执行数据采集，跳过分析流水线")
@@ -1429,6 +1455,11 @@ class NewsAnalyzer:
         current_platform_ids = self.ctx.platform_ids
 
         new_titles = self.ctx.detect_new_titles(current_platform_ids)
+        state = self.ctx.get_recommendation_state() if self.report_mode == "incremental" else None
+        if state:
+            now = self.ctx.get_time()
+            results = state.filter_news(results, now)
+            new_titles = state.filter_news(new_titles, now)
         time_info = self.ctx.format_time()
         word_groups, filter_words, global_filters = self.ctx.load_frequency_words(self.frequency_file)
 
@@ -1596,6 +1627,12 @@ class NewsAnalyzer:
                 schedule=schedule,
             )
 
+        # 仅使用网页时，以生成成功作为推荐完成；有推送渠道时等待发送成功确认。
+        if state and html_file and not (
+            self.ctx.config["ENABLE_NOTIFICATION"] and self._has_notification_configured()
+        ):
+            state.mark_delivered(stats, rss_items, self.ctx.get_time())
+
         # 打开浏览器（仅在非容器环境）
         if self._should_open_browser() and html_file:
             file_url = "file://" + str(Path(html_file).resolve())
@@ -1614,6 +1651,11 @@ class NewsAnalyzer:
 
             mode_strategy = self._get_mode_strategy()
 
+            schedule = self._resolve_schedule()
+            if not schedule.collect:
+                print("[调度] 当前时间段不执行数据采集")
+                return
+
             # 抓取热榜数据
             results, id_to_name, failed_ids = self._crawl_data()
 
@@ -1624,13 +1666,13 @@ class NewsAnalyzer:
             self._execute_mode_strategy(
                 mode_strategy, results, id_to_name, failed_ids,
                 rss_items=rss_items, rss_new_items=rss_new_items,
-                raw_rss_items=raw_rss_items, rss_new_urls=rss_new_urls
+                raw_rss_items=raw_rss_items, rss_new_urls=rss_new_urls,
+                schedule=schedule,
             )
 
         except Exception as e:
             print(f"分析流程执行出错: {e}")
-            if self.ctx.config.get("DEBUG", False):
-                raise
+            raise
         finally:
             # 清理资源（包括过期数据清理和数据库连接关闭）
             self.ctx.cleanup()
@@ -1705,10 +1747,12 @@ def main():
         print("  • config/config.yaml")
         print("  • config/frequency_words.txt")
         print("\n参考项目文档进行正确配置")
+        raise SystemExit(1) from e
     except Exception as e:
         print(f"❌ 程序运行错误: {e}")
         if debug_mode:
             raise
+        raise SystemExit(1) from e
 
 
 if __name__ == "__main__":
