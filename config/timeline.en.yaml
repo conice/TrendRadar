@@ -420,11 +420,12 @@ custom:
                                    #   incremental → push only new content
 
 
-    # frequency_file: "general.txt"
+    # frequency_file: "Total.txt"
                                    # Keyword file (optional, in config/custom/keyword/)
-                                   # Empty → uses the default config/frequency_words.txt
-                                   # A period can also set this to override the default
-                                   # e.g. the evening summary uses a tech keyword library:
+                                   # Empty → merges the base library and all .txt files there
+                                   # Set → merges the base library and only the selected file
+                                   # A period can also select a different supplemental file
+                                   # e.g. the evening summary adds a tech keyword library:
                                    #   frequency_file: "tech.txt"
                                    # Note: only effective when filter_method is keyword
 

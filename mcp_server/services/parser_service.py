@@ -35,12 +35,11 @@ class ParserService:
 
         self.cache = get_cache()
 
-        # frequency_words.txt mtime 缓存
+        # 基础词库与自定义词库的文件列表、mtime 和大小共同决定缓存是否有效。
         self._freq_words_cache: Optional[
             Tuple[List[Dict], List[Dict], List[Dict]]
         ] = None
-        self._freq_words_mtime: float = 0.0
-        self._freq_words_path: Optional[str] = None
+        self._freq_words_signature: Optional[Tuple[Tuple[str, int, int], ...]] = None
 
     @staticmethod
     def clean_title(title: str) -> str:
@@ -382,7 +381,7 @@ class ParserService:
         """
         解析完整关键词配置（带 mtime 缓存）。
 
-        仅当 frequency_words.txt 被修改时才重新解析，避免循环内重复 IO。
+        参与合并的任一词表被修改、新增或删除时重新解析。
 
         复用 trendradar.core.frequency 的解析逻辑，支持：
         - # 开头的注释行
@@ -404,8 +403,7 @@ class ParserService:
         Raises:
             FileParseError: 文件解析错误
         """
-        import os
-        from trendradar.core.frequency import load_frequency_words
+        from trendradar.core.frequency import load_frequency_words, resolve_frequency_files
 
         if words_file is None:
             words_file = str(self.project_root / "config" / "frequency_words.txt")
@@ -413,19 +411,21 @@ class ParserService:
             words_file = str(words_file)
 
         try:
-            current_mtime = os.path.getmtime(words_file)
+            signature = []
+            for path in resolve_frequency_files(words_file):
+                stat = path.stat()
+                signature.append((str(path), stat.st_mtime_ns, stat.st_size))
+            current_signature = tuple(signature)
 
             if (
                 self._freq_words_cache is not None
-                and current_mtime == self._freq_words_mtime
-                and words_file == self._freq_words_path
+                and current_signature == self._freq_words_signature
             ):
                 return self._freq_words_cache
 
             frequency_config = load_frequency_words(words_file)
             self._freq_words_cache = frequency_config
-            self._freq_words_mtime = current_mtime
-            self._freq_words_path = words_file
+            self._freq_words_signature = current_signature
             return frequency_config
         except FileNotFoundError:
             return [], [], []

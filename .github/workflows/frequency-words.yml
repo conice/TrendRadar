@@ -5,6 +5,7 @@ on:
     paths:
       - "config/frequency_words.txt"
       - "config/frequency_words.en.txt"
+      - "config/custom/keyword/**"
       - "trendradar/core/frequency.py"
       - "trendradar/core/analyzer.py"
       - "mcp_server/services/parser_service.py"
@@ -17,6 +18,7 @@ on:
     paths:
       - "config/frequency_words.txt"
       - "config/frequency_words.en.txt"
+      - "config/custom/keyword/**"
       - "trendradar/core/frequency.py"
       - "trendradar/core/analyzer.py"
       - "mcp_server/services/parser_service.py"
@@ -41,5 +43,9 @@ jobs:
         run: |
           python scripts/validate_frequency_words.py --strict
           python scripts/validate_frequency_words.py config/frequency_words.en.txt --strict
+          for frequency_file in config/custom/keyword/*.txt; do
+            [ -f "$frequency_file" ] || continue
+            python scripts/validate_frequency_words.py "$frequency_file" --strict
+          done
       - name: Run frequency rule tests
         run: python -m unittest discover -s tests -p 'test_frequency.py' -v

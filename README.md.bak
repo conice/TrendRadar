@@ -36,7 +36,7 @@
 
   [中文配置](config/config.yaml) 扩充科技、开发者、安全和国际资讯来源，例如 Hacker News、掘金、少数派、Solidot、IT之家、Freebuf，以及 CnBeta、南华早报、纽约时报、半岛电视台等 RSS。
 
-  [默认词库](config/frequency_words.txt) 按主题重写，同组维护中英文规则，为英文短词增加边界约束，并用更具体的营销话术规则替换宽泛过滤词。[自定义关键词](config/custom/keyword/README.md) 自动与默认词库合并，示例见 [Total.txt](config/custom/keyword/Total.txt)。
+  [默认词库](config/frequency_words.txt) 按主题重写，同组维护中英文规则，为英文短词增加边界约束，并用更具体的营销话术规则替换宽泛过滤词。[自定义关键词](config/custom/keyword/README.md) 自动与默认词库合并，人物示例见 [Total.txt](config/custom/keyword/Total.txt)。
 
 - **自动化工作流**
 

@@ -419,11 +419,12 @@ custom:
                                    #   incremental → 只推送新增内容
 
                                    
-    # frequency_file: "general.txt"
+    # frequency_file: "Total.txt"
                                    # 关键词文件（可选，位于 config/custom/keyword/）
-                                   # 不填则使用默认的 config/frequency_words.txt
-                                   # 时间段（period）中也可以设置此字段来覆盖默认值
-                                   # 例如晚间汇总用科技词库：
+                                   # 不填则合并默认词库与该目录下所有 .txt 文件
+                                   # 填写后仅合并默认词库与指定文件
+                                   # 时间段（period）中也可以设置此字段来切换补充词表
+                                   # 例如晚间汇总追加科技词库：
                                    #   frequency_file: "tech.txt"
                                    # 注意：仅在 filter_method 为 keyword 时生效
                                    

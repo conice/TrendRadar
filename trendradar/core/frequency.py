@@ -11,6 +11,7 @@
 - 正则表达式（/pattern/ 语法）
 - 显示名称（=> 别名 语法）
 - 组别名（[组别名] 语法，作为词组第一行）
+- 默认词库与自定义词库合并
 """
 
 import os
@@ -115,11 +116,55 @@ def _word_matches(word_config: RuleConfig, title_lower: str) -> bool:
         return word_config["word"].lower() in title_lower
 
 
+def _is_custom_frequency_path(path: Path) -> bool:
+    return path.parent.name == "keyword" and path.parent.parent.name == "custom"
+
+
+def resolve_frequency_files(frequency_file: Optional[str] = None) -> List[Path]:
+    """返回参与合并的词表，自定义文件在前，基础词库在后。
+
+    加载基础词库时，按文件名顺序合并其旁的 custom/keyword/*.txt。
+    显式选择自定义文件时，只合并该文件及对应的 frequency_words.txt。
+    """
+    if frequency_file is None:
+        frequency_file = os.environ.get(
+            "FREQUENCY_WORDS_PATH", "config/frequency_words.txt"
+        )
+
+    frequency_path = Path(frequency_file)
+    if not frequency_path.is_file():
+        custom_path = Path("config/custom/keyword") / frequency_file
+        if not custom_path.is_file():
+            raise FileNotFoundError(f"频率词文件 {frequency_file} 不存在")
+        frequency_path = custom_path
+
+    frequency_path = frequency_path.absolute()
+    if _is_custom_frequency_path(frequency_path):
+        paths = [frequency_path, frequency_path.parents[2] / "frequency_words.txt"]
+    else:
+        custom_dir = frequency_path.parent / "custom" / "keyword"
+        paths = [
+            *sorted(path for path in custom_dir.glob("*.txt") if path.is_file()),
+            frequency_path,
+        ]
+
+    resolved_paths = []
+    seen_paths = set()
+    for path in paths:
+        if not path.is_file():
+            raise FileNotFoundError(f"频率词文件 {path} 不存在")
+        identity = path.resolve()
+        if identity not in seen_paths:
+            seen_paths.add(identity)
+            resolved_paths.append(path)
+    return resolved_paths
+
+
 def load_frequency_words(
     frequency_file: Optional[str] = None,
 ) -> Tuple[List[Dict], List[Dict], List[Dict]]:
     """
-    加载频率词配置
+    加载并合并频率词配置，自定义词组优先，所有文件的全局过滤词共同生效。
 
     配置文件格式说明：
     - 每个词组由空行分隔
@@ -133,7 +178,10 @@ def load_frequency_words(
     - @数字：该词组最多显示的条数
 
     Args:
-        frequency_file: 频率词配置文件路径，默认从环境变量 FREQUENCY_WORDS_PATH 获取或使用 config/frequency_words.txt，短文件名从 config/custom/keyword/ 查找
+        frequency_file: 频率词配置文件路径，默认从环境变量 FREQUENCY_WORDS_PATH
+            获取或使用 config/frequency_words.txt。基础词库自动合并旁边的
+            custom/keyword/*.txt；短文件名从 config/custom/keyword/ 查找，
+            选择该目录中的文件时，仅合并该文件与默认词库。
 
     Returns:
         (词组列表, 兼容用文件级过滤词, 全局过滤词)
@@ -144,20 +192,39 @@ def load_frequency_words(
     Raises:
         FileNotFoundError: 频率词文件不存在
     """
-    if frequency_file is None:
-        frequency_file = os.environ.get(
-            "FREQUENCY_WORDS_PATH", "config/frequency_words.txt"
-        )
+    processed_groups = []
+    filter_words = []
+    global_filters = []
+    seen_groups = []
+    group_keys = set()
 
-    frequency_path = Path(frequency_file)
-    if not frequency_path.exists():
-        # 尝试作为短文件名，拼接 config/custom/keyword/ 前缀
-        custom_path = Path("config/custom/keyword") / frequency_file
-        if custom_path.exists():
-            frequency_path = custom_path
-        else:
-            raise FileNotFoundError(f"频率词文件 {frequency_file} 不存在")
+    for path in resolve_frequency_files(frequency_file):
+        groups, file_filters, file_global_filters = _load_frequency_file(path)
+        for group in groups:
+            if group in seen_groups:
+                continue
+            seen_groups.append(group)
 
+            # 相同关键词可以有不同的必须词、排除词和显示名，保留独立统计。
+            group_key = group["group_key"]
+            unique_key = group_key
+            suffix = 2
+            while unique_key in group_keys:
+                unique_key = f"{group_key} #{suffix}"
+                suffix += 1
+            group_keys.add(unique_key)
+            processed_groups.append({**group, "group_key": unique_key})
+
+        filter_words.extend(file_filters)
+        for rule in file_global_filters:
+            if rule not in global_filters:
+                global_filters.append(rule)
+
+    return processed_groups, filter_words, global_filters
+
+
+def _load_frequency_file(frequency_path: Path) -> Tuple[List[Dict], List[Dict], List[Dict]]:
+    """独立解析一个文件，避免区域标记和组内条件跨文件串联。"""
     with open(frequency_path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -454,12 +521,14 @@ def validate_frequency_file(
                 )
 
     for section_name, locations in section_lines.items():
-        if len(locations) != 1:
+        required = section_name != "GLOBAL_FILTER" or not _is_custom_frequency_path(path)
+        if len(locations) > 1 or (required and not locations):
+            expectation = "应且只能出现一次" if required else "最多出现一次"
             issues.append(
                 FrequencyValidationIssue(
                     "error",
                     locations[0] if locations else 0,
-                    f"[{section_name}] 应且只能出现一次，实际 {len(locations)} 次",
+                    f"[{section_name}] {expectation}，实际 {len(locations)} 次",
                 )
             )
 
@@ -474,7 +543,7 @@ def validate_frequency_file(
             )
         )
 
-    word_groups, _, global_filters = load_frequency_words(str(path))
+    word_groups, _, global_filters = _load_frequency_file(path)
     if len(global_filters) > max_global_filters:
         issues.append(
             FrequencyValidationIssue(

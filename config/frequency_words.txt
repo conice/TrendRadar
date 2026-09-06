@@ -1,699 +1,1263 @@
 # ═══════════════════════════════════════════════════════════════
 #                    TrendRadar 频率词配置文件
-#                         Version: 1.3.0
+#                         Version: 1.4.0
 # ═══════════════════════════════════════════════════════════════
 #
-# 可视化配置编辑器地址: https://sansan0.github.io/TrendRadar/
-# Last-Reviewed: 2026-09-05
-# Review-Cadence: 每月回放、每季度清理时效词
-# Validation: python scripts/validate_frequency_words.py
-# Audit: python scripts/audit_frequency_words.py --news-dir output/news
+# TrendRadar 频率词配置：全面扩充第二版
+# 规模：49 类，294 组，588 条正则；中文词项 4461 个，英文词项 3805 个。
+# 范围：长期通用主题、机构品牌、代表产品，以及常见人物、作品与赛事。
 #
-# 凡是左侧有 # 的都是仅供阅读的说明性文字
+# 结构：
+#   类：使用“第 NN 类”注释标题，供人工导航，不参与匹配。
+#   组：使用 [组名]；每组之间必须保留一个空行。
+#   规则：/正则/ => 别名；同组中英文规则按“任意命中”匹配。
+#   别名：用于显示，不是额外关键词；正则自动忽略大小写。
 #
-# 维护约定：
-#   1. 中英规则写在同一组，不要再拆「英文区」平行分类
-#   2. 拉丁品牌/专名只写一次
-#   3. 英文短词用 (?<![a-z0-9])token(?![a-z0-9])，不要用 \b
-#      Python 默认 UNICODE，\b 在「的AI」之间不成立
-#   4. 同一 [组] 内不要空行，空行会拆成两个词组
-#   5. !过滤词只作用于所在组；全局排除统一写入 [GLOBAL_FILTER]
-#   6. [GLOBAL_FILTER] 支持普通词、/正则/、=> 命名，保持 5-15 条高精度规则
-#   7. 高频组用 @数字限制单组条数，避免刷屏
-#   8. 中文允许裸词提召回；拉丁短词仍加 lookaround。同形词必须加场景词
-#   9. 产品型号、影视、赛事等时效词放 config/custom/keyword/，不要进入默认词库
+# 维护：
+#   每个匹配词只在一个组定义；补词前检查全文件，先合并现有同义组。
+#   英文按忽略大小写、统一空格及连字符检查重复；仅直接加 s 的复数用 s? 合并。
+#   -es 等复数变形单独列出；易歧义简称优先使用完整名称或限定词。
+#   英文边界排除相邻的字母、数字和下划线，并允许紧邻中文。
+#   泛词与专门短语可以覆盖同一标题，不同主题的命中组可能重叠。
+#   同组中已被更短泛词完整覆盖的候选词不再重复列出。
+#   类标题、组名和规则之间不要插入空行；只在组结束后留空行。
 #
-#   [GLOBAL_FILTER]  - 全局过滤区：排除不想看的内容
-#   [WORD_GROUPS]    - 词组定义区：设置想关注的关键词
-#
-# 格式：
-#   /正则/ => 别名       通用模式，自动忽略大小写
-#   关键词 => 别名        精确匹配（子字符串）
-#
-# ═══════════════════════════════════════════════════════════════
-#                 全局过滤区（只过滤明确的低质行为/话术）
-[GLOBAL_FILTER]
-# ═══════════════════════════════════════════════════════════════
+# [GLOBAL_FILTER]：全局过滤区；当前不设置排除词。
+# [WORD_GROUPS]：词组定义区。
+# 生成：在词库工作目录运行 python build.py --no-install。
+# 校验：在 TrendRadar 目录运行 python scripts/validate_frequency_words.py --strict。
 
-# 主题词不应作为全局过滤；这里只保留高置信度的话术组合。
-/(?:到手价|限时价|补贴价|券后价|历史低价).{0,16}\d{2,}\s*元/ => 价格营销
+[GLOBAL_FILTER]
 /^(?:震惊|惊呆|吓傻)[！!:：]/ => 标题党
-/(?:不转不是中国人|是中国人就转|不转不是朋友|家人都转起来)/ => 道德绑架
-/(?:删前速看|再不看就没了|马上删掉|传疯了|刷爆朋友圈)/ => 诱导传播
-/(?:限时秒杀|清仓|跳楼价|领券|券后).{0,16}(?:元|折|优惠|到手)/ => 促销话术
 /(?:稳赚不赔|一夜暴富|躺赚|月入.{0,6}万|日赚.{0,6}\d+)/ => 致富话术
 /(?:刷单.{0,8}佣金|挂机赚钱|发展下线|拉人头|人头分成|返佣.{0,8}(?:群|项目))/ => 兼职传销
 /(?:加|添加).{0,8}(?:微信|V信|VX|客服).{0,12}(?:领取|返现|带单|进群)|扫码.{0,8}(?:加群|进群)/ => 私域导流
-/(?:荐股群|带单导师|老师带单|精准荐股|内幕消息.{0,6}(?:股票|个股)|收益截图.{0,8}进群)/ => 投资骗局
 /(?:助力提现|砍一刀|转发.{0,8}(?:朋友圈|群).{0,8}(?:领取|免费)|扫码.{0,8}(?:红包|佣金))/ => 任务裂变
 /(?:送彩金|包赢|稳赚).{0,12}(?:博彩|下注|百家乐|娱乐城)|(?:博彩|下注|百家乐|娱乐城).{0,12}(?:送彩金|开户|代理)/ => 赌博引流
-/(?:祖传|老中医|偏方).{0,12}(?:根治|包治百病|药到病除)/ => 医疗骗局
-/(?:一刀999|是兄弟就来砍我|装备全靠打|上线送VIP)/ => 页游广告
-/(?:短剧|爽剧).{0,10}(?:全集|免费(?:看|观看)|小程序(?:看|观看|入口))/ => 短剧引流
 
-# ═══════════════════════════════════════════════════════════════
-#                     词组定义区
 [WORD_GROUPS]
-# ═══════════════════════════════════════════════════════════════
 
-# ═══════════════════════════════════════════════════════════════
-#                    科技 / 互联网
-# ═══════════════════════════════════════════════════════════════
+# ── 第 01 类：人工智能与机器学习 ──
+[生成模型与智能体]
+/大模型|语言模型|多模态|智能体|提示词|上下文窗口|基础模型|推理模型|混合专家|检索增强生成|思维链|文心一言|通义千问|智谱|月之暗面|百川智能|阶跃星辰|腾讯混元|豆包AI|豆包模型/ => 生成模型与智能体（中文）
+/(?<![A-Za-z0-9_])(?:large[\s-]+language[\s-]+models?|multimodal|agentic[\s-]+AI|prompt[\s-]+engineering|LLMs?|foundation[\s-]+models?|reasoning[\s-]+models?|mixture[\s-]+of[\s-]+experts|RAG|chain[\s-]+of[\s-]+thought|OpenAI|ChatGPT|Anthropic|Claude|Gemini|DeepSeek|Qwen|Llama|Kimi|Mistral[\s-]+AI|MiniMax|Grok|GPT[\s-]+4o|GPT[\s-]+4\.1|GPT[\s-]+5|ERNIE|GLM|MCP|model[\s-]+context[\s-]+protocol)(?![A-Za-z0-9_])/ => 生成模型与智能体（英文）
 
-# ── AI / 大模型 ──
+[模型训练与推理]
+/强化学习|监督学习|迁移学习|模型训练|模型推理|微调|知识蒸馏|模型量化|预训练|后训练|分布式训练|联邦学习|对比学习|偏好优化|推理加速|参数高效|梯度下降|训练数据|合成数据/ => 模型训练与推理（中文）
+/(?<![A-Za-z0-9_])(?:reinforcement[\s-]+learning|model[\s-]+inference|fine[\s-]+tuning|pretraining|post[\s-]+training|supervised[\s-]+learning|transfer[\s-]+learning|knowledge[\s-]+distillation|model[\s-]+quantization|RLHF|DPO|LoRA|QLoRA|PyTorch|TensorFlow|JAX|vLLM|SGLang|Ollama)(?![A-Za-z0-9_])/ => 模型训练与推理（英文）
 
-[海外AI]
-/(ChatGPT|OpenAI|Sora|(?<![a-z0-9])GPT(?:s|[- .]?[0-9o][a-z0-9.-]*)?(?![a-z0-9])|(?<![a-z0-9])DALL.?E(?![a-z0-9])|(?<![a-z0-9])Codex(?![a-z0-9])|OpenAI.{0,8}Operator|Operator.{0,8}OpenAI)/ => OpenAI
-/(Claude|Anthropic|Claude[ .]Code|Claude.{0,8}Opus|Opus.{0,8}(?:Claude|Anthropic|模型))/ => Claude
-/(Gemini|DeepMind|Google.{0,12}(?:Gemini|(?<![a-z0-9])ai(?![a-z0-9])|Veo)|(?<![a-z0-9])Gemma(?![a-z0-9])|Veo.{0,8}(?:模型|视频生成|Google))/ => Gemini
-/(Llama|Meta.*(?:Llama|(?<![a-z0-9])ai(?![a-z0-9])))/ => Llama
-/(?<![a-z0-9])Mistral(?![a-z0-9])/ => Mistral
-/(?<![a-z0-9])(?:Copilot|GitHub[ .]Copilot)(?![a-z0-9])/ => Copilot
-/(?<![a-z0-9])(?:Grok|xAI)(?![a-z0-9])|(?<![a-z0-9])Grok-?[23](?![a-z0-9])/ => xAI
-@10
+[视觉语音与自然语言]
+/计算机视觉|图像识别|语音识别|语音合成|自然语言处理|机器翻译|目标检测|图像分割|光学字符识别|语音克隆|说话人识别|情感分析|语义理解|文本摘要|语音大模型/ => 视觉语音与自然语言（中文）
+/(?<![A-Za-z0-9_])(?:computer[\s-]+vision|speech[\s-]+recognition|natural[\s-]+language[\s-]+processing|machine[\s-]+translation|object[\s-]+detection|image[\s-]+segmentation|OCR|ASR|text[\s-]+to[\s-]+speech|speech[\s-]+synthesis|voice[\s-]+cloning|sentiment[\s-]+analysis|OpenCV|Whisper)(?![A-Za-z0-9_])/ => 视觉语音与自然语言（英文）
 
-[国产AI]
-/(深度求索|DeepSeek|(?<![a-z0-9])DeepSeek-?(?:R1|V3|Coder)(?![a-z0-9]))/ => DeepSeek
-/(智谱|ChatGLM|GLM-[0-9](?:\.[0-9]+)?|(?<![a-z0-9])AutoGLM(?![a-z0-9])|CodeGeeX)/ => 智谱
-/(Kimi|月之暗面|Moonshot)/ => Kimi
-/(通义千问|(?<![a-z0-9])(?:Qwen|QwQ)(?![a-z0-9]))/ => 通义千问
-/(文心一言|(?<![a-z0-9])ERNIE(?![a-z0-9])|文心.*(?:大模型|4\.[0-9]))/ => 文心一言
-/(字节.{0,12}豆包|豆包.{0,12}(?:AI|大模型|App|助手|上线|发布|更新)|(?<![a-z0-9])Doubao(?![a-z0-9])|即梦.{0,8}(?:AI|图片|视频|平台|发布|上线)|扣子.{0,8}(?:空间|AI|平台|智能体)|(?<![a-z0-9])(?:Jimeng|Coze)(?![a-z0-9]))/ => 豆包
-/(零一万物|01\.AI|01AI)/ => 零一万物
-/(讯飞星火|iFlytek Spark|讯飞.*(?:星辰|听见))/ => 讯飞星火
-/(百川智能|百川.*(?:大模型|AI)|(?<![a-z0-9])Baichuan(?![a-z0-9]))/ => 百川
-/(腾讯混元|腾讯元宝|Tencent[ .](?:Hunyuan|Yuanbao)|混元.*(?:3D|大模型)|元宝.*AI)/ => 腾讯混元
-/(华为.*盘古|盘古.*大模型|(?<![a-z0-9])Pangu(?![a-z0-9]))/ => 盘古
-/(可灵|(?<![a-z0-9])Kling(?![a-z0-9])|可灵.*(?:2|AI))/ => 可灵
-/(商汤|MiniMax|阶跃星辰|昆仑万维.{0,8}天工|天工.{0,8}(?:AI|大模型|智能体)|(?<![a-z0-9])Skywork(?![a-z0-9])|海螺AI)/ => 国产其他
-@10
+[智能应用与内容生成]
+/智能问答|智能写作|智能编程|文生图|文生视频|数字人|智能搜索|代码补全|图生视频|图生图|视频生成|音频生成|可灵|即梦|通义灵码|海螺AI/ => 智能应用与内容生成（中文）
+/(?<![A-Za-z0-9_])(?:AI[\s-]+assistants?|text[\s-]+to[\s-]+image|text[\s-]+to[\s-]+video|AI[\s-]+coding|GitHub[\s-]+Copilot|Codex|Cursor[\s-]+IDE|Windsurf[\s-]+IDE|Midjourney|Stable[\s-]+Diffusion|DALL[\s-]+E|Sora|Runway[\s-]+AI|Suno|Udio|Perplexity|NotebookLM|ElevenLabs)(?![A-Za-z0-9_])/ => 智能应用与内容生成（英文）
 
-[AI技术与应用]
-/(人工智能|大模型|大语言模型|大参数模型|基础模型|(?<![a-z0-9])llm(?![a-z0-9]))/ => 大模型
-/(?<![a-z0-9])(?:foundation models?|large language models?|artificial intelligence|frontier models?)(?![a-z0-9])/ => 大模型
-/(多模态|文生图|文生视频|视频生成|图像生成|(?<![a-z0-9])(?:multimodal (?:model|ai)|generative ai)(?![a-z0-9]))/ => 多模态
-/((?<![a-z0-9])AIGC(?![a-z0-9])|人工智能生成内容|AI生成内容|AI绘画|AI写作)/ => AIGC
-/(生成式AI|生成式.*人工智能|扩散模型|(?<![a-z0-9])diffusion model(?![a-z0-9]))/ => 生成式AI
-/(通用人工智能|(?<![a-z0-9])(?:AGI|ASI)(?![a-z0-9])|artificial general intelligence|artificial superintelligence)/ => AGI
-/(具身智能|智能体|(?<![a-z0-9])(?:embodied (?:ai|intelligence)|ai agents?|AI Agent)(?![a-z0-9]))/ => 智能体
-/(?<![a-z0-9])(?:RAG|MCP|MoE)(?![a-z0-9])|模型.*微调|微调.*(?:模型|大模型)|推理.*大模型|模型.*蒸馏|知识蒸馏|模型.*量化|(?<![a-z0-9])(?:fine-?tun(?:e|ing)|distill|quantiz[a-z]*)(?![a-z0-9])/ => 训练与推理
-/(AI眼镜|AI手机|AI耳机|AI手表|AI\s?PC|(?<![a-z0-9])ai (?:glasses|phone|earbuds|watch|pc)(?![a-z0-9]))/ => AI终端
-@10
+[模型评测与智能治理]
+/模型评测|模型幻觉|算法偏见|可解释性|智能对齐|AI安全|AI伦理|红队测试|提示注入|模型越狱|内容溯源|水印检测|深度伪造|模型备案|算法备案|可信人工智能/ => 模型评测与智能治理（中文）
+/(?<![A-Za-z0-9_])(?:model[\s-]+evaluation|AI[\s-]+alignment|AI[\s-]+safety|AI[\s-]+ethics|AI[\s-]+governance|AI[\s-]+regulation|model[\s-]+hallucinations?|algorithmic[\s-]+bias|explainable[\s-]+AI|prompt[\s-]+injection|AI[\s-]+red[\s-]+teaming|deepfakes?|MMLU|HumanEval|SWE[\s-]+bench)(?![A-Za-z0-9_])/ => 模型评测与智能治理（英文）
 
-# ── 芯片 / 半导体 ──
+[人工智能基础]
+/人工智能|机器学习|深度学习|神经网络|算力|生成式|通用智能|机器智能|注意力机制|扩散模型|世界模型|认知计算|连接主义/ => 人工智能基础（中文）
+/(?<![A-Za-z0-9_])(?:AI|AIGC|artificial[\s-]+intelligence|machine[\s-]+learning|deep[\s-]+learning|neural[\s-]+networks?|AGI|transformer[\s-]+models?|diffusion[\s-]+models?|world[\s-]+models?|attention[\s-]+mechanisms?|connectionism|Hugging[\s-]+Face)(?![A-Za-z0-9_])/ => 人工智能基础（英文）
 
-[芯片半导体]
-/(芯片|半导体|集成电路|晶圆|AI芯片|先进制程|封测|(?<![a-z0-9])(?:gpu|cpu|soc|asic)(?![a-z0-9])|算力|芯片.*代工|晶圆.*代工)/ => 芯片
-/(?<![a-z0-9])(?:semiconductor|integrated circuit|process node|ai chips?|chip war|chip (?:ban|restrictions))(?![a-z0-9])/ => 芯片
-/(纳米.*制程|先进工艺|(?<![0-9])(?:[0-9]{1,2}(?:\.[0-9]+)?|[0-9]+a)[ .]?nm(?![a-z0-9]))/ => 制程工艺
-/(台积电|(?<![a-z0-9])TSMC(?![a-z0-9])|晶圆代工|(?<![a-z0-9])(?:semiconductor|chip) foundry(?![a-z0-9]))/ => 台积电
-/(三星.*芯片|三星.*半导体|Samsung.*(?:chip|semiconductor)|(?<![a-z0-9])Exynos(?![a-z0-9]))/ => 三星芯片
-/(英特尔|(?<![a-z0-9])Intel(?![a-z0-9])|(?:英特尔|Intel).{0,12}18A|18A.{0,12}(?:制程|工艺|英特尔|Intel))/ => 英特尔
-/((?<![a-z0-9])AMD(?![a-z0-9])|超威|锐龙|(?<![a-z0-9])Ryzen(?![a-z0-9])|(?<![a-z0-9])EPYC(?![a-z0-9]))/ => AMD
-/(英伟达|(?<![a-z0-9])NVIDIA(?![a-z0-9]))/ => 英伟达
-/(高通|(?<![a-z0-9])Qualcomm(?![a-z0-9])|骁龙|(?<![a-z0-9])Snapdragon(?![a-z0-9]))/ => 高通
-/(联发科|(?<![a-z0-9])MediaTek(?![a-z0-9])|天玑|(?<![a-z0-9])Dimensity(?![a-z0-9]))/ => 联发科
-/(海思|麒麟.*芯片|昇腾|鲲鹏|HiSilicon|Kirin.*chip|麒麟[0-9]{4})/ => 华为芯片
-/(寒武纪.*芯片|地平线.*芯片|黑芝麻.*芯片|芯驰|壁仞|摩尔线程|景嘉微|昆仑芯|沐曦|燧原|平头哥|Cambricon|Horizon Robotics|Biren|Moore Threads)/ => 国产芯片
-/(龙芯|飞腾|申威|龙架构|Loongson|LoongArch|Phytium|Sunway)/ => 自主架构
-/(RISC.?V|(?<![a-z0-9])(?:ARMv[0-9]|ARM64|Arm Holdings)(?![a-z0-9])|ARM.*(?:架构|芯片|处理器)|(?<![a-z0-9])(?:x86|x86_64|ARMv9)(?![a-z0-9]))/ => 架构
-/(光刻机|(?<![a-z0-9])(?:EUV|DUV)(?![a-z0-9])|光刻胶|多重曝光|浸润式光刻|lithography (?:tool|machine)|photoresist)/ => 光刻
-/(先进封装|Chiplet|硅光|混合键合|Chiplet.*封装|advanced packaging|hybrid bonding|silicon photonics)/ => 先进封装
-/(HBM[234]e?|HBM.*内存|GDDR[67]|存算一体|(?<![a-z0-9])(?:HBM|DDR5|NAND|processing[- ]in[- ]memory)(?![a-z0-9]))/ => 存储与存算
-/(芯片.*EDA|半导体.*EDA|全流程EDA|(?<![a-z0-9])EDA(?![a-z0-9]).*(?:工具|软件|芯片|tool|software))/ => EDA
-/((?<![a-z0-9])(?:Blackwell|Rubin|Hopper|GB[0-9]{3}|MI[0-9]{3})(?![a-z0-9])|玻璃基板|碳基.*(?:芯片|半导体)|光子.*芯片|量子.*芯片|(?<![a-z0-9])High.?NA(?![a-z0-9]).*(?:EUV|光刻)|2\.5D.*(?:封装|packaging)|glass substrate)/ => 芯片前沿
-/(中芯国际|(?<![a-z0-9])SMIC(?![a-z0-9])|华虹|长江存储|长鑫存储|(?<![a-z0-9])(?:ASML|YMTC|CXMT|KLA|Lam Research)(?![a-z0-9])|应用材料|泛林|CoWoS|碳化硅|氮化镓|silicon carbide|gallium nitride)/ => 半导体上游
-@10
+# ── 第 02 类：软件开发与开源 ──
+[编程语言与算法]
+/编程语言|程序设计|算法设计|数据结构|编译器|解释器|函数式编程|面向对象|并发编程|异步编程|内存管理|垃圾回收|类型系统|算法复杂度|动态规划|Go语言|R语言/ => 编程语言与算法（中文）
+/(?<![A-Za-z0-9_])(?:programming[\s-]+languages?|data[\s-]+structures?|compilers?|functional[\s-]+programming|Python|JavaScript|TypeScript|Java|C\+\+|C\#|Rust[\s-]+language|Rust[\s-]+programming|Golang|Kotlin|Swift[\s-]+language|PHP|Ruby[\s-]+language|WebAssembly|Wasm)(?![A-Za-z0-9_])/ => 编程语言与算法（英文）
 
-# ── 华为 ──
+[开发工具与工程协作]
+/代码编辑器|版本控制|代码审查|持续集成|持续交付|开发工具|代码仓库|代码合并|依赖管理|自动构建|代码格式化|开发环境|结对编程|开发运维/ => 开发工具与工程协作（中文）
+/(?<![A-Za-z0-9_])(?:code[\s-]+review|version[\s-]+control|continuous[\s-]+integration|developer[\s-]+tools?|Git|VS[\s-]+Code|Visual[\s-]+Studio|IntelliJ[\s-]+IDEA|JetBrains|Neovim|Zed[\s-]+editor|CI/CD|DevOps|continuous[\s-]+delivery|code[\s-]+formatters?)(?![A-Za-z0-9_])/ => 开发工具与工程协作（英文）
 
-[华为]
-/(华为|(?<![a-z0-9])Huawei(?![a-z0-9])|华为.*(?:发布会|智选))/ => 华为
-/(鸿蒙|(?<![a-z0-9])HarmonyOS(?![a-z0-9])|HarmonyOS[ .]?Next|鸿蒙.*Next|鸿蒙.*(?:座舱|智驾))/ => 鸿蒙
-/(鸿蒙智行|智界|享界|傲界|尊界|(?<![a-z0-9])HIMA(?![a-z0-9])|Harmony Intelligent Mobility|智界[ .]?S7|尊界[ .]?S800)/ => 鸿蒙智行
-/(乾崑|华为.*ADS|Harmony.*ADS|ADS[ .]?[34]\.?[0-9]?)/ => 乾崑智驾
-/(Mate[ .]?(?:[0-9]{2,}|X[0-9]*)|Mate[ .]?XT|MateBook|MatePad|非凡大师)/ => Mate系列
-/(Pura[ .]?[0-9]+|华为.*Pura|Pura[ .]?80)/ => Pura
-@8
+[网站与应用开发]
+/前端|后端|全栈|网页开发|移动开发|小程序|应用开发|客户端开发|跨端开发|响应式设计|服务端渲染|静态站点|渐进式应用|低代码|无代码/ => 网站与应用开发（中文）
+/(?<![A-Za-z0-9_])(?:frontend|backend|full[\s-]+stack|web[\s-]+development|React|Vue|Angular|Next\.js|Nuxt|Svelte|Node\.js|Deno|Bun[\s-]+runtime|Django|FastAPI|Spring[\s-]+Boot|Flutter|PWA)(?![A-Za-z0-9_])/ => 网站与应用开发（英文）
 
-# ── 手机 / 数码 ──
+[软件测试与质量]
+/单元测试|集成测试|端到端测试|回归测试|软件缺陷|软件调试|代码质量|性能测试|压力测试|冒烟测试|模糊测试|测试覆盖率|静态分析|代码扫描|软件崩溃|内存泄漏/ => 软件测试与质量（中文）
+/(?<![A-Za-z0-9_])(?:unit[\s-]+tests?|integration[\s-]+tests?|software[\s-]+testing|debugging|end[\s-]+to[\s-]+end[\s-]+testing|regression[\s-]+testing|performance[\s-]+testing|fuzzing|code[\s-]+coverage|memory[\s-]+leaks?|pytest|Jest|Vitest|Playwright|Selenium)(?![A-Za-z0-9_])/ => 软件测试与质量（英文）
 
-[手机数码]
-/(旗舰手机|智能手机|折叠旗舰|手机.*(?:发布|销量|召回|系统|芯片|折叠)|(?<![a-z0-9])(?:smartphone|flagship phone|mobile phone)(?![a-z0-9]))/ => 手机
-/(苹果.*(?:公司|市值|财报|发布|手机|电脑|手表|眼镜)|iPhone|iPad|MacBook|iMac|VisionPro|(?<![a-z0-9])(?:iOS|iPadOS|macOS)(?![a-z0-9])|(?<![a-z0-9])Apple(?![a-z0-9])|Apple Intelligence|苹果智能)/ => Apple
-/(Apple.*(?:发布|launch|event|keynote)|苹果发布会)/ => 苹果发布会
-/(小米|(?<![a-z0-9])(?:Redmi|Xiaomi)(?![a-z0-9])|红米|小米[ .]?(?:15|MIX))/ => 小米
-/((?<![a-z0-9])OPPO(?![a-z0-9])|(?<![a-z0-9])vivo(?![a-z0-9])|(?<![a-z0-9])iQOO(?![a-z0-9])|欧珀|维沃)/ => OPPO/vivo
-/(一加|(?<![a-z0-9])OnePlus(?![a-z0-9]))/ => 一加
-/(荣耀手机|荣耀Magic|荣耀.*发布|(?<![a-z0-9])Honor(?![a-z0-9]) (?:Magic|phone|GT|X[0-9]))/ => 荣耀
-/(三星.*Galaxy|Samsung.*Galaxy)/ => 三星Galaxy
-/(全面屏|打孔屏|屏下摄像头|bezel-?less display|under-?display camera)/ => 屏幕形态
-/(折叠屏|三折叠|双折叠|内外折|(?<![a-z0-9])(?:foldable phone|tri-?fold|bi-?fold)(?![a-z0-9]))/ => 折叠屏
-/(快充|闪充|超充|无线充电|无线反向充电|(?:fast|flash|super|wireless) charg(?:e|ing)|reverse wireless charging)/ => 充电
-/(卫星通信|卫星通话|卫星短信|北斗卫星消息|satellite (?:comms|communication|call|messaging|SOS))/ => 卫星通信
-/(?<![a-z0-9])(?:5\.5g|5g|6g)(?![a-z0-9])/ => 通信技术
-/(Wi.?Fi|Wi.?Fi[ .]?7|蓝牙|(?<![a-z0-9])(?:UWB|NFC|Bluetooth)(?![a-z0-9])|Type.?C|USB.?[34])/ => 连接技术
-/((?<![a-z0-9])(?:TWS|AR|VR|MR|XR)(?![a-z0-9])|智能手表|智能手环|智能眼镜|智能戒指|可穿戴|(?<![a-z0-9])smartwatch(?![a-z0-9])|(?<![a-z0-9])smart ring(?![a-z0-9])|(?<![a-z0-9])mixed reality(?![a-z0-9])|(?<![a-z0-9])smart glasses(?![a-z0-9]))/ => 可穿戴/XR
-/(年度旗舰.*(?:发布|亮相|上线)|旗舰.*(?:发布|亮相|上线)|annual flagship.*(?:launch|unveil|release))/ => 新品发布
-@10
+[开源与软件生态]
+/开源|自由软件|代码托管|软件许可证|软件包|包管理|开发者社区|开放源码|软件依赖|依赖冲突|鸿蒙社区|软件基金会|开放原子/ => 开源与软件生态（中文）
+/(?<![A-Za-z0-9_])(?:open[\s-]+source|free[\s-]+software|package[\s-]+managers?|software[\s-]+licenses?|GitHub|GitLab|Gitee|npm|PyPI|Cargo[\s-]+registry|Maven[\s-]+Central|Homebrew|Apache[\s-]+Software[\s-]+Foundation|Linux[\s-]+Foundation|GPL|AGPL)(?![A-Za-z0-9_])/ => 开源与软件生态（英文）
 
-# ── 电动汽车 ──
+[系统软件与架构]
+/操作系统|系统内核|软件架构|微服务|程序接口|中间件|软件工程|鸿蒙|安卓|统信|麒麟系统|分布式系统|事件驱动|领域驱动|高并发|线程调度|进程隔离|微软/ => 系统软件与架构（中文）
+/(?<![A-Za-z0-9_])(?:operating[\s-]+systems?|microservices?|middleware|software[\s-]+engineering|APIs?|Linux|Windows|macOS|Android|iOS|HarmonyOS|Ubuntu|Debian|FreeBSD|Microsoft|REST|GraphQL|gRPC|event[\s-]+driven[\s-]+architecture)(?![A-Za-z0-9_])/ => 系统软件与架构（英文）
 
-[电动汽车]
-/(特斯拉|(?<![a-z0-9])Tesla(?![a-z0-9])|Model[ .]?[SYX3]|赛博皮卡|(?<![a-z0-9])Cybertruck(?![a-z0-9])|特斯拉.*Robotaxi)/ => 特斯拉
-/(比亚迪|仰望|方程豹|腾势|(?<![a-z0-9])BYD(?![a-z0-9])|Yangwang|Denza|比亚迪.{0,10}(?:海豹|海鸥)|(?:海豹|海鸥).{0,10}(?:汽车|车型|上市|售价|续航|比亚迪)|秦L|宋L)/ => 比亚迪
-/(蔚来|(?<![a-z0-9])NIO(?![a-z0-9])|蔚来.{0,10}(?:乐道|萤火虫)|乐道.{0,10}(?:汽车|车型|L60)|萤火虫.{0,10}(?:汽车|车型|EV))/ => 蔚来
-/(小鹏|(?<![a-z0-9])XPENG(?![a-z0-9])|小鹏.*MONA|MONA[ .]?M[0-9]+|小鹏[ .]?(?:G6|P7\+|G9))/ => 小鹏
-/(理想汽车|理想L[0-9]|理想.{0,8}MEGA|MEGA.{0,8}(?:汽车|车型|理想)|Li[ .]Auto)/ => 理想
-/(极氪|(?<![a-z0-9])Zeekr(?![a-z0-9])|领克)/ => 极氪
-/(小米[ .]?SU(?:[1-9]|[1-9][0-9])(?![a-z0-9])|小米[ .]?YU(?:[1-9]|[1-9][0-9])(?![a-z0-9])|小米.*汽车|Xiaomi[ .]?SU(?:[1-9]|[1-9][0-9])(?![a-z0-9])|Xiaomi[ .]?YU(?:[1-9]|[1-9][0-9])(?![a-z0-9])|Xiaomi.*(?:car|auto))/ => 小米汽车
-/(问界|(?<![a-z0-9])AITO(?![a-z0-9])|问界[ .]?(?:M[579]))/ => 问界
-/(宁德时代|(?<![a-z0-9])CATL(?![a-z0-9])|神行电池|麒麟电池|骁遥电池)/ => 宁德时代
-/(电动车|新能源汽车|混动|插混|纯电|增程|插电混动|纯电动|(?<![a-z0-9])(?:electric vehicles?|new energy vehicles?|plug-?in hybrids?|battery electric)(?![a-z0-9]))/ => 新能源车
-/(固态电池|钠电池|钠离子|碳酸锂|solid-?state battery|sodium-?ion)/ => 电池
-/(自动驾驶|智驾|城市智驾|(?<![a-z0-9])(?:FSD|NOA)(?![a-z0-9])|激光雷达|毫米波雷达|智驾芯片|(?<![a-z0-9])Orin(?![a-z0-9])|autonomous driving|intelligent driving|(?<![a-z0-9])lidar(?![a-z0-9]))/ => 智驾
-/(换电|超充|充电桩|超充桩|换电模式|battery swap|charging (?:pile|station))/ => 补能
-/(萝卜快跑|(?<![a-z0-9])(?:Robotaxi|Apollo Go)(?![a-z0-9]))/ => 萝卜快跑
-/(半固态电池|全固态|磷酸铁锂|磷酸锰铁锂|三元锂|刀片电池|热失控|换电站|semi-?solid[- ]?state battery|all-?solid[- ]?state battery|LFP battery|blade battery)/ => 电池安全/形态
-/(端到端.{0,12}(?:智驾|驾驶)|(?:智驾|驾驶).{0,12}端到端|纯视觉.{0,12}(?:智驾|驾驶)|无图.{0,12}(?:城市|智能驾驶)|车位到车位|end-?to-?end.{0,16}(?:driving|autonomous)|vision-?only.{0,16}(?:driving|autonomous))/ => 智驾进阶
-/(车路云|(?<![a-z0-9])V2X(?![a-z0-9])|智能座舱|线控底盘|800V|高压平台|smart cabin|by-?wire chassis)/ => 电动新技术
-@10
+# ── 第 03 类：云计算与数据基础设施 ──
+[数据库与数据存储]
+/数据库|数据仓库|数据湖|对象存储|分布式存储|数据备份|存储引擎|向量检索|关系型存储|键值存储|时序数据|事务隔离|索引优化|数据分片|主从复制/ => 数据库与数据存储（中文）
+/(?<![A-Za-z0-9_])(?:databases?|data[\s-]+warehouses?|data[\s-]+lakes?|object[\s-]+storage|MySQL|PostgreSQL|SQLite|Redis|MongoDB|ClickHouse|TiDB|OceanBase|Elasticsearch|OpenSearch|NoSQL|SQL|ACID)(?![A-Za-z0-9_])/ => 数据库与数据存储（英文）
 
-# ── 互联网 / 平台 ──
+[数据处理与分析]
+/大数据|数据分析|数据挖掘|数据清洗|数据可视化|商业智能|流式计算|数据工程|数据集成|实时计算|批处理|湖仓一体|数据管道|指标体系|联机分析/ => 数据处理与分析（中文）
+/(?<![A-Za-z0-9_])(?:big[\s-]+data|data[\s-]+analytics|data[\s-]+mining|business[\s-]+intelligence|data[\s-]+engineering|data[\s-]+pipelines?|data[\s-]+visualization|ETL|OLAP|Apache[\s-]+Spark|Apache[\s-]+Flink|Apache[\s-]+Kafka|Hadoop|Apache[\s-]+Airflow|Databricks|Power[\s-]+BI)(?![A-Za-z0-9_])/ => 数据处理与分析（英文）
 
-[互联网平台]
-/(微信|(?<![a-z0-9])WeChat(?![a-z0-9])|微信公众号|微信小店|小程序)/ => 微信
-/(抖音|(?<![a-z0-9])TikTok(?![a-z0-9])|抖音电商|抖音本地生活)/ => 抖音
-/(快手|(?<![a-z0-9])Kuaishou(?![a-z0-9])|快手电商)/ => 快手
-/(小红书|(?<![a-z0-9])Xiaohongshu(?![a-z0-9])|小红书电商|种草)/ => 小红书
-/(微博|(?<![a-z0-9])Weibo(?![a-z0-9])|微博热搜)/ => 微博
-/(B站|(?<![a-z0-9])bilibili(?![a-z0-9])|(?<![a-z0-9])UP主(?![a-z0-9]))/ => B站
-/(知乎|(?<![a-z0-9])Zhihu(?![a-z0-9]))/ => 知乎
-/(豆瓣|(?<![a-z0-9])Douban(?![a-z0-9]))/ => 豆瓣
-/(贴吧|(?<![a-z0-9])Tieba(?![a-z0-9]))/ => 贴吧
-/(百度|(?<![a-z0-9])Baidu(?![a-z0-9])|文小言|百度搜索)/ => 百度
-/(阿里|阿里巴巴|淘宝|天猫|(?<![a-z0-9])(?:Alibaba|Taobao|Tmall)(?![a-z0-9])|盒马|菜鸟)/ => 阿里
-/(京东|(?<![a-z0-9])JD(?:\.com)?(?![a-z0-9])|京东物流)/ => 京东
-/(拼多多|(?<![a-z0-9])(?:Pinduoduo|PDD)(?![a-z0-9]))/ => 拼多多
-/(美团|饿了么|(?<![a-z0-9])(?:Meituan|Ele\.me)(?![a-z0-9])|美团外卖)/ => 美团/饿了么
-/(滴滴|(?<![a-z0-9])Didi(?![a-z0-9])|滴滴出行)/ => 滴滴
-/(字节跳动|(?<![a-z0-9])ByteDance(?![a-z0-9])|火山引擎)/ => 字节
-/(腾讯|(?<![a-z0-9])(?:Tencent|QQ)(?![a-z0-9]))/ => 腾讯
-/(网易|(?<![a-z0-9])NetEase(?![a-z0-9])|网易云音乐)/ => 网易
-/(蚂蚁集团|蚂蚁金服|蚂蚁保|支付宝|微信支付|(?<![a-z0-9])Alipay(?![a-z0-9])|WeChat Pay|花呗|借呗)/ => 支付/蚂蚁
-/(视频号|私域流量|小程序电商|WeChat Channels|private domain traffic)/ => 流量与电商
-/(钉钉|飞书|高德|闲鱼|剪映|夸克.*(?:浏览器|网盘|AI|搜索)|DingTalk|Feishu|(?<![a-z0-9])(?:Amap|Xianyu|CapCut)(?![a-z0-9])|Quark.*(?:browser|app|AI))/ => 互联网应用
-/(谷歌|(?<![a-z0-9])Google(?![a-z0-9])|(?<![a-z0-9])Alphabet(?![a-z0-9])|油管|(?<![a-z0-9])YouTube(?![a-z0-9])|(?<![a-z0-9])Meta(?![a-z0-9])|脸书|奈飞|(?<![a-z0-9])Netflix(?![a-z0-9])|微软|(?<![a-z0-9])Microsoft(?![a-z0-9])|亚马逊|(?<![a-z0-9])Amazon(?![a-z0-9]))/ => 全球大厂
-@8
+[云平台与算力服务]
+/云计算|云服务|云原生|公有云|私有云|混合云|多云|阿里云|腾讯云|华为云|百度智能云|火山引擎|天翼云|弹性计算|函数计算|算力租赁|算力调度/ => 云平台与算力服务（中文）
+/(?<![A-Za-z0-9_])(?:cloud[\s-]+computing|cloud[\s-]+native|hybrid[\s-]+cloud|serverless|AWS|Amazon[\s-]+Web[\s-]+Services|Azure|Google[\s-]+Cloud|Alibaba[\s-]+Cloud|Tencent[\s-]+Cloud|Huawei[\s-]+Cloud|Oracle[\s-]+Cloud|Cloudflare|cloud[\s-]+migration|cloud[\s-]+costs?)(?![A-Za-z0-9_])/ => 云平台与算力服务（英文）
 
-# ── 云计算 / 数据中心 ──
+[容器虚拟化与编排]
+/容器化|虚拟化|虚拟机|容器编排|服务网格|镜像仓库|容器镜像|容器运行时|轻量容器|应用编排|资源隔离|裸金属|沙箱环境/ => 容器虚拟化与编排（中文）
+/(?<![A-Za-z0-9_])(?:virtualization|virtual[\s-]+machines?|container[\s-]+orchestration|service[\s-]+mesh|Docker|Kubernetes|K8s|Podman|containerd|OpenShift|Helm|Istio|VMware|KVM|Proxmox)(?![A-Za-z0-9_])/ => 容器虚拟化与编排（英文）
 
-[云计算与数据中心]
-/(云计算|公有云|私有云|混合云|云服务.{0,8}(?:增长|市场|厂商)|cloud computing|public cloud|private cloud|hybrid cloud)/ => 云计算
-/(阿里云|腾讯云|华为云|百度智能云|天翼云|(?<![a-z0-9])AWS(?![a-z0-9])|Amazon Web Services|Microsoft Azure|Google Cloud|(?<![a-z0-9])GCP(?![a-z0-9]))/ => 云厂商
-/(数据中心|智算中心|算力中心|超算中心|AI数据中心|hyperscale data cent(?:er|re)|AI data cent(?:er|re))/ => 数据中心
-/(液冷.{0,12}(?:服务器|数据中心|机柜)|浸没式冷却|数据中心.{0,12}(?:液冷|能耗|用电)|data cent(?:er|re).{0,12}(?:liquid cooling|power consumption))/ => 数据中心基础设施
-/(云原生|容器编排|无服务器计算|(?<![a-z0-9])Kubernetes(?![a-z0-9])|(?<![a-z0-9])K8s(?![a-z0-9])|(?<![a-z0-9])serverless(?![a-z0-9]))/ => 云原生
-@8
+[数据中心与服务器]
+/数据中心|服务器|液冷|机房|边缘计算|超算|智算中心|智算集群|算力集群|机架|散热系统|浸没冷却|冷板|浪潮信息|新华三|中科曙光/ => 数据中心与服务器（中文）
+/(?<![A-Za-z0-9_])(?:data[\s-]+centers?|datacenters?|servers?|edge[\s-]+computing|supercomputing|HPC|AI[\s-]+clusters?|liquid[\s-]+cooling|Supermicro|Inspur|HPE|colocation|computing[\s-]+clusters?)(?![A-Za-z0-9_])/ => 数据中心与服务器（英文）
 
-# ── 隐私 / 安全 ──
+[运维可靠性与数据治理]
+/系统运维|可观测性|容灾|负载均衡|数据治理|数据质量|数据资产|高可用|故障转移|服务降级|熔断机制|数据血缘|主数据|数据目录|指标监控|链路追踪/ => 运维可靠性与数据治理（中文）
+/(?<![A-Za-z0-9_])(?:observability|disaster[\s-]+recovery|load[\s-]+balancing|data[\s-]+governance|SRE|Prometheus|Grafana|OpenTelemetry|Datadog|PagerDuty|failover|data[\s-]+lineage|master[\s-]+data|distributed[\s-]+tracing)(?![A-Za-z0-9_])/ => 运维可靠性与数据治理（英文）
 
-[隐私与安全]
-/(数据泄露|隐私.*泄露|信息泄露|开源情报.*泄露|data breach|privacy.*leak)/ => 数据泄露
-/(人脸识别|监控.*隐私|生物识别.*隐私|facial recognition|biometric.*privacy)/ => 人脸识别
-/(APP权限|APP偷听|APP.*eavesdrop|麦克风权限)/ => APP隐私
-/(Cookie.*隐私|(?<![a-z0-9])GDPR(?![a-z0-9]))/ => 隐私法规
-/(个保法|个人信息保护法|个人信息保护|数据出境.*评估|(?<![a-z0-9])PIPL(?![a-z0-9]))/ => 个保法
-/(网络安全.{0,12}审查|网信办|APP.{0,12}(?:下架|整改)|网信办.{0,12}约谈|约谈.{0,12}(?:互联网平台|网络平台|APP)|cybersecurity.{0,12}review|(?<![a-z0-9])CAC(?![a-z0-9]))/ => 网信办/下架
-/(电信诈骗|杀猪盘|反诈|诈骗.*套路|刷单返利|冒充客服|telecom fraud|pig-?butchering)/ => 电信反诈
-/(黑客|勒索软件|(?<![a-z0-9])DDoS(?![a-z0-9])|(?<![a-z0-9])APT(?![a-z0-9]).*攻击|供应链攻击|钓鱼邮件|ransomware|supply chain attack|phishing)/ => 网络攻击
-/(零日|(?<![a-z0-9])0day(?![a-z0-9])|漏洞.*CVE|安全.*漏洞|高危漏洞|zero-?day|critical vulnerability)/ => 漏洞
-/(数据.*出境|跨境.*数据|数据安全评估|安全评估.*数据|cross-?border.*data)/ => 数据跨境
-/(算法备案|生成式AI.*备案|AIGC.*备案|深度合成.*监管|algorithm filing)/ => 算法与AI监管
-@8
+# ── 第 04 类：网络通信与互联网 ──
+[移动通信与无线网络]
+/移动通信|蜂窝网络|基站|无线网络|漫游|网络覆盖|频谱|通感一体|通信网络|网络切片|载波聚合|毫米波|无线接入|蜂窝通信|中兴通讯|爱立信|诺基亚/ => 移动通信与无线网络（中文）
+/(?<![A-Za-z0-9_])(?:5G|6G|cellular[\s-]+networks?|wireless[\s-]+networks?|spectrum|Wi[\s-]+Fi|WiFi|Bluetooth|LTE|Open[\s-]+RAN|massive[\s-]+MIMO|millimeter[\s-]+wave|Ericsson|Nokia|ZTE|3GPP)(?![A-Za-z0-9_])/ => 移动通信与无线网络（英文）
 
-# ── 太空 / 航天 ──
+[光通信与宽带接入]
+/光通信|光纤|宽带|光模块|海底光缆|光网络|全光网|千兆网络|万兆网络|光猫|光接入|光电互连|中际旭创|新易盛|光迅科技/ => 光通信与宽带接入（中文）
+/(?<![A-Za-z0-9_])(?:fiber[\s-]+optics?|broadband|optical[\s-]+communications?|submarine[\s-]+cables?|FTTH|FTTR|PON|GPON|coherent[\s-]+optics|optical[\s-]+transceivers?|optical[\s-]+interconnects?|CPO|800G|1\.6T)(?![A-Za-z0-9_])/ => 光通信与宽带接入（英文）
 
-[太空航天]
-/(SpaceX|星舰|Starship|星链|Starlink|龙飞船|超级重型|Super Heavy|Dragon|猎鹰[9九]|猎鹰.*火箭|Falcon.?[0-9])/ => SpaceX
-/(航天|商业航天|载人航天|探月工程|(?<![a-z0-9])spaceflight(?![a-z0-9])|commercial spaceflight|crewed spaceflight)/ => 航天动态
-/((?<![a-z0-9])NASA(?![a-z0-9])|美国国家航空航天局|美国宇航局|(?<![a-z0-9])Perseverance(?![a-z0-9]))/ => NASA
-/(阿尔忒弥斯|(?<![a-z0-9])(?:Artemis|Orion)(?![a-z0-9])|猎户座)/ => 阿尔忒弥斯
-/(嫦娥|天问|天宫|嫦娥[0-9]号|Chang'e.*(?:probe|mission)|Tianwen|Tiangong)/ => 嫦娥/天问/天宫
-/(长征.*火箭|神舟|空间站|神舟[0-9]+号|Long March.*rocket|Shenzhou)/ => 神舟/长征
-/(火星.*探测|月球.*探测|小行星.*探测|Mars.*exploration|lunar.*exploration|asteroid.*exploration)/ => 深空探测
-/(火箭.*回收|可回收.*火箭|垂直回收|reusable.*rocket|vertical landing)/ => 回收火箭
-/(卫星|低轨卫星|通信卫星|物联网卫星|satellite.*launch|LEO satellite|IoT satellite)/ => 卫星
-/(北斗|北斗三号|鹊桥|巡天|BeiDou|Queqiao|Xuntian)/ => 北斗/天文
-/(韦伯|哈勃|James.*Webb|(?<![a-z0-9])(?:JWST|Hubble)(?![a-z0-9]))/ => 韦伯
-/(星网|千帆|G60星链|朱雀.*火箭|天龙.*火箭|蓝箭|谷神星|双曲线|可重复使用.*火箭|LandSpace|Zhuque|Tianlong)/ => 商业火箭
-@8
+[网络协议与互联设备]
+/网络协议|路由器|交换机|网关|局域网|物联网|以太网|域名|网络寻址|传输协议|互联网协议|网络拥塞|思科/ => 网络协议与互联设备（中文）
+/(?<![A-Za-z0-9_])(?:network[\s-]+protocols?|routers?|DNS|IoT|IPv4|IPv6|TCP|UDP|HTTP|HTTPS|QUIC|Ethernet|Wi[\s-]+Fi[\s-]+7|Cisco|Juniper[\s-]+Networks|Arista[\s-]+Networks)(?![A-Za-z0-9_])/ => 网络协议与互联设备（英文）
 
-[低空经济]
-/(低空经济|(?<![a-z0-9])eVTOL(?![a-z0-9])|飞行汽车|无人机|通用航空|空中巴士|low-?altitude economy|flying car|advanced air mobility)/ => 低空经济
-/(低空空域|空域.*改革|低空试点|适航.*认证|城市空中交通|airworthiness.*certif|urban air mobility)/ => 低空政策
-/(无人机.*配送|无人机.*巡检|无人机.*物流|通航.*机场|低空.*基建|drone.*(?:delivery|inspection|logistics))/ => 无人机基建
-/(空中出租车|载人.*eVTOL|eVTOL.*试飞|飞行出租|air taxi)/ => 低空出行
-@6
+[互联网平台与在线服务]
+/互联网平台|搜索引擎|即时通信|电子邮箱|网络社区|社交网络|微信|腾讯|百度|字节跳动|谷歌|必应|搜狗|知乎|豆瓣|脸书|网络论坛/ => 互联网平台与在线服务（中文）
+/(?<![A-Za-z0-9_])(?:internet[\s-]+platforms?|search[\s-]+engines?|instant[\s-]+messaging|social[\s-]+networks?|Tencent|Baidu|ByteDance|Google|Alphabet|Bing|WeChat|WhatsApp|Telegram|Discord|Reddit|Facebook|Meta[\s-]+Platforms|Signal[\s-]+Messenger)(?![A-Za-z0-9_])/ => 互联网平台与在线服务（英文）
 
-[人形机器人]
-/(人形机器人|humanoid robots?|(?<![a-z0-9])Optimus(?![a-z0-9])|擎天柱.*机器人|特斯拉Optimus|宇树|智元|(?<![a-z0-9])(?:Figure AI|Unitree|AgiBot)(?![a-z0-9]))/ => 人形机器人
-/(灵巧手|伺服电机|行星减速器|滚珠丝杠|六维力传感器|力控.*机器人|dexterous hand|six-?axis force sensor|robot.*servo)/ => 核心部件
-/(量产.*人形|人形.*量产|工厂.*人形|具身智能.*应用|人形机器人.*(?:量产|落地)|humanoid.*mass[- ]produc)/ => 产业化
-/(特斯拉.*Optimus|Figure.*机器人|宇树.*机器人|小鹏.*机器人|银河通用)/ => 企业动态
-@6
+[卫星通信与应急通信]
+/卫星通信|卫星互联网|卫星电话|应急通信|空天地一体化|低轨通信|星链|千帆星座|国网星座|天通|直连卫星|卫星宽带|星地融合|星间链路/ => 卫星通信与应急通信（中文）
+/(?<![A-Za-z0-9_])(?:satellite[\s-]+communications?|satellite[\s-]+internet|satellite[\s-]+phones?|emergency[\s-]+communications?|Starlink|OneWeb|Eutelsat|Iridium|Inmarsat|Project[\s-]+Kuiper|direct[\s-]+to[\s-]+cell|non[\s-]+terrestrial[\s-]+networks?)(?![A-Za-z0-9_])/ => 卫星通信与应急通信（英文）
 
-# ── 产业制造 ──
+[电信运营与网络服务]
+/电信运营商|通信资费|流量套餐|携号转网|网络中断|断网|网速|中国移动|中国联通|中国电信|中国广电|停机保号|通信套餐|国际漫游费/ => 电信运营与网络服务（中文）
+/(?<![A-Za-z0-9_])(?:telecom[\s-]+operators?|mobile[\s-]+carriers?|network[\s-]+outages?|internet[\s-]+speed|China[\s-]+Mobile|China[\s-]+Unicom|China[\s-]+Telecom|AT\&T|Verizon|T[\s-]+Mobile|Vodafone|Deutsche[\s-]+Telekom|telecom[\s-]+tariffs?|eSIM)(?![A-Za-z0-9_])/ => 电信运营与网络服务（英文）
 
-[产业制造]
-/(工业母机|数控机床|高端机床|五轴联动|(?<![a-z0-9])CNC(?![a-z0-9]).{0,8}(?:机床|加工)|machine tool)/ => 工业母机
-/(智能制造|工业互联网|灯塔工厂|柔性制造|数字孪生.{0,8}(?:工厂|制造)|smart manufacturing|industrial internet|lighthouse factory)/ => 智能制造
-/(工业机器人|协作机器人|机器视觉.{0,8}(?:工业|工厂|产线)|工厂自动化|产线自动化|industrial robot|collaborative robot|factory automation)/ => 工业自动化
-/(工业软件|国产.{0,8}(?:CAD|CAE|CAM|EDA)|制造执行系统|(?<![a-z0-9])MES(?![a-z0-9]).{0,8}(?:系统|软件)|industrial software)/ => 工业软件
-/(供应链.{0,10}(?:重构|转移|韧性|国产化|本土化)|产业链.{0,10}(?:补链|强链|安全|自主可控)|supply chain.{0,12}(?:resilience|reshoring|localization))/ => 产业链
-@8
+# ── 第 05 类：网络安全与隐私 ──
+[漏洞与攻防技术]
+/网络安全|漏洞|渗透测试|零日攻击|恶意代码|攻击面|安全补丁|缓冲区溢出|远程代码执行|权限提升|代码注入|越权访问|攻防演练|安全研究/ => 漏洞与攻防技术（中文）
+/(?<![A-Za-z0-9_])(?:cybersecurity|vulnerability|vulnerabilities|penetration[\s-]+testing|zero[\s-]+day|CVE|CWE|CVSS|remote[\s-]+code[\s-]+execution|buffer[\s-]+overflow|privilege[\s-]+escalation|SQL[\s-]+injection|bug[\s-]+bounty|bug[\s-]+bounties|OWASP|Metasploit)(?![A-Za-z0-9_])/ => 漏洞与攻防技术（英文）
 
-# ═══════════════════════════════════════════════════════════════
-#                    财经 / 商业
-# ═══════════════════════════════════════════════════════════════
+[恶意软件与网络攻击]
+/勒索软件|木马|僵尸网络|拒绝服务|网络攻击|恶意软件|钓鱼攻击|网络钓鱼|勒索攻击|供应链攻击|撞库|拖库|恶意链接|后门程序/ => 恶意软件与网络攻击（中文）
+/(?<![A-Za-z0-9_])(?:ransomware|malware|botnets?|DDoS|phishing|spyware|trojans?|rootkits?|credential[\s-]+stuffing|supply[\s-]+chain[\s-]+attacks?|LockBit)(?![A-Za-z0-9_])/ => 恶意软件与网络攻击（英文）
 
-[宏观经济]
-/(宏观经济|经济增长|经济衰退|经济下行|经济复苏|结构性改革|(?<![a-z0-9])GDP(?![a-z0-9]))/ => 经济
-/(增长.*经济|衰退.*经济|下行.*经济|温和复苏|滞胀|econom(?:y|ic).*(?:growth|recession|slowdown)|stagflation)/ => 增长/衰退
-/((?<![a-z0-9])(?:CPI|PPI|PMI)(?![a-z0-9])|GDP平减指数)/ => 物价指数
-/(社融|社会融资|货币供应量|(?<![a-z0-9])M2(?![a-z0-9]))/ => 社融
-/(通胀|通缩|输入性通胀|(?<![a-z0-9])(?:inflation|deflation)(?![a-z0-9]))/ => 通胀
-/(加息|降息|降准|存款准备金|存款利率|rate hike|rate cut|reserve requirement)/ => 利率
-/(贷款利率|政策利率|利率决议|利率下调|利率上调|国债收益率|(?<![a-z0-9])(?:LPR|MLF|SLF)(?![a-z0-9])|逆回购|reverse repo)/ => 利率/货币政策
-/(国债|地方债|专项债|特别国债|超长期特别国债|treasury bond|special-?purpose bond)/ => 国债
-/(财政|财政赤字|财政政策|减税降费|fiscal deficit|fiscal.*policy)/ => 财政
-/(美联储|Federal Reserve|(?<![a-z0-9])(?:FOMC|the Fed)(?![a-z0-9])|点阵图|缩表)/ => 美联储
-/(央行|人民银行|银保监|金融监管总局|金监总局|证监会|金融稳定|(?<![a-z0-9])(?:PBOC|NFRA|CBIRC|CSRC)(?![a-z0-9]))/ => 金融监管
-/(汇率|人民币.*(?:汇率|国际化|升值|贬值)|离岸人民币|在岸人民币|外汇储备|人民币贬值压力|renminbi.*exchange rate|offshore yuan)/ => 汇率
-/(工业增加值|固定资产投资|社会消费品零售总额|货物.*进出口|规模以上工业|信贷数据|industrial value-?added|fixed asset investment|retail sales of consumer goods|trade in goods)/ => 月度数据
-@10
+[身份认证与访问控制]
+/身份认证|多因素认证|零信任|访问控制|口令|密钥管理|通行密钥|单点登录|双重验证|生物识别|身份管理|权限管理|证书管理/ => 身份认证与访问控制（中文）
+/(?<![A-Za-z0-9_])(?:authentication|zero[\s-]+trust|access[\s-]+control|passkeys?|MFA|2FA|SSO|OAuth|OpenID[\s-]+Connect|FIDO2|WebAuthn|identity[\s-]+management|privileged[\s-]+access[\s-]+management|YubiKey)(?![A-Za-z0-9_])/ => 身份认证与访问控制（英文）
 
+[隐私与个人信息保护]
+/隐私|个人信息|数据泄露|匿名化|去标识化|数据脱敏|人脸信息|敏感信息|用户画像|信息泄露|数据泄漏/ => 隐私与个人信息保护（中文）
+/(?<![A-Za-z0-9_])(?:privacy|personal[\s-]+data|data[\s-]+breach|data[\s-]+breaches|anonymization|data[\s-]+leaks?|data[\s-]+anonymisation|personally[\s-]+identifiable[\s-]+information|GDPR|CCPA|data[\s-]+minimization)(?![A-Za-z0-9_])/ => 隐私与个人信息保护（英文）
+
+[安全运营与风险审计]
+/安全审计|安全运营|威胁情报|入侵检测|安全响应|网络取证|威胁狩猎|态势感知|终端防护|应急响应演练|攻防溯源|奇安信|深信服|绿盟科技|启明星辰/ => 安全运营与风险审计（中文）
+/(?<![A-Za-z0-9_])(?:security[\s-]+audits?|threat[\s-]+intelligence|intrusion[\s-]+detection|digital[\s-]+forensics|SIEM|SOAR|EDR|XDR|threat[\s-]+hunting|incident[\s-]+response|MITRE[\s-]+ATT\&CK|CrowdStrike|Palo[\s-]+Alto[\s-]+Networks|Fortinet)(?![A-Za-z0-9_])/ => 安全运营与风险审计（英文）
+
+[数据安全与网络合规]
+/数据安全|网络合规|数据出境|等保|关键信息基础设施|密码法|商用密码|密评|可信执行环境|数据分类分级|重要数据|安全认证|零信任架构/ => 数据安全与网络合规（中文）
+/(?<![A-Za-z0-9_])(?:data[\s-]+security|cross[\s-]+border[\s-]+data|critical[\s-]+information[\s-]+infrastructure|encryption[\s-]+laws?|confidential[\s-]+computing|trusted[\s-]+execution[\s-]+environments?|post[\s-]+quantum[\s-]+cryptography|data[\s-]+sovereignty|data[\s-]+localization|cyber[\s-]+resilience|NIS2|ISO[\s-]+27001)(?![A-Za-z0-9_])/ => 数据安全与网络合规（英文）
+
+# ── 第 06 类：芯片与半导体 ──
+[芯片设计与架构]
+/芯片设计|集成电路|指令集|芯片架构|逻辑芯片|片上系统|海思|高通|联发科|芯原|龙芯|指令架构|逻辑综合|电子设计自动化|Arm架构/ => 芯片设计与架构（中文）
+/(?<![A-Za-z0-9_])(?:chip[\s-]+design|integrated[\s-]+circuits?|instruction[\s-]+sets?|system[\s-]+on[\s-]+chip|RISC[\s-]+V|Arm[\s-]+Holdings|Arm[\s-]+architecture|Qualcomm|MediaTek|HiSilicon|Synopsys|Cadence|EDA|FPGAs?|ASICs?|SoCs?)(?![A-Za-z0-9_])/ => 芯片设计与架构（英文）
+
+[晶圆制造与工艺]
+/晶圆|光刻|半导体制程|晶体管|芯片代工|良率|先进工艺|台积电|华虹|格芯|中芯|鳍式场效应|全环绕栅极|先进节点/ => 晶圆制造与工艺（中文）
+/(?<![A-Za-z0-9_])(?:wafers?|lithography|transistors?|chip[\s-]+foundry|TSMC|SMIC|GlobalFoundries|FinFET|GAAFET|EUV|DUV|process[\s-]+nodes?|chip[\s-]+foundries)(?![A-Za-z0-9_])/ => 晶圆制造与工艺（英文）
+
+[封装测试与互连]
+/芯片封装|先进封装|封测|芯粒|硅通孔|异构集成|长电科技|通富微电|华天科技|日月光|扇出封装|晶圆级封装|键合|堆叠封装/ => 封装测试与互连（中文）
+/(?<![A-Za-z0-9_])(?:chip[\s-]+packaging|advanced[\s-]+packaging|chiplets?|heterogeneous[\s-]+integration|CoWoS|Foveros|TSV|UCIe|hybrid[\s-]+bonding|fan[\s-]+out[\s-]+packaging|ASE[\s-]+Technology|Amkor|JCET)(?![A-Za-z0-9_])/ => 封装测试与互连（英文）
+
+[处理器与计算芯片]
+/处理器|图形芯片|加速芯片|计算芯片|神经处理单元|国产芯片|英伟达|英特尔|寒武纪|摩尔线程|壁仞|燧原|沐曦|海光|昇腾|鲲鹏|骁龙|天玑/ => 处理器与计算芯片（中文）
+/(?<![A-Za-z0-9_])(?:processors?|CPUs?|GPUs?|NPUs?|NVIDIA|Intel|AMD|GeForce|RTX|Ryzen|EPYC|Xeon|Snapdragon|Dimensity|Ascend|Blackwell|CUDA)(?![A-Za-z0-9_])/ => 处理器与计算芯片（英文）
+
+[存储芯片与功率器件]
+/存储芯片|闪存|功率器件|功率半导体|模拟芯片|射频芯片|美光|海力士|长江存储|长鑫存储|兆易创新|英飞凌|碳化硅|氮化镓|高带宽存储/ => 存储芯片与功率器件（中文）
+/(?<![A-Za-z0-9_])(?:memory[\s-]+chips?|flash[\s-]+memory|power[\s-]+semiconductors?|analog[\s-]+chips?|HBM|DRAM|NAND|NOR[\s-]+flash|DDR5|LPDDR5|Micron|SK[\s-]+hynix|YMTC|CXMT|Infineon|MOSFETs?|IGBTs?|SiC|GaN)(?![A-Za-z0-9_])/ => 存储芯片与功率器件（英文）
+
+[半导体设备与材料]
+/半导体|刻蚀|薄膜沉积|光刻胶|硅片|电子特气|阿斯麦|北方华创|中微公司|拓荆科技|盛美上海|离子注入|化学机械抛光|电子束检测/ => 半导体设备与材料（中文）
+/(?<![A-Za-z0-9_])(?:semiconductors?|etching|photoresists?|silicon[\s-]+wafers?|ASML|Applied[\s-]+Materials|Lam[\s-]+Research|Tokyo[\s-]+Electron|KLA[\s-]+Corporation|ion[\s-]+implantation|atomic[\s-]+layer[\s-]+deposition|chemical[\s-]+mechanical[\s-]+polishing)(?![A-Za-z0-9_])/ => 半导体设备与材料（英文）
+
+# ── 第 07 类：消费电子与智能终端 ──
+[手机与移动终端]
+/手机|智能终端|折叠屏|移动终端|蜂窝平板|便携终端|华为|小米|红米|三星电子|苹果|一加|魅族|努比亚/ => 手机与移动终端（中文）
+/(?<![A-Za-z0-9_])(?:smartphones?|mobile[\s-]+phones?|foldable[\s-]+phones?|mobile[\s-]+devices?|Huawei|Xiaomi|Redmi|iPhone|Samsung|Google[\s-]+Pixel|OnePlus|OPPO|vivo|Realme|Nothing[\s-]+Phone|Apple[\s-]+Inc)(?![A-Za-z0-9_])/ => 手机与移动终端（英文）
+
+[个人电脑与外设]
+/笔记本电脑|台式机|个人电脑|键盘|鼠标|扩展坞|平板电脑|轻薄本|游戏本|迷你主机|联想|华硕|宏碁|戴尔|惠普|罗技|雷蛇/ => 个人电脑与外设（中文）
+/(?<![A-Za-z0-9_])(?:laptops?|desktop[\s-]+computers?|keyboards?|tablets?|MacBook|iMac|Mac[\s-]+mini|Mac[\s-]+Studio|ThinkPad|Lenovo|ASUS|Acer|Dell|Logitech|Razer|Microsoft[\s-]+Surface|Chromebooks?)(?![A-Za-z0-9_])/ => 个人电脑与外设（英文）
+
+[显示与影像设备]
+/显示器|屏幕|相机|摄像头|投影仪|影像传感器|高刷新率|高动态范围|微单|单反|佳能|尼康|富士|索尼|京东方|维信诺/ => 显示与影像设备（中文）
+/(?<![A-Za-z0-9_])(?:monitors?|display[\s-]+panels?|cameras?|projectors?|OLED|AMOLED|Mini[\s-]+LED|Micro[\s-]+LED|HDR|CMOS|Canon|Nikon|Fujifilm|Sony|Insta360|GoPro)(?![A-Za-z0-9_])/ => 显示与影像设备（英文）
+
+[音频与家庭影音]
+/耳机|音箱|音响|声卡|家庭影院|降噪|无损音频|空间音频|骨传导|声学|回音壁|麦克风|森海塞尔|铁三角|漫步者/ => 音频与家庭影音（中文）
+/(?<![A-Za-z0-9_])(?:headphones?|earbuds?|loudspeakers?|home[\s-]+theaters?|AirPods|Bose|Sennheiser|Audio[\s-]+Technica|JBL|Sonos|soundbars?|spatial[\s-]+audio|lossless[\s-]+audio|microphones?)(?![A-Za-z0-9_])/ => 音频与家庭影音（英文）
+
+[可穿戴与空间设备]
+/智能手表|智能手环|智能眼镜|虚拟现实|增强现实|混合现实|空间计算|头显|体感交互|动作捕捉|眼动追踪|佳明|华米|雷鸟创新|智能戒指/ => 可穿戴与空间设备（中文）
+/(?<![A-Za-z0-9_])(?:wearables?|smartwatch|smartwatches|smart[\s-]+watch|smart[\s-]+watches|VR|AR|mixed[\s-]+reality|Apple[\s-]+Watch|Vision[\s-]+Pro|Meta[\s-]+Quest|Fitbit|Garmin|XREAL|Ray[\s-]+Ban[\s-]+Meta|smart[\s-]+rings?|spatial[\s-]+computing)(?![A-Za-z0-9_])/ => 可穿戴与空间设备（英文）
+
+[终端配件与使用维护]
+/消费电子|充电器|充电宝|充电线|无线充电|数码维修|以旧换新|快充|电源适配器|移动电源|设备回收|数码配件|安克|绿联|倍思|品胜/ => 终端配件与使用维护（中文）
+/(?<![A-Za-z0-9_])(?:consumer[\s-]+electronics|power[\s-]+banks?|wireless[\s-]+charging|device[\s-]+repairs?|USB[\s-]+C|Thunderbolt|MagSafe|Qi2|Anker|UGREEN|Baseus|fast[\s-]+charging|charging[\s-]+cables?|power[\s-]+adapters?)(?![A-Za-z0-9_])/ => 终端配件与使用维护（英文）
+
+# ── 第 08 类：机器人与智能装备 ──
+[人形与仿生机器人]
+/仿生机器人|四足机器人|双足机器人|具身智能|灵巧手|宇树|优必选|智元|波士顿动力|傅利叶智能|人形机|机械狗|机器人狗|运动智能/ => 人形与仿生机器人（中文）
+/(?<![A-Za-z0-9_])(?:humanoid[\s-]+robots?|embodied[\s-]+intelligence|robot[\s-]+dogs?|dexterous[\s-]+hands?|Unitree|UBTECH|Boston[\s-]+Dynamics|Figure[\s-]+AI|Agility[\s-]+Robotics|Tesla[\s-]+Optimus|bipedal[\s-]+robots?|quadruped[\s-]+robots?)(?![A-Za-z0-9_])/ => 人形与仿生机器人（英文）
+
+[机器人感知与定位]
+/机器视觉|激光雷达|深度相机|定位建图|环境感知|传感融合|触觉传感|视觉里程计|惯性导航|惯性测量|三维视觉|禾赛|速腾聚创|奥比中光/ => 机器人感知与定位（中文）
+/(?<![A-Za-z0-9_])(?:machine[\s-]+vision|lidar|SLAM|sensor[\s-]+fusion|visual[\s-]+odometry|inertial[\s-]+navigation|tactile[\s-]+sensing|depth[\s-]+sensing|point[\s-]+clouds?|Hesai|RoboSense|Orbbec)(?![A-Za-z0-9_])/ => 机器人感知与定位（英文）
+
+[机器人运动与控制]
+/运动控制|路径规划|轨迹规划|力控|步态|协同控制|模仿学习|全身控制|平衡控制|柔顺控制|逆运动学|末端控制|轨迹跟踪|自主导航/ => 机器人运动与控制（中文）
+/(?<![A-Za-z0-9_])(?:motion[\s-]+control|path[\s-]+planning|trajectory[\s-]+planning|force[\s-]+control|imitation[\s-]+learning|whole[\s-]+body[\s-]+control|inverse[\s-]+kinematics|impedance[\s-]+control|autonomous[\s-]+navigation|robot[\s-]+policy|robot[\s-]+policies)(?![A-Za-z0-9_])/ => 机器人运动与控制（英文）
+
+[工业自动化与产线]
+/工业自动化|工业机器人|机械臂|自动化产线|可编程控制器|协作机器人|机器换人|柔性产线|柔性制造|发那科|库卡|安川电机|西门子|自动分拣/ => 工业自动化与产线（中文）
+/(?<![A-Za-z0-9_])(?:industrial[\s-]+automation|industrial[\s-]+robots?|robotic[\s-]+arms?|PLCs?|ABB|KUKA|FANUC|Yaskawa|Siemens|cobots?|SCADA|flexible[\s-]+manufacturing|automated[\s-]+production[\s-]+lines?)(?![A-Za-z0-9_])/ => 工业自动化与产线（英文）
+
+[服务与特种机器人]
+/服务机器人|特种机器人|巡检机器人|配送机器人|清洁机器人|水下机器人|科沃斯|石头科技|追觅|擎朗|普渡科技|高仙|无人巡检|无人配送车|机器导盲犬/ => 服务与特种机器人（中文）
+/(?<![A-Za-z0-9_])(?:service[\s-]+robots?|inspection[\s-]+robots?|delivery[\s-]+robots?|underwater[\s-]+robots?|Ecovacs|Roborock|Dreame|Pudu[\s-]+Robotics|Keenon|autonomous[\s-]+mobile[\s-]+robots?|AGVs?|robot[\s-]+vacuums?)(?![A-Za-z0-9_])/ => 服务与特种机器人（英文）
+
+[机器人本体与执行器]
+/机器人|伺服电机|减速器|执行器|关节模组|丝杠|谐波传动|行星传动|无框电机|直驱电机|本体设计|汇川技术|绿的谐波/ => 机器人本体与执行器（中文）
+/(?<![A-Za-z0-9_])(?:robots?|robotics|servo[\s-]+motors?|actuators?|harmonic[\s-]+drives?|planetary[\s-]+gearbox|planetary[\s-]+gearboxes|ball[\s-]+screws?|roller[\s-]+screws?|torque[\s-]+sensors?|Inovance)(?![A-Za-z0-9_])/ => 机器人本体与执行器（英文）
+
+# ── 第 09 类：科学研究与前沿技术 ──
+[数学与基础物理]
+/数学|物理学|几何|拓扑|概率论|粒子物理|相对论|统计学|组合学|数论|凝聚态|高能物理|标准模型|引力波|中微子|暗物质|暗能量/ => 数学与基础物理（中文）
+/(?<![A-Za-z0-9_])(?:mathematics|physics|geometry|topology|number[\s-]+theory|statistics|condensed[\s-]+matter|gravitational[\s-]+waves?|neutrinos?|dark[\s-]+matter|dark[\s-]+energy|CERN|LIGO)(?![A-Za-z0-9_])/ => 数学与基础物理（英文）
+
+[化学与交叉科学]
+/化学研究|化学反应|催化|分子结构|光谱|计算化学|纳米科学|超分子|化学键|手性|晶体结构|有机合成|表面科学/ => 化学与交叉科学（中文）
+/(?<![A-Za-z0-9_])(?:chemistry|catalysis|molecular[\s-]+structures?|nanoscience|electrochemistry|supramolecular|chirality|crystallography|organic[\s-]+synthesis|surface[\s-]+science|molecular[\s-]+dynamics|spectroscopy)(?![A-Za-z0-9_])/ => 化学与交叉科学（英文）
+
+[生命科学与基础生物]
+/生命科学|基因|蛋白质|细胞|微生物|合成生物|生物信息|转录组|代谢组|表观遗传|免疫学|发育生物|进化生物|类器官|染色体|酶/ => 生命科学与基础生物（中文）
+/(?<![A-Za-z0-9_])(?:life[\s-]+sciences?|genomics|proteins?|synthetic[\s-]+biology|CRISPR|DNA|RNA|proteomics|transcriptomics|epigenetics|organoids?|bioinformatics|microbiomes?|AlphaFold)(?![A-Za-z0-9_])/ => 生命科学与基础生物（英文）
+
+[地球科学与天文学]
+/天文学|宇宙|星系|黑洞|地质|地球物理|古生物|系外行星|太阳系|恒星|暗能量巡天|地幔|板块构造|化石|射电望远镜|天文望远镜/ => 地球科学与天文学（中文）
+/(?<![A-Za-z0-9_])(?:astronomy|cosmology|black[\s-]+holes?|geology|exoplanets?|solar[\s-]+system|galaxy|galaxies|stellar[\s-]+evolution|paleontology|tectonics|James[\s-]+Webb|Hubble[\s-]+telescope|SKA[\s-]+telescope)(?![A-Za-z0-9_])/ => 地球科学与天文学（英文）
+
+[量子与未来技术]
+/量子|脑机接口|神经形态|太赫兹|超导|光子计算|纠缠态|拓扑材料|神经接口|未来计算|本源悟空/ => 量子与未来技术（中文）
+/(?<![A-Za-z0-9_])(?:quantum|brain[\s-]+computer[\s-]+interfaces?|neuromorphic|superconductivity|qubits?|entanglement|photonic[\s-]+computing|spintronics|Neuralink|IonQ|D[\s-]+Wave|Rigetti)(?![A-Za-z0-9_])/ => 量子与未来技术（英文）
+
+[科研体系与学术生态]
+/科研|科学家|实验室|学术论文|科学发现|学术不端|同行评审|诺贝尔奖|中科院|中国科学院|中国工程院|自然科学基金|撤稿|预印本|学术会议/ => 科研体系与学术生态（中文）
+/(?<![A-Za-z0-9_])(?:scientific[\s-]+research|laboratory|laboratories|peer[\s-]+review|research[\s-]+papers?|Nobel[\s-]+Prizes?|arXiv|preprints?|research[\s-]+integrity|paper[\s-]+retractions?|open[\s-]+science|Chinese[\s-]+Academy[\s-]+of[\s-]+Sciences|National[\s-]+Science[\s-]+Foundation)(?![A-Za-z0-9_])/ => 科研体系与学术生态（英文）
+
+# ── 第 10 类：航天航空与低空经济 ──
+[航天发射与运载]
+/火箭|运载器|航天发射|发射场|可重复使用航天器|入轨|星舰|长征五号|长征七号|长征八号|猎鹰九号|蓝色起源|蓝箭航天|星际荣耀|中科宇航|天兵科技|回收着陆/ => 航天发射与运载（中文）
+/(?<![A-Za-z0-9_])(?:rockets?|launch[\s-]+vehicles?|space[\s-]+launch|space[\s-]+launches|orbital[\s-]+launch|orbital[\s-]+launches|SpaceX|Starship|Falcon[\s-]+9|Falcon[\s-]+Heavy|Blue[\s-]+Origin|New[\s-]+Glenn|Arianespace)(?![A-Za-z0-9_])/ => 航天发射与运载（英文）
+
+[卫星应用与空间设施]
+/遥感|卫星导航|导航星座|空间碎片|在轨服务|地面站|北斗|高分卫星|气象卫星|对地观测|空间望远镜|卫星测控|卫星组网|星座建设/ => 卫星应用与空间设施（中文）
+/(?<![A-Za-z0-9_])(?:remote[\s-]+sensing|satellite[\s-]+navigation|space[\s-]+debris|ground[\s-]+stations?|BeiDou|GPS|GNSS|Galileo[\s-]+navigation|GLONASS|Earth[\s-]+observation|CubeSats?|space[\s-]+telescopes?|satellite[\s-]+constellations?)(?![A-Za-z0-9_])/ => 卫星应用与空间设施（英文）
+
+[载人航天与深空探测]
+/载人航天|宇航员|航天员|空间站|探月|探火|深空探测|月球|火星|登月|月面|太空行走|神舟飞船|嫦娥工程|天问一号|天问二号|中国航天局|美国宇航局/ => 载人航天与深空探测（中文）
+/(?<![A-Za-z0-9_])(?:human[\s-]+spaceflight|astronauts?|space[\s-]+stations?|deep[\s-]+space[\s-]+exploration|NASA|ESA|CNSA|ISS|Artemis|Tiangong|Shenzhou|Chang'e|Tianwen|lunar[\s-]+exploration|Mars[\s-]+exploration|spacewalks?)(?![A-Za-z0-9_])/ => 载人航天与深空探测（英文）
+
+[航空制造与飞行技术]
+/航空制造|飞机|航空发动机|飞行器|适航|航电|波音|空客|中国商飞|航空材料|涡扇|涡轴/ => 航空制造与飞行技术（中文）
+/(?<![A-Za-z0-9_])(?:aircraft|airplanes?|aeroengines?|avionics|Boeing|Airbus|COMAC|C919|C929|C909|ARJ21|Embraer|Bombardier|turbofans?|airworthiness)(?![A-Za-z0-9_])/ => 航空制造与飞行技术（英文）
+
+[低空经济与无人飞行]
+/低空经济|无人机|无人驾驶航空器|飞行汽车|垂直起降|无人飞行|大疆|亿航|小鹏汇天|沃飞长空|低空航线|无人配送|无人航拍|低空物流/ => 低空经济与无人飞行（中文）
+/(?<![A-Za-z0-9_])(?:drones?|UAVs?|eVTOLs?|low[\s-]+altitude[\s-]+economy|DJI|EHang|Joby[\s-]+Aviation|Archer[\s-]+Aviation|Zipline|autonomous[\s-]+aerial[\s-]+vehicles?|urban[\s-]+air[\s-]+mobility)(?![A-Za-z0-9_])/ => 低空经济与无人飞行（英文）
+
+[商业航天与空域管理]
+/商业航天|航天产业|太空经济|空域|空管|飞行审批|航天投资|发射许可|低空开放|太空旅游|空间资源|飞行服务站/ => 商业航天与空域管理（中文）
+/(?<![A-Za-z0-9_])(?:commercial[\s-]+spaceflight|space[\s-]+economy|airspace|air[\s-]+traffic[\s-]+control|space[\s-]+tourism|space[\s-]+commercialization|launch[\s-]+licenses?|space[\s-]+resources|flight[\s-]+clearance|unmanned[\s-]+traffic[\s-]+management)(?![A-Za-z0-9_])/ => 商业航天与空域管理（英文）
+
+# ── 第 11 类：汽车与智能出行 ──
+[电动汽车与补能]
+/电动汽车|新能源汽车|纯电|插混|增程|充电桩|换电|续航|比亚迪|特斯拉|蔚来|小鹏|理想汽车|零跑|极氪|问界|鸿蒙智行|阿维塔|小米汽车|特来电|星星充电|超充/ => 电动汽车与补能（中文）
+/(?<![A-Za-z0-9_])(?:electric[\s-]+vehicles?|EVs?|plug[\s-]+in[\s-]+hybrids?|charging[\s-]+stations?|Tesla|BYD|NIO|XPeng|Li[\s-]+Auto|Leapmotor|Zeekr|Avatr|Lucid[\s-]+Motors|Rivian|V2G|V2L|battery[\s-]+swapping)(?![A-Za-z0-9_])/ => 电动汽车与补能（英文）
+
+[智能驾驶与座舱]
+/自动驾驶|辅助驾驶|智能驾驶|车联网|智能座舱|车路协同|智驾|无人驾驶|泊车|城市领航|高速领航|萝卜快跑|小马智行|文远知行|地平线征程|黑芝麻智能/ => 智能驾驶与座舱（中文）
+/(?<![A-Za-z0-9_])(?:autonomous[\s-]+driving|self[\s-]+driving|ADAS|connected[\s-]+vehicles?|FSD|NOA|robotaxi|robotaxis|Waymo|Baidu[\s-]+Apollo|Pony\.ai|WeRide|Mobileye|Horizon[\s-]+Robotics|software[\s-]+defined[\s-]+vehicles?)(?![A-Za-z0-9_])/ => 智能驾驶与座舱（英文）
+
+[汽车零部件与动力]
+/汽车零部件|动力总成|变速箱|底盘|轮胎|车规|车用传感器|博世|采埃孚|舍弗勒|大陆集团|福耀玻璃|德赛西威|刹车|制动|悬架|热管理|空气悬挂/ => 汽车零部件与动力（中文）
+/(?<![A-Za-z0-9_])(?:auto[\s-]+parts?|powertrains?|transmission[\s-]+systems?|tires?|Bosch|ZF[\s-]+Group|Schaeffler|Continental[\s-]+AG|Brembo|Michelin|Bridgestone|suspension[\s-]+systems?|braking[\s-]+systems?|automotive[\s-]+thermal[\s-]+management)(?![A-Za-z0-9_])/ => 汽车零部件与动力（英文）
+
+[汽车市场与产业经营]
+/车企|汽车销量|汽车经销商|二手车|汽车出口|汽车召回|新车发布|新车上市|车市|车展|车价|购置税|交付量|上牌量|汽车之家|懂车帝/ => 汽车市场与产业经营（中文）
+/(?<![A-Za-z0-9_])(?:automakers?|car[\s-]+sales|car[\s-]+dealers?|used[\s-]+cars?|auto[\s-]+shows?|motor[\s-]+shows?|vehicle[\s-]+delivery|vehicle[\s-]+deliveries|vehicle[\s-]+registrations?|car[\s-]+prices?|Carvana|AutoTrader)(?![A-Za-z0-9_])/ => 汽车市场与产业经营（英文）
+
+[用车养车与道路服务]
+/驾照|驾考|汽车维修|汽车保养|停车|租车|网约车|代驾|道路救援|洗车|车检|车辆年审|交强险|滴滴|曹操出行|首汽约车/ => 用车养车与道路服务（中文）
+/(?<![A-Za-z0-9_])(?:driving[\s-]+licenses?|car[\s-]+maintenance|car[\s-]+rentals?|ride[\s-]+hailing|Didi|Uber|Lyft|Grab|Hertz|Avis|driving[\s-]+tests?|vehicle[\s-]+inspections?|roadside[\s-]+assistance)(?![A-Za-z0-9_])/ => 用车养车与道路服务（英文）
+
+[汽车基础与车辆技术]
+/汽车|乘用车|商用车|客车|卡车|燃油车|混合动力|上汽|一汽|广汽|吉利|奇瑞|长安启源|长安深蓝|丰田|本田|日产|奔驰|宝马|奥迪|保时捷|法拉利|沃尔沃/ => 汽车基础与车辆技术（中文）
+/(?<![A-Za-z0-9_])(?:automobiles?|passenger[\s-]+cars?|commercial[\s-]+vehicles?|hybrid[\s-]+vehicles?|Toyota|Honda|Volkswagen|Mercedes[\s-]+Benz|BMW|Audi|Porsche|Ferrari|Volvo|Ford|General[\s-]+Motors|Geely|Chery|Stellantis|Hyundai|Kia|Mazda|Subaru)(?![A-Za-z0-9_])/ => 汽车基础与车辆技术（英文）
+
+# ── 第 12 类：工业制造与产业升级 ──
+[机床与精密加工]
+/机床|工业母机|数控|五轴|精密加工|刀具|模具|车削|铣削|磨削|电火花加工|主轴|切削液|海天精工|山崎马扎克/ => 机床与精密加工（中文）
+/(?<![A-Za-z0-9_])(?:machine[\s-]+tools?|CNC|precision[\s-]+machining|cutting[\s-]+tools?|turning[\s-]+machines?|milling[\s-]+machines?|grinding[\s-]+machines?|electrical[\s-]+discharge[\s-]+machining|DMG[\s-]+MORI|Mazak|Makino|Okuma)(?![A-Za-z0-9_])/ => 机床与精密加工（英文）
+
+[制造工艺与生产装备]
+/增材制造|工业打印|铸造|锻造|焊接|注塑|生产设备|激光加工|金属打印|热处理|冲压|激光切割|压铸|粉末冶金|工业炉/ => 制造工艺与生产装备（中文）
+/(?<![A-Za-z0-9_])(?:additive[\s-]+manufacturing|3D[\s-]+printing|casting|welding|laser[\s-]+cutting|injection[\s-]+molding|forging|powder[\s-]+metallurgy|heat[\s-]+treatment|Stratasys|3D[\s-]+Systems)(?![A-Za-z0-9_])/ => 制造工艺与生产装备（英文）
+
+[工业数字化与智能工厂]
+/工业互联网|智能制造|数字孪生|智能工厂|工业软件|生产管理系统|工业富联|中控技术|用友|金蝶|宝信软件|工艺仿真|柔性生产|设备联网/ => 工业数字化与智能工厂（中文）
+/(?<![A-Za-z0-9_])(?:industrial[\s-]+internet|smart[\s-]+manufacturing|digital[\s-]+twins?|smart[\s-]+factory|MES|ERP|PLM|CAD|CAE|CAM|SAP|Dassault[\s-]+Systemes|Autodesk|PTC|industrial[\s-]+simulation)(?![A-Za-z0-9_])/ => 工业数字化与智能工厂（英文）
+
+[供应链与产业协同]
+/供应链|产业链|国产替代|产业集群|产业转移|关键零部件|断供|补链强链|协同制造|供应商管理|采购管理|交付周期|原料短缺|订单转移/ => 供应链与产业协同（中文）
+/(?<![A-Za-z0-9_])(?:supply[\s-]+chains?|industrial[\s-]+clusters?|import[\s-]+substitution|industrial[\s-]+relocation|supplier[\s-]+management|procurement[\s-]+management|supply[\s-]+disruptions?|component[\s-]+shortages?|reshoring|nearshoring|inventory[\s-]+management)(?![A-Za-z0-9_])/ => 供应链与产业协同（英文）
+
+[轻工纺织与日用制造]
+/轻工业|纺织|造纸|印刷|包装工业|皮革|日用制造|棉纱|化纤|印染|无纺布|纸浆|瓦楞纸|玻璃制品|陶瓷制品/ => 轻工纺织与日用制造（中文）
+/(?<![A-Za-z0-9_])(?:light[\s-]+industry|textiles?|papermaking|packaging[\s-]+industry|cotton[\s-]+yarn|chemical[\s-]+fibers?|nonwovens?|pulp[\s-]+and[\s-]+paper|dyeing|corrugated[\s-]+paper|leather[\s-]+goods|ceramic[\s-]+products?)(?![A-Za-z0-9_])/ => 轻工纺织与日用制造（英文）
+
+[产业制造与质量标准]
+/制造业|工厂|产能|工业增加值|工业设备|产品质量|工业标准|工业升级|技改|精益生产|设备更新|质量认证|标准化|专精特新|检测认证/ => 产业制造与质量标准（中文）
+/(?<![A-Za-z0-9_])(?:manufacturing|industrial[\s-]+production|production[\s-]+capacity|quality[\s-]+control|lean[\s-]+production|Six[\s-]+Sigma|ISO[\s-]+9001|industrial[\s-]+upgrading|equipment[\s-]+renewal|product[\s-]+certification|SGS|TUV)(?![A-Za-z0-9_])/ => 产业制造与质量标准（英文）
+
+# ── 第 13 类：能源与电力 ──
+[煤炭与煤化工]
+/煤炭|煤矿|焦煤|焦炭|煤化工|动力煤|中国神华|中煤能源|兖矿能源|陕煤|晋能控股|洗煤|煤价|煤电|煤制油|煤制气/ => 煤炭与煤化工（中文）
+/(?<![A-Za-z0-9_])(?:coal|China[\s-]+Shenhua|Yankuang[\s-]+Energy)(?![A-Za-z0-9_])/ => 煤炭与煤化工（英文）
+
+[石油与炼化]
+/石油|原油|油田|炼油|成品油|油价|炼化|中海油|中国石化|中石化|布伦特|欧佩克|页岩油|油气勘探|汽油|柴油/ => 石油与炼化（中文）
+/(?<![A-Za-z0-9_])(?:petroleum|crude[\s-]+oil|oilfields?|oil[\s-]+refinery|PetroChina|Sinopec|CNOOC|Saudi[\s-]+Aramco|ExxonMobil|Chevron|OPEC|Brent|WTI|gasoline|diesel|refineries)(?![A-Za-z0-9_])/ => 石油与炼化（英文）
+
+[天然气与燃气]
+/天然气|页岩气|液化气|燃气|煤层气|气田|中燃|新奥能源|储气库|接收站|管道气|气价|可燃冰/ => 天然气与燃气（中文）
+/(?<![A-Za-z0-9_])(?:natural[\s-]+gas|LNG|shale[\s-]+gas|gas[\s-]+fields?|LPG|CNG|Gazprom|Novatek|Cheniere|gas[\s-]+storage|regasification|gas[\s-]+hydrates?|gas[\s-]+pipelines?)(?![A-Za-z0-9_])/ => 天然气与燃气（英文）
+
+[发电输配与电网]
+/发电|电网|输电|配电|特高压|变电站|电力设备|电力系统|变压器|电缆|断路器|输变电|中国能建|中国电建|东方电气|许继电气|平高电气/ => 发电输配与电网（中文）
+/(?<![A-Za-z0-9_])(?:power[\s-]+generation|power[\s-]+grids?|power[\s-]+transmission|substations?|State[\s-]+Grid|grid[\s-]+modernization|electrical[\s-]+transformers?|circuit[\s-]+breakers?|ultra[\s-]+high[\s-]+voltage|HVDC)(?![A-Za-z0-9_])/ => 发电输配与电网（英文）
+
+[电力市场与用能管理]
+/电价|电力交易|绿电|绿证|虚拟电厂|需求响应|能效|售电|负荷管理|峰谷调节|分布式用能|电力现货|节电/ => 电力市场与用能管理（中文）
+/(?<![A-Za-z0-9_])(?:electricity[\s-]+prices?|electricity[\s-]+markets?|virtual[\s-]+power[\s-]+plants?|energy[\s-]+efficiency|demand[\s-]+response|green[\s-]+certificates?|renewable[\s-]+energy[\s-]+certificates?|time[\s-]+of[\s-]+use[\s-]+pricing|peak[\s-]+shaving|power[\s-]+spot[\s-]+markets?|retail[\s-]+electricity)(?![A-Za-z0-9_])/ => 电力市场与用能管理（英文）
+
+[能源供应与发展战略]
+/能源安全|能源转型|能源供给|能源消费|能源保供|综合能源|能源结构|能源进口|能源出口|国际能源署|能源危机|能源独立|战略储备|国家能源局/ => 能源供应与发展战略（中文）
+/(?<![A-Za-z0-9_])(?:energy[\s-]+security|energy[\s-]+transition|energy[\s-]+supply|energy[\s-]+consumption|International[\s-]+Energy[\s-]+Agency|IEA|energy[\s-]+crisis|energy[\s-]+crises|strategic[\s-]+petroleum[\s-]+reserves?|energy[\s-]+independence|energy[\s-]+mix|energy[\s-]+outlook)(?![A-Za-z0-9_])/ => 能源供应与发展战略（英文）
+
+# ── 第 14 类：新能源与储能 ──
+[光伏与太阳能]
+/光伏|太阳能|钙钛矿|硅料|硅锭|光热|隆基|晶科|天合光能|晶澳|通威|阳光电源|阿特斯|协鑫|爱旭|逆变器/ => 光伏与太阳能（中文）
+/(?<![A-Za-z0-9_])(?:photovoltaics?|solar[\s-]+energy|solar[\s-]+panels?|perovskites?|LONGi|JinkoSolar|Trina[\s-]+Solar|JA[\s-]+Solar|Canadian[\s-]+Solar|Sungrow|TOPCon|HJT|solar[\s-]+inverters?|back[\s-]+contact[\s-]+solar)(?![A-Za-z0-9_])/ => 光伏与太阳能（英文）
+
+[风能与海洋水能]
+/风电|风能|风机|水电|潮汐能|波浪能|金风科技|明阳智能|远景能源|三一重能|海上风场|风轮叶片|海洋能|大坝蓄水/ => 风能与海洋水能（中文）
+/(?<![A-Za-z0-9_])(?:wind[\s-]+power|wind[\s-]+turbines?|hydropower|tidal[\s-]+energy|Vestas|Goldwind|Mingyang|Envision[\s-]+Energy|offshore[\s-]+wind|floating[\s-]+wind|wave[\s-]+energy|ocean[\s-]+energy|hydroelectrics?)(?![A-Za-z0-9_])/ => 风能与海洋水能（英文）
+
+[核能与核技术]
+/核电|核能|核聚变|核裂变|反应堆|核燃料|中核集团|中广核|华龙一号|人造太阳|托卡马克|高温气冷堆|小型模块堆|核废料/ => 核能与核技术（中文）
+/(?<![A-Za-z0-9_])(?:nuclear[\s-]+power|nuclear[\s-]+fusion|nuclear[\s-]+fission|nuclear[\s-]+reactors?|ITER|tokamaks?|SMRs?|Hualong[\s-]+One|CNNC|CGN|nuclear[\s-]+fuel|nuclear[\s-]+waste|fusion[\s-]+reactors?)(?![A-Za-z0-9_])/ => 核能与核技术（英文）
+
+[氢能与燃料电池]
+/氢能|制氢|绿氢|氢燃料|燃料电池|电解槽|电解水|质子交换膜|氨燃料|氢储运|加氢站|蓝氢|灰氢|氢冶金/ => 氢能与燃料电池（中文）
+/(?<![A-Za-z0-9_])(?:hydrogen[\s-]+energy|green[\s-]+hydrogen|fuel[\s-]+cells?|electrolyzers?|alkaline[\s-]+electrolysis|hydrogen[\s-]+storage|hydrogen[\s-]+refueling|Plug[\s-]+Power|Ballard[\s-]+Power|Bloom[\s-]+Energy|blue[\s-]+hydrogen|ammonia[\s-]+fuel)(?![A-Za-z0-9_])/ => 氢能与燃料电池（英文）
+
+[电池与电化学]
+/电池|电芯|正极材料|负极材料|电解液|固态电解质|电化学|宁德时代|欣旺达|亿纬锂能|国轩高科|中创新航|赣锋锂业|天赐材料|磷酸铁锂|三元锂|钠离子|循环寿命|热失控/ => 电池与电化学（中文）
+/(?<![A-Za-z0-9_])(?:battery|batteries|cathodes?|anodes?|electrolytes?|CATL|EVE[\s-]+Energy|Gotion|CALB|LG[\s-]+Energy[\s-]+Solution|Samsung[\s-]+SDI|Panasonic[\s-]+Energy|LFP|NMC|lithium[\s-]+ion|sodium[\s-]+ion|thermal[\s-]+runaway)(?![A-Za-z0-9_])/ => 电池与电化学（英文）
+
+[储能系统与新能源应用]
+/储能|新能源|抽水蓄能|微电网|光储充|储热|储冷|构网型|源网荷储|新型电力系统|能量管理系统|削峰填谷/ => 储能系统与新能源应用（中文）
+/(?<![A-Za-z0-9_])(?:energy[\s-]+storage|renewable[\s-]+energy|pumped[\s-]+storage|microgrids?|thermal[\s-]+storage|grid[\s-]+forming|compressed[\s-]+air[\s-]+storage|flywheel[\s-]+storage|Fluence|Tesla[\s-]+Megapack|energy[\s-]+management[\s-]+systems?|long[\s-]+duration[\s-]+storage)(?![A-Za-z0-9_])/ => 储能系统与新能源应用（英文）
+
+# ── 第 15 类：矿产金属与化工材料 ──
 [贵金属]
-/(金价|黄金价格|国际黄金|现货黄金|伦敦金|黄金.{0,8}(?:上涨|下跌|新高|回调)|gold price|spot gold)/ => 黄金
-/(银价|白银价格|现货白银|白银.{0,8}(?:上涨|下跌|新高|回调)|silver price|spot silver)/ => 白银
-/(?<![a-z0-9])COMEX(?![a-z0-9]).{0,8}(?:黄金|白银|gold|silver)|(?:黄金|白银).{0,8}(?:期货|主力合约)/ => 贵金属期货
-/(央行.{0,8}(?:购金|增持黄金)|黄金储备|外汇储备.{0,8}黄金|central bank.{0,12}gold)/ => 央行购金
-@6
+/黄金|白银|铂金|钯金|贵金属|金价|银价|足金|伦敦金|现货金|金条|金饰|上海金交所|紫金矿业|避险资产/ => 贵金属（中文）
+/(?<![A-Za-z0-9_])(?:gold|silver|platinum|precious[\s-]+metals?|palladium|bullion|LBMA|Zijin[\s-]+Mining|goldsmiths?)(?![A-Za-z0-9_])/ => 贵金属（英文）
 
-[股市投资]
-/(股票|证券|券商|A股|上证|深证|创业板|科创板|北交所|沪深股市|A-?shares|Shanghai Composite|ChiNext|STAR Market)/ => A股/证券
-/(港股|恒生|恒生指数|Hang Seng)/ => 港股
-/(美股|纳斯达克|标普|纳指|标普500|道琼斯|(?<![a-z0-9])Nasdaq(?![a-z0-9])|S&P|Dow Jones)/ => 美股
-/(沪深300|中证500|中证1000|CSI 300|CSI 500|CSI 1000)/ => 指数
-/(涨停|跌停|熔断|千股涨停|千股跌停|limit up|limit down|circuit breaker)/ => 涨跌停
-/(牛市|熊市|慢牛|结构性行情|股市.*(?:反弹|回调|震荡)|A股.*(?:反弹|回调))/ => 行情
-/(北向资金|南向资金|主力资金|外资流向|northbound capital|southbound capital)/ => 资金流向
-/(游资|量化交易|量化基金|公募|私募|hot money|quant(?:itative)? trading|quant fund)/ => 资金类型
-/((?<![a-z0-9])(?:ETF|REITs)(?![a-z0-9])|交易所交易基金|房地产投资信托(?:基金)?|黄金ETF)/ => ETF/REITs
-/(?<![a-z0-9])IPO(?![a-z0-9])|A股.*上市|港股.*上市|美股.*上市|上市.*(?:被否|过会|募资)|注册制|借壳|退市|ST.*退市/ => 上市退市
-/(分红|回购|增持|减持|大宗交易|buyback|stake increase|stake reduction)/ => 股东动作
-/(新晋.*独角兽|最年轻.*上市|刚.*融资|(?<![a-z0-9])unicorn(?![a-z0-9])|Pre[ .]?IPO|newly listed|funding)/ => 融资
-/(高股息|红利.*(?:指数|ETF)|破净|回购增持再贷款|互换便利|平准基金|耐心资本|中特估|券商.*(?:合并|重组|自营)|(?<![a-z0-9])(?:PSL|REITs)(?![a-z0-9])|high dividend|patient capital)/ => 红利/政策资金
-/(上证综指|深证成指|沪深两市.*(?:成交额|成交)|科创50|北证50|中证A50|中证A500)/ => 宽基指数
-@8
+[黑色金属与钢铁]
+/钢铁|钢材|铁矿|不锈钢|螺纹钢|铁合金|宝武|宝钢|鞍钢|河钢|首钢|粗钢|生铁|热轧|冷轧|高炉/ => 黑色金属与钢铁（中文）
+/(?<![A-Za-z0-9_])(?:steel|iron[\s-]+ore|ferroalloys?|Baowu|Baosteel|ArcelorMittal|POSCO|rebar|pig[\s-]+iron|blast[\s-]+furnaces?|hot[\s-]+rolled[\s-]+coils?)(?![A-Za-z0-9_])/ => 黑色金属与钢铁（英文）
 
-[房地产]
-/(房价|二手房|新房|房企|房价收入比|home prices)/ => 房价
-/(楼市|房地产|去库存|housing market|real estate)/ => 楼市
-/(恒大|碧桂园|万科|融创|保利|中海|绿城|Evergrande|Country Garden|Vanke|Sunac)/ => 开发商
-/(首付|房贷|公积金|LPR.*房贷|down payment|mortgage|housing provident fund)/ => 房贷
-/(限购|限售|限价|放开.*限购|取消.*限购|home purchase restriction)/ => 限购限售
-/(认房不认贷|存量房贷|首套房|二套房|recognize homes not loans|existing mortgage)/ => 房贷政策
-/(保交楼|保交付|烂尾楼|ensure delivery of homes|unfinished building)/ => 交付
-/(土地.*出让|土拍|收储|土地财政|land auction)/ => 土地
-/(城市更新|旧改|保障性住房|保障房|保障性租赁住房|住房租赁|房屋养老金|好房子|收储.*(?:商品房|存量房)|再融资|商业地产|写字楼|urban renewal|affordable housing|housing pension)/ => 地产新模式
-/(公摊|得房率|物业|物业费|不动产登记|shared floor area|net usable ratio|property management)/ => 物业/公摊
-@8
+[有色金属与关键矿产]
+/有色金属|铜价|铝价|锂矿|稀土|战略矿产|关键矿产|碳酸锂|氢氧化锂|金属钴|金属镍|钨矿|锑矿|钼矿|氧化铝|电解铝|盐湖提锂|中国铝业|洛阳钼业/ => 有色金属与关键矿产（中文）
+/(?<![A-Za-z0-9_])(?:copper|aluminum|rare[\s-]+earths?|critical[\s-]+minerals?|lithium|cobalt|nickel|tungsten|antimony|molybdenum|bauxite|aluminium|Chalco|CMOC)(?![A-Za-z0-9_])/ => 有色金属与关键矿产（英文）
 
-[加密货币]
-/(比特币|(?<![a-z0-9])Bitcoin(?![a-z0-9])|(?<![a-z0-9])BTC(?![a-z0-9])|比特币减半)/ => 比特币
-/(以太坊|(?<![a-z0-9])Ethereum(?![a-z0-9])|(?<![a-z0-9])ETH(?![a-z0-9])|以太坊质押)/ => 以太坊
-/(加密货币|数字货币|数字人民币|(?<![a-z0-9])(?:cryptocurrency|CBDC)(?![a-z0-9]))/ => 加密货币
-/(稳定币|(?<![a-z0-9])(?:USDT|USDC|stablecoin)(?![a-z0-9])|稳定币监管)/ => 稳定币
-/((?<![a-z0-9])(?:DeFi|Web3|DAO|NFT|RWA)(?![a-z0-9])|去中心化金融|去中心化自治组织|非同质化代币|真实世界资产)/ => Web3
-/(铭文|符文.*(?:协议|空投|比特币)|加密.*空投|(?<![a-z0-9])Airdrop(?![a-z0-9])|(?<![a-z0-9])Meme Coin(?![a-z0-9])|MEME币)/ => 铭文空投
-/(Layer.?2|zk.*Rollup|Optimistic.?Rollup|二层网络|二层扩容|乐观卷积|(?<![a-z0-9])Arbitrum(?![a-z0-9])|(?<![a-z0-9])Base(?![a-z0-9]))/ => L2
-/((?<![a-z0-9])(?:Solana|Avalanche|Polygon|Sui|Aptos)(?![a-z0-9]))/ => 公链
-/(币安|(?<![a-z0-9])(?:Binance|Coinbase|OKX|Bybit|FTX)(?![a-z0-9]))/ => 交易所
-/(现货ETF.*比特|现货ETF.*以太|比特币ETF.*获批|spot ETF.*bitcoin|spot ETF.*ether)/ => 现货ETF
-@8
+[基础化工与化学品]
+/化工|化学品|聚合物|树脂|橡胶|塑料|溶剂|乙烯|丙烯|甲醇|纯碱|烧碱|钛白粉|聚氨酯|万华化学|巴斯夫|陶氏/ => 基础化工与化学品（中文）
+/(?<![A-Za-z0-9_])(?:chemical[\s-]+industry|polymers?|resins?|rubber|BASF|Dow[\s-]+Chemical|DuPont|SABIC|ethylene|propylene|methanol|polyurethane|PVC|PTA|soda[\s-]+ash)(?![A-Za-z0-9_])/ => 基础化工与化学品（英文）
 
-[出海与跨境电商]
-/(出海|品牌出海|跨境电商|cross-?border e-?commerce)/ => 出海
-/(TikTok.*Shop|亚马逊.*卖家|速卖通|SHEIN|Temu|阿里巴巴国际站|(?<![a-z0-9])(?:Shopee|Lazada)(?![a-z0-9])|Amazon.*seller|AliExpress)/ => 跨境电商平台
-/(海外仓|跨境物流|关税.*跨境|出口退税|欧盟.*合规|东南亚.*市场|overseas warehouse|cross-?border logistics)/ => 出海政策
-/(新茶饮.*出海|汽车.*出海|制造业出海|auto(?:mobile)? export|brand.*going global)/ => 中国企业出海
-@6
+[先进材料与功能材料]
+/新材料|复合材料|高分子|碳纤维|石墨烯|功能材料|耐火材料|超材料|气凝胶|光学材料|陶瓷材料|生物材料|导热材料|磁性材料|特种纤维/ => 先进材料与功能材料（中文）
+/(?<![A-Za-z0-9_])(?:advanced[\s-]+materials?|composite[\s-]+materials?|carbon[\s-]+fibers?|graphene|metamaterials?|aerogels?|biomaterials?|magnetic[\s-]+materials?|ceramic[\s-]+matrix[\s-]+composites?|thermal[\s-]+interface[\s-]+materials?|aramids?)(?![A-Za-z0-9_])/ => 先进材料与功能材料（英文）
 
-[消费零售]
-/(茶饮|咖啡.*(?:价格|上市|联名|扩张)|瑞幸|库迪|(?<![a-z0-9])Manner(?![a-z0-9])|蜜雪冰城|喜茶|奈雪|霸王茶姬|古茗|茶百道|沪上阿姨|(?<![a-z0-9])(?:Luckin|Cotti)(?![a-z0-9]))/ => 茶咖新消费
-/(山姆|(?<![a-z0-9])Costco(?![a-z0-9])|胖东来|永辉|大润发|折扣店|折扣零售|会员店|零售.*(?:转型|调改|爆改))/ => 线下零售
-/(直播带货|仅退款|电商.*(?:价格战|GMV|退货|大促)|百亿补贴|618|双11|双十二)/ => 电商
-/(国货|潮玩|新消费|谷子经济|泡泡玛特|(?<![a-z0-9])Pop[ .]?Mart(?![a-z0-9])|谷子|二次元.*(?:消费|店铺))/ => 国货潮玩
-/(即时零售|前置仓|社区团购|消费券|以旧换新|县域.*消费|首店|离境退税|即时配送|instant retail|community group buy)/ => 零售渠道/政策
-/(黄金.*(?:消费|价格|品牌)|周大福|老铺黄金|高级珠宝|名表|烈酒|奢侈品涨价|high-end consumption|luxury)/ => 高端消费
-@6
+[采矿冶炼与资源回收]
+/采矿|矿产|冶炼|选矿|尾矿|再生金属|矿权|必和必拓|力拓|淡水河谷|嘉能可|五矿|矿山|矿石|精矿|资源勘探/ => 采矿冶炼与资源回收（中文）
+/(?<![A-Za-z0-9_])(?:mining|mineral[\s-]+resources?|smelting|metal[\s-]+recycling|BHP|Rio[\s-]+Tinto|Glencore|China[\s-]+Minmetals|ore[\s-]+processing|resource[\s-]+exploration|mine[\s-]+rehabilitation)(?![A-Za-z0-9_])/ => 采矿冶炼与资源回收（英文）
 
-[知名企业家/科技人物]
-/(黄仁勋|Jensen[ .]?Huang)/ => 英伟达动态
-/(马斯克|Elon[ .]?Musk)/ => 马斯克动态
-/(山姆.?奥特曼|Sam[ .]?Altman|OpenAI.*(?:换帅|融资|发布))/ => OpenAI动态
-/(雷军|任正非|余承东|王传福|Lei[ .]?Jun|Ren[ .]?Zhengfei)/ => 国内科技人
-/(马云|Jack[ .]?Ma|马化腾|Pony[ .]?Ma|张一鸣|王兴|李彦宏|Robin[ .]?Li|刘强东|黄峥)/ => 国内互联网人
-/(巴菲特|Warren[ .]?Buffett|贝索斯|Jeff[ .]?Bezos|比尔盖茨|Bill[ .]?Gates|蒂姆库克|Tim[ .]?Cook|扎克伯格|Mark[ .]?Zuckerberg|纳德拉|Satya[ .]?Nadella|苏姿丰|Lisa[ .]?Su|桑达尔皮查伊|Sundar[ .]?Pichai)/ => 海外企业家
-/(乔布斯|Steve[ .]?Jobs)/ => 乔布斯
-@8
+# ── 第 16 类：宏观经济与发展政策 ──
+[经济增长与宏观指标]
+/宏观经济|经济增长|国内生产总值|经济数据|经济复苏|经济下行|采购经理指数|国家统计局|经济普查|经济景气|增长率|名义增速|实际增速|社会消费品|固定资产投资/ => 经济增长与宏观指标（中文）
+/(?<![A-Za-z0-9_])(?:GDP|PMI|economic[\s-]+growth|economic[\s-]+recovery|National[\s-]+Bureau[\s-]+of[\s-]+Statistics|gross[\s-]+domestic[\s-]+product|economic[\s-]+indicators?|economic[\s-]+outlook|retail[\s-]+sales|fixed[\s-]+asset[\s-]+investment)(?![A-Za-z0-9_])/ => 经济增长与宏观指标（英文）
 
-# ═══════════════════════════════════════════════════════════════
-#                    政治 / 国际 / 军事
-# ═══════════════════════════════════════════════════════════════
+[价格通胀与生活成本]
+/通胀|通缩|物价|居民消费价格|生产者价格|生活成本|价格指数|购买力|滞胀|价格水平|平减指数|居民消费支出/ => 价格通胀与生活成本（中文）
+/(?<![A-Za-z0-9_])(?:inflation|deflation|CPI|PPI|stagflation|cost[\s-]+of[\s-]+living|purchasing[\s-]+power|GDP[\s-]+deflator|PCE|price[\s-]+index|price[\s-]+indices)(?![A-Za-z0-9_])/ => 价格通胀与生活成本（英文）
 
-[中美关系]
-/(中美.*关系|中美.*对话|中美.*会晤|中美.*(?:贸易|科技|关税)|U\.?S\.?-?China.*(?:relations|talks|meeting))/ => 中美关系
-/(关税|贸易战|科技战|trade war|tech war)/ => 关税/贸易战
-/(芯片.*禁令|实体清单|对华.*制裁|制裁.*中国|出口管制|chip.*ban|entity list|China.*sanctions?|export control)/ => 制裁
-/(脱钩|去风险化|(?<![a-z0-9])(?:decoupling|de-?risking)(?![a-z0-9]))/ => 脱钩
-/(南海|南中国海|南海.*(?:仲裁|岛礁|巡航)|South China Sea)/ => 南海
-/(国务卿|白宫|五角大楼|Secretary of State|White House|(?<![a-z0-9])Pentagon(?![a-z0-9]))/ => 美方动态
-@8
+[经济周期与结构效率]
+/经济周期|经济结构|生产率|潜在增速|产业结构|结构性改革|产业空心化|去工业化|经济衰退|软着陆|硬着陆|产出缺口|债务周期/ => 经济周期与结构效率（中文）
+/(?<![A-Za-z0-9_])(?:economic[\s-]+cycles?|productivity|economic[\s-]+structure|structural[\s-]+reforms?|economic[\s-]+recession|soft[\s-]+landing|hard[\s-]+landing|output[\s-]+gap|deindustrialization|debt[\s-]+cycles?)(?![A-Za-z0-9_])/ => 经济周期与结构效率（英文）
 
-[台海两岸]
-/(台海|台湾.{0,12}(?:问题|选举|弹劾|民意机构|政党|施政|防务|兵役)|对台.{0,8}(?:军售|政策)|Taiwan Strait|Taiwan.{0,12}(?:election|impeachment|defense)|arms sales?.{0,8}Taiwan)/ => 台海政治
-/(两岸.{0,12}(?:关系|交流|经贸|融合|航线|和平发展)|海峡两岸|cross-?strait.{0,12}(?:relations|trade|exchanges))/ => 两岸关系
-/(?:赖清德|民进党|国民党).{0,12}(?:讲话|政策|选举|弹劾|罢免|两岸|台海)|(?:弹劾|罢免).{0,8}赖清德/ => 岛内政治
-@6
+[区域经济与协调发展]
+/区域经济|都市圈|城市群|县域经济|区域协调|开发区|长三角|京津冀|成渝|雄安|海南自贸港|西部大开发|东北振兴|长江经济带/ => 区域经济与协调发展（中文）
+/(?<![A-Za-z0-9_])(?:regional[\s-]+economy|metropolitan[\s-]+areas?|city[\s-]+clusters?|regional[\s-]+development|Yangtze[\s-]+River[\s-]+Delta|Beijing[\s-]+Tianjin[\s-]+Hebei|Chengdu[\s-]+Chongqing|Hainan[\s-]+Free[\s-]+Trade[\s-]+Port|Xiongan|regional[\s-]+integration)(?![A-Za-z0-9_])/ => 区域经济与协调发展（英文）
 
-[俄乌欧洲]
-/(俄乌|乌克兰|俄罗斯.*战|俄军|乌军|亚速营|Russia-?Ukraine)/ => 俄乌战争
-/(北约|(?<![a-z0-9])NATO(?![a-z0-9])|欧盟.*(?:制裁|外交|军援)|EU.*diplomacy)/ => 北约欧盟
-/(欧洲.*能源|能源危机|天然气.*欧洲|energy crisis)/ => 能源危机
-/(援助.*乌克兰|军援.*乌克兰|防空.*援助|military aid.*Ukraine)/ => 军援
-@8
+[国际贸易与外部收支]
+/国际贸易|外贸|贸易顺差|贸易逆差|经常账户|关税|出口|进口|贸易战|贸易壁垒|反倾销|反补贴|原产地|自贸试验区|经贸关系/ => 国际贸易与外部收支（中文）
+/(?<![A-Za-z0-9_])(?:international[\s-]+trade|exports?|imports?|tariffs?|balance[\s-]+of[\s-]+payments|trade[\s-]+surplus|trade[\s-]+deficits?|anti[\s-]+dumping|countervailing[\s-]+duty|countervailing[\s-]+duties|trade[\s-]+barriers?|trade[\s-]+wars?)(?![A-Za-z0-9_])/ => 国际贸易与外部收支（英文）
 
-[中东局势]
-/(以色列|巴勒斯坦|哈马斯|加沙|中东和平|(?<![a-z0-9])(?:Israel|Palestine|Hamas|Gaza)(?![a-z0-9]))/ => 以巴
-/(黎巴嫩|真主党|(?<![a-z0-9])(?:Lebanon|Hezbollah)(?![a-z0-9]))/ => 黎巴嫩
-/(伊朗|胡塞|也门|伊朗核.*(?:谈判|问题)|(?<![a-z0-9])(?:Iran|Houthi|Yemen)(?![a-z0-9]))/ => 伊朗胡塞
-/(沙特|(?<![a-z0-9])Saudi(?![a-z0-9]))/ => 沙特
-/(红海.*(?:危机|航运|袭击|封锁)|霍尔木兹|波斯湾|Red Sea|Strait of Hormuz)/ => 红海
-@8
+[宏观调控与发展规划]
+/宏观调控|稳增长|扩大内需|供给侧|高质量发展|发展规划|经济政策|新质生产力|双循环|提振消费|经济工作会议|发展改革委|发改委|五年规划|产业政策/ => 宏观调控与发展规划（中文）
+/(?<![A-Za-z0-9_])(?:macroeconomic[\s-]+policy|domestic[\s-]+demand|economic[\s-]+stimulus|development[\s-]+plans?|industrial[\s-]+policy|industrial[\s-]+policies|five[\s-]+year[\s-]+plans?|demand[\s-]+stimulus|macroeconomic[\s-]+regulation|new[\s-]+quality[\s-]+productive[\s-]+forces|NDRC)(?![A-Za-z0-9_])/ => 宏观调控与发展规划（英文）
 
-[韩国与朝鲜]
-/(韩国|首尔|尹锡悦|李在明|韩元|中韩.*(?:关系|对话)|(?<![a-z0-9])(?:Korea|Seoul|KRW)(?![a-z0-9]))/ => 韩国
-/(朝鲜|半岛|朝核|平壤|朝美.*(?:对话|会谈)|(?<![a-z0-9])(?:North Korea|DPRK|Pyongyang)(?![a-z0-9]))/ => 朝鲜
-@6
+# ── 第 17 类：财政税收与公共资金 ──
+[财政预算与收支]
+/财政|预算|决算|政府收入|公共支出|赤字率|收支缺口|收支平衡|政府性基金|非税收入/ => 财政预算与收支（中文）
+/(?<![A-Za-z0-9_])(?:fiscal[\s-]+policy|budgets?|fiscal[\s-]+deficits?|public[\s-]+expenditure|Ministry[\s-]+of[\s-]+Finance|fiscal[\s-]+consolidation|government[\s-]+revenue|public[\s-]+spending|deficit[\s-]+ratio|fiscal[\s-]+balance)(?![A-Za-z0-9_])/ => 财政预算与收支（英文）
 
-[日本]
-/(日本|岸田|石破|日元|日本.{0,12}(?:央行|加息|经团联)|中日.{0,12}(?:关系|对话|航线|经贸|外交)|(?<![a-z0-9])(?:BOJ|Tokyo|Japan)(?![a-z0-9]))/ => 日本
-@6
+[税制与税收征管]
+/税收|税务|增值税|所得税|消费税|税率|退税|减税|印花税|契税|个税|房产税|税惠|纳税|税负|发票|金税|偷逃税/ => 税制与税收征管（中文）
+/(?<![A-Za-z0-9_])(?:taxation|VAT|income[\s-]+tax|tax[\s-]+refunds?|tax[\s-]+reform|tax[\s-]+cuts?|tax[\s-]+collection|capital[\s-]+gains[\s-]+tax|stamp[\s-]+duty|stamp[\s-]+duties|IRS|tax[\s-]+evasion)(?![A-Za-z0-9_])/ => 税制与税收征管（英文）
 
-[东南亚]
-/(东盟|菲律宾|越南|马来|印尼|南海.*(?:菲律宾|越南)|RCEP|(?<![a-z0-9])(?:ASEAN|Philippines|Vietnam|Indonesia)(?![a-z0-9]))/ => 东南亚
-@6
+[地方债与政府债务]
+/地方债|专项债|城投债|政府债务|隐性债务|化债|债务置换|城投平台|地方融资平台|地方举债|债务展期|债务重整|债务率/ => 地方债与政府债务（中文）
+/(?<![A-Za-z0-9_])(?:municipal[\s-]+bonds?|local[\s-]+government[\s-]+debt|sovereign[\s-]+debt|debt[\s-]+swaps?|LGFVs?|local[\s-]+government[\s-]+financing[\s-]+vehicles?|debt[\s-]+restructuring|debt[\s-]+rollover|debt[\s-]+sustainability|debt[\s-]+relief|special[\s-]+purpose[\s-]+bonds?)(?![A-Za-z0-9_])/ => 地方债与政府债务（英文）
 
-[亚太安全与盟友]
-/(印太|美日韩|美菲|(?<![a-z0-9])(?:AUKUS|QUAD|Indo[- ]Pacific)(?![a-z0-9]))/ => 亚太安全
-/(澳大利亚|新西兰|加拿大|(?<![a-z0-9])(?:Australia|Canada|New Zealand)(?![a-z0-9]))/ => 盟友动态
-@6
+[政府采购与公共投资]
+/政府采购|公共投资|招标|投标|财政评审|以工代赈|政采|中标|评标|围标|串标|集中采购|特许经营|项目审批/ => 政府采购与公共投资（中文）
+/(?<![A-Za-z0-9_])(?:government[\s-]+procurement|public[\s-]+investment|public[\s-]+tenders?|competitive[\s-]+bidding|government[\s-]+purchasing|bid[\s-]+rigging|public[\s-]+private[\s-]+partnerships?|concession[\s-]+agreements?|procurement[\s-]+contracts?|project[\s-]+approval)(?![A-Za-z0-9_])/ => 政府采购与公共投资（英文）
 
-[国内政策]
-/(两会|Two Sessions|人大.*(?:报告|会议)|政协.*(?:提案|会议))/ => 两会
-/(三中全会|中央经济工作会议|经济工作会议|政治局.*会议|国常会|Third Plenum|Central Economic Work Conference)/ => 重大会议
-/(政府工作报告|十四五|十五五|中长期规划|14th Five-?Year Plan|15th Five-?Year Plan)/ => 规划
-/(高质量发展|中国式现代化|新质生产力|现代化产业体系|high-?quality development|Chinese modernization)/ => 发展战略
-/(共同富裕|乡村振兴|城乡融合|common prosperity|rural revitalization)/ => 共富/乡村
-/(民营经济|以旧换新|提振消费|促消费|消费券|稳就业.*(?:政策|举措)|childcare subsidy|trade-?in program)/ => 当前政策
-@10
+[转移支付与财政补助]
+/转移支付|财政补贴|财政补助|均衡性补助|专项资金|民生资金|补贴政策|惠民补助|直达资金|中央补助|救助补助|补助标准|贴息资金/ => 转移支付与财政补助（中文）
+/(?<![A-Za-z0-9_])(?:fiscal[\s-]+transfers?|government[\s-]+subsidy|government[\s-]+subsidies|special[\s-]+purpose[\s-]+funds?|equalization[\s-]+transfers?|earmarked[\s-]+funds?|fiscal[\s-]+grants?|subsidy[\s-]+reform|subsidy[\s-]+allocation|interest[\s-]+subsidy)(?![A-Za-z0-9_])/ => 转移支付与财政补助（英文）
+
+[公共资金审计与绩效]
+/财政审计|预算绩效|国库|资金监管|资金挪用|预算公开|审计署|审计报告|审计整改|绩效评价|资金效益|专项审计|审计监督/ => 公共资金审计与绩效（中文）
+/(?<![A-Za-z0-9_])(?:public[\s-]+audits?|budget[\s-]+performance|treasury[\s-]+management|fiscal[\s-]+transparency|National[\s-]+Audit[\s-]+Office|performance[\s-]+audits?|audit[\s-]+rectification|public[\s-]+fund[\s-]+oversight|audit[\s-]+reports?|government[\s-]+accountability[\s-]+audits?)(?![A-Za-z0-9_])/ => 公共资金审计与绩效（英文）
+
+# ── 第 18 类：银行货币与支付 ──
+[央行政策与利率]
+/央行|降息|加息|降准|利率|存款准备金|货币政策|美联储|中国人民银行|量化宽松|量化紧缩|公开市场操作|逆回购|缩表|扩表/ => 央行政策与利率（中文）
+/(?<![A-Za-z0-9_])(?:central[\s-]+banks?|interest[\s-]+rates?|monetary[\s-]+policy|reserve[\s-]+requirements?|Federal[\s-]+Reserve|FOMC|PBOC|ECB|Bank[\s-]+of[\s-]+Japan|Bank[\s-]+of[\s-]+England|quantitative[\s-]+easing|quantitative[\s-]+tightening|LPR|MLF|SOFR)(?![A-Za-z0-9_])/ => 央行政策与利率（英文）
+
+[货币汇率与外汇]
+/汇率|外汇|人民币|美元|欧元|日元|货币贬值|港币|港元|英镑|瑞郎|货币升值|结售汇|汇兑损益/ => 货币汇率与外汇（中文）
+/(?<![A-Za-z0-9_])(?:exchange[\s-]+rates?|foreign[\s-]+exchange|currency[\s-]+depreciation|forex|yuan|renminbi|US[\s-]+dollars?|euro|Japanese[\s-]+yen|pound[\s-]+sterling|currency[\s-]+swaps?|de[\s-]+dollarization|CNY|CNH|USD|EUR|JPY)(?![A-Za-z0-9_])/ => 货币汇率与外汇（英文）
+
+[银行存贷款与服务]
+/银行|存款|贷款|信贷|存单|征信|信用卡|工行|建行|农行|中行|交行|招行|邮储|汇丰|摩根大通|花旗|消费贷|经营贷|按揭贷/ => 银行存贷款与服务（中文）
+/(?<![A-Za-z0-9_])(?:banks?|banking|loans?|credit[\s-]+cards?|ICBC|CCB|CMB|HSBC|JPMorgan|Citigroup|Wells[\s-]+Fargo|Standard[\s-]+Chartered|time[\s-]+deposits?|consumer[\s-]+credit|credit[\s-]+scores?)(?![A-Za-z0-9_])/ => 银行存贷款与服务（英文）
+
+[实体融资与普惠金融]
+/普惠金融|小微融资|融资担保|供应链金融|银企对接|不良贷款|融资成本|首贷|续贷|转贷|抵押融资|信用融资|小额信贷|涉农融资/ => 实体融资与普惠金融（中文）
+/(?<![A-Za-z0-9_])(?:inclusive[\s-]+finance|SME[\s-]+financing|credit[\s-]+guarantees?|non[\s-]+performing[\s-]+loans?|microfinance|microcredit|loan[\s-]+guarantees?|credit[\s-]+access|working[\s-]+capital[\s-]+financing|small[\s-]+business[\s-]+lending|inclusive[\s-]+lending)(?![A-Za-z0-9_])/ => 实体融资与普惠金融（英文）
+
+[支付清算与结算]
+/支付|清算|结算|收单|汇款|跨境汇兑|银联|网联|财付通|收款码|刷脸付/ => 支付清算与结算（中文）
+/(?<![A-Za-z0-9_])(?:payments?|clearing|settlement|remittances?|UnionPay|Alipay|WeChat[\s-]+Pay|PayPal|Mastercard|Stripe|SWIFT|CIPS|SEPA|FedNow)(?![A-Za-z0-9_])/ => 支付清算与结算（英文）
+
+[金融监管与系统风险]
+/金融监管|金融稳定|资本充足率|流动性风险|反洗钱|巴塞尔|存款保险|压力测试监管|金融风险|影子银行|挤兑|金融消费者/ => 金融监管与系统风险（中文）
+/(?<![A-Za-z0-9_])(?:financial[\s-]+regulation|financial[\s-]+stability|liquidity[\s-]+risk|anti[\s-]+money[\s-]+laundering|Basel[\s-]+III|FSB|BIS|FDIC|macroprudential|bank[\s-]+runs?|shadow[\s-]+banking|capital[\s-]+adequacy|financial[\s-]+stress[\s-]+tests?)(?![A-Za-z0-9_])/ => 金融监管与系统风险（英文）
+
+# ── 第 19 类：股票基金与资本市场 ──
+[股票行情与市场交易]
+/股票|股市|股指|股价|涨停|跌停|大盘|成交量|A股|港股|美股|科创板|创业板|纳斯达克|标普500|道琼斯|恒生指数|上证指数|深证成指|沪深300/ => 股票行情与市场交易（中文）
+/(?<![A-Za-z0-9_])(?:stock[\s-]+markets?|equity[\s-]+markets?|share[\s-]+prices?|trading[\s-]+volume|Nasdaq|S\&P[\s-]+500|Dow[\s-]+Jones|Hang[\s-]+Seng|SSE[\s-]+Composite|CSI[\s-]+300|Nikkei[\s-]+225|bull[\s-]+markets?|bear[\s-]+markets?|market[\s-]+capitalization)(?![A-Za-z0-9_])/ => 股票行情与市场交易（英文）
+
+[基金与指数投资]
+/基金|指数投资|被动投资|定投|公募|易方达|嘉实|贝莱德|先锋领航|富达|跟踪误差|指数增强/ => 基金与指数投资（中文）
+/(?<![A-Za-z0-9_])(?:mutual[\s-]+funds?|index[\s-]+funds?|ETFs?|passive[\s-]+investing|BlackRock|Vanguard|Fidelity[\s-]+Investments|Invesco|State[\s-]+Street[\s-]+Global[\s-]+Advisors|tracking[\s-]+error|index[\s-]+investing|fund[\s-]+flows?)(?![A-Za-z0-9_])/ => 基金与指数投资（英文）
+
+[债券与固定收益]
+/债券|国债|企业债|信用债|债市|固定收益|转债|票息|久期|信用利差|收益率曲线|债务违约|票据融资|短融|中票/ => 债券与固定收益（中文）
+/(?<![A-Za-z0-9_])(?:bonds?|fixed[\s-]+income|credit[\s-]+spreads?|yield[\s-]+curves?|coupon[\s-]+rates?|credit[\s-]+defaults?|commercial[\s-]+paper|treasury[\s-]+bills?|treasury[\s-]+notes?|duration[\s-]+risk)(?![A-Za-z0-9_])/ => 债券与固定收益（英文）
+
+[期货期权与衍生品]
+/期货|期权|衍生品|套期保值|保证金|商品合约|交割|平仓|爆仓|空头|多头|做空|期现套利|认购权证|认沽权证/ => 期货期权与衍生品（中文）
+/(?<![A-Za-z0-9_])(?:futures|option[\s-]+trading|derivatives?|hedging|CME|CBOE|LME|COMEX|put[\s-]+options?|call[\s-]+options?|margin[\s-]+calls?|short[\s-]+selling|options[\s-]+exchanges?)(?![A-Za-z0-9_])/ => 期货期权与衍生品（英文）
+
+[上市融资与公司行动]
+/上市公司|首次公开募股|再融资|退市|分红|回购|股权激励|敲钟|路演|配股|增发|定增|减持|增持|分拆上市|借壳上市|限售解禁/ => 上市融资与公司行动（中文）
+/(?<![A-Za-z0-9_])(?:IPOs?|delisting|dividends?|share[\s-]+buybacks?|secondary[\s-]+offerings?|rights[\s-]+issues?|stock[\s-]+splits?|reverse[\s-]+splits?|spin[\s-]+offs?|lockup[\s-]+expiration|SPACs?|listing[\s-]+applications?)(?![A-Za-z0-9_])/ => 上市融资与公司行动（英文）
+
+[证券监管与市场制度]
+/证券|券商|注册制|内幕交易|市场操纵|信息披露|投资者保护|证监会|上交所|深交所|北交所|港交所|交易所|停复牌|停牌|退市新规/ => 证券监管与市场制度（中文）
+/(?<![A-Za-z0-9_])(?:securities|brokerage|insider[\s-]+trading|market[\s-]+manipulation|SEC|SFC|HKEX|NYSE|FINRA|CSRC|Shanghai[\s-]+Stock[\s-]+Exchange|Shenzhen[\s-]+Stock[\s-]+Exchange|Beijing[\s-]+Stock[\s-]+Exchange|trading[\s-]+halts?)(?![A-Za-z0-9_])/ => 证券监管与市场制度（英文）
+
+# ── 第 20 类：保险信托与财富管理 ──
+[人身保险与保障产品]
+/寿险|健康险|意外险|重疾险|年金险|长期护理险|百万医疗|惠民保|惠享保|增额终身寿|分红险|万能险|保额/ => 人身保险与保障产品（中文）
+/(?<![A-Za-z0-9_])(?:life[\s-]+insurance|health[\s-]+insurance|accident[\s-]+insurance|annuity[\s-]+insurance|term[\s-]+life|whole[\s-]+life|critical[\s-]+illness[\s-]+cover|medical[\s-]+coverage|insurance[\s-]+coverage|long[\s-]+term[\s-]+care[\s-]+insurance|endowment[\s-]+policy)(?![A-Za-z0-9_])/ => 人身保险与保障产品（英文）
+
+[财产保险与责任保障]
+/财险|车险|责任险|农业保险|灾害保险|信用保险|交责险|雇主责任|公众责任|货运险|航运险|巨灾险|网络险/ => 财产保险与责任保障（中文）
+/(?<![A-Za-z0-9_])(?:property[\s-]+insurance|auto[\s-]+insurance|liability[\s-]+insurance|crop[\s-]+insurance|motor[\s-]+insurance|homeowners[\s-]+insurance|marine[\s-]+insurance|catastrophe[\s-]+insurance|cyber[\s-]+insurance|professional[\s-]+indemnity|employers[\s-]+liability)(?![A-Za-z0-9_])/ => 财产保险与责任保障（英文）
+
+[保险经营与理赔服务]
+/保险|保费|保单|理赔|中国平安|中国人寿|中国人保|中国太保|友邦|众安|泰康|承保|退保|拒赔|偿付能力/ => 保险经营与理赔服务（中文）
+/(?<![A-Za-z0-9_])(?:insurance|premium[\s-]+income|reinsurance|Ping[\s-]+An|China[\s-]+Life|PICC|CPIC|AIA[\s-]+Group|Allianz|AXA|Prudential|Munich[\s-]+Re|Swiss[\s-]+Re|underwriting|solvency)(?![A-Za-z0-9_])/ => 保险经营与理赔服务（英文）
+
+[信托资管与家族服务]
+/信托|资产管理|家族办公室|家族财富|受托管理|资管产品|资管新规|财富传承|家族资产|受益人|受托人|托管人/ => 信托资管与家族服务（中文）
+/(?<![A-Za-z0-9_])(?:trust[\s-]+funds?|asset[\s-]+management|family[\s-]+offices?|fiduciary|trustees?|estate[\s-]+planning|wealth[\s-]+transfer|asset[\s-]+managers?|alternative[\s-]+assets?|private[\s-]+wealth|family[\s-]+trusts?)(?![A-Za-z0-9_])/ => 信托资管与家族服务（英文）
+
+[个人理财与资产配置]
+/理财|财富管理|资产配置|风险偏好|家庭资产|储蓄规划|风险收益|金融资产|投资组合|现金管理|财富规划|净值化|伯克希尔哈撒韦/ => 个人理财与资产配置（中文）
+/(?<![A-Za-z0-9_])(?:wealth[\s-]+management|asset[\s-]+allocation|risk[\s-]+appetite|financial[\s-]+planning|investment[\s-]+portfolios?|risk[\s-]+return|cash[\s-]+management|Berkshire[\s-]+Hathaway|robo[\s-]+advisors?|diversification)(?![A-Za-z0-9_])/ => 个人理财与资产配置（英文）
+
+[养老金融与长期投资]
+/养老金融|个人养老金|企业年金|职业年金|长期资金|养老目标基金|第三支柱|第二支柱|养老金入市|养老金投资|退休账户|目标日期|商业养老金/ => 养老金融与长期投资（中文）
+/(?<![A-Za-z0-9_])(?:pension[\s-]+finance|personal[\s-]+pensions?|occupational[\s-]+pensions?|long[\s-]+term[\s-]+investments?|retirement[\s-]+accounts?|retirement[\s-]+savings?|target[\s-]+date[\s-]+funds?|401k|401\(k\)|IRA[\s-]+accounts?|pension[\s-]+investment|retirement[\s-]+planning)(?![A-Za-z0-9_])/ => 养老金融与长期投资（英文）
+
+# ── 第 21 类：数字金融与区块链 ──
+[区块链与分布式账本]
+/区块链|分布式账本|智能合约|共识机制|跨链|零知识证明|公链|联盟链|侧链|主网|测试网|链上治理|权益证明|工作量证明/ => 区块链与分布式账本（中文）
+/(?<![A-Za-z0-9_])(?:blockchains?|distributed[\s-]+ledgers?|smart[\s-]+contracts?|zero[\s-]+knowledge[\s-]+proofs?|proof[\s-]+of[\s-]+stake|proof[\s-]+of[\s-]+work|Layer[\s-]+2|Layer2|rollups?|zkSNARKs?|zkSTARKs?|Hyperledger|Arbitrum|Optimism[\s-]+network)(?![A-Za-z0-9_])/ => 区块链与分布式账本（英文）
+
+[加密货币与数字资产]
+/加密货币|虚拟货币|加密资产|数字资产|代币|通证|比特币|以太坊|以太币|索拉纳|狗狗币|莱特币|瑞波币|门罗币/ => 加密货币与数字资产（中文）
+/(?<![A-Za-z0-9_])(?:cryptocurrency|cryptocurrencies|crypto[\s-]+assets?|digital[\s-]+assets?|tokens?|Bitcoin|BTC|Ethereum|ETH|Solana|Dogecoin|DOGE|Litecoin|LTC|XRP|Monero)(?![A-Za-z0-9_])/ => 加密货币与数字资产（英文）
+
+[稳定币与央行数字货币]
+/稳定币|数字人民币|央行数字货币|法币储备|货币锚定|泰达币|储备证明|数字欧元|数币|法定数字货币|储备审计|法币抵押/ => 稳定币与央行数字货币（中文）
+/(?<![A-Za-z0-9_])(?:stablecoins?|CBDCs?|digital[\s-]+yuan|currency[\s-]+pegs?|USDT|USDC|Tether|Circle[\s-]+Internet[\s-]+Group|e[\s-]+CNY|digital[\s-]+euro|proof[\s-]+of[\s-]+reserves)(?![A-Za-z0-9_])/ => 稳定币与央行数字货币（英文）
+
+[去中心化金融与资产映射]
+/去中心化金融|资产代币化|现实世界资产|流动性挖矿|去中心化借贷|非同质化通证|去中心化交易|自动做市|流动性池|收益耕作|再质押|链上借贷|资产上链/ => 去中心化金融与资产映射（中文）
+/(?<![A-Za-z0-9_])(?:DeFi|asset[\s-]+tokenization|real[\s-]+world[\s-]+assets?|NFTs?|Uniswap|Aave|Curve[\s-]+Finance|MakerDAO|PancakeSwap|RWA|liquidity[\s-]+pools?|yield[\s-]+farming|tokenized[\s-]+assets?|liquid[\s-]+staking)(?![A-Za-z0-9_])/ => 去中心化金融与资产映射（英文）
+
+[链上交易与资产托管]
+/链上交易|数字钱包|加密交易所|链上托管|冷钱包|质押挖矿|币安|欧易|火币|助记词|私钥|链上地址|加密托管|硬件钱包|链上转账/ => 链上交易与资产托管（中文）
+/(?<![A-Za-z0-9_])(?:on[\s-]+chain[\s-]+transactions?|crypto[\s-]+wallets?|crypto[\s-]+exchanges?|crypto[\s-]+custody|Binance|Coinbase|OKX|Kraken[\s-]+crypto|MetaMask|Ledger[\s-]+wallets?|Trezor|seed[\s-]+phrases?|hardware[\s-]+wallets?|staking)(?![A-Za-z0-9_])/ => 链上交易与资产托管（英文）
+
+[数字金融与监管科技]
+/数字金融|金融科技|监管科技|加密监管|链上反诈|数字风控|链上合规|智能风控|开放银行|监管沙盒|数字信贷|助贷平台|蚂蚁集团|陆金所/ => 数字金融与监管科技（中文）
+/(?<![A-Za-z0-9_])(?:digital[\s-]+finance|fintech|regtech|crypto[\s-]+regulation|Ant[\s-]+Group|Lufax|open[\s-]+banking|regulatory[\s-]+sandbox|regulatory[\s-]+sandboxes|digital[\s-]+lending|embedded[\s-]+finance|MiCA|FATF)(?![A-Za-z0-9_])/ => 数字金融与监管科技（英文）
+
+# ── 第 22 类：企业经营与商业管理 ──
+[国资央企]
+/国资|国企|央企|国有企业|国有资产|混改|中央汇金|国有资本|国有控股|央地合作|国有经济/ => 国资央企（中文）
+/(?<![A-Za-z0-9_])(?:state[\s-]+owned[\s-]+enterprises?|state[\s-]+owned[\s-]+assets?|central[\s-]+enterprises?|SOEs?|SASAC|state[\s-]+capital|mixed[\s-]+ownership|state[\s-]+holdings?|government[\s-]+owned[\s-]+corporations?|sovereign[\s-]+holdings?)(?![A-Za-z0-9_])/ => 国资央企（英文）
+
+[民营经济与创业]
+/民营经济|民营企业|创业|初创企业|中小企业|独角兽|民企|民间投资|创投|天使投资|风险投资|孵化器|小巨人|种子轮|融资轮/ => 民营经济与创业（中文）
+/(?<![A-Za-z0-9_])(?:private[\s-]+enterprises?|startups?|entrepreneurship|SMEs?|venture[\s-]+capital|angel[\s-]+investment|seed[\s-]+funding|Series[\s-]+A|Series[\s-]+B|business[\s-]+incubators?|Y[\s-]+Combinator|Sequoia[\s-]+Capital)(?![A-Za-z0-9_])/ => 民营经济与创业（英文）
+
+[企业战略与并购重组]
+/企业战略|并购|重组|业务剥离|战略合作|收购|兼并|业务整合|吸收合并|股权转让|资产注入|管理层变更/ => 企业战略与并购重组（中文）
+/(?<![A-Za-z0-9_])(?:corporate[\s-]+strategy|mergers?|acquisitions?|corporate[\s-]+restructuring|takeovers?|divestitures?|business[\s-]+integration|asset[\s-]+injection|equity[\s-]+transfer|leveraged[\s-]+buyouts?|M\&A)(?![A-Za-z0-9_])/ => 企业战略与并购重组（英文）
+
+[公司治理与组织管理]
+/公司治理|董事会|股东会|企业管理|内部控制|高管|董事长|首席执行官|总经理|监事会|股权结构|企业内控|合伙人制度|组织架构/ => 公司治理与组织管理（中文）
+/(?<![A-Za-z0-9_])(?:corporate[\s-]+governance|board[\s-]+of[\s-]+directors|shareholder[\s-]+meetings?|internal[\s-]+controls?|CEOs?|CFOs?|COOs?|CTOs?|chairpersons?|supervisory[\s-]+boards?|ownership[\s-]+structure|organization[\s-]+design)(?![A-Za-z0-9_])/ => 公司治理与组织管理（英文）
+
+[企业财务与经营业绩]
+/财报|营收|净利润|毛利率|现金流|经营亏损|季报|年报|业绩预告|营业收入|利润率|资产负债表|扭亏|预亏/ => 企业财务与经营业绩（中文）
+/(?<![A-Za-z0-9_])(?:financial[\s-]+reports?|revenues?|net[\s-]+profits?|cash[\s-]+flow|earnings[\s-]+reports?|quarterly[\s-]+results?|annual[\s-]+reports?|balance[\s-]+sheets?|operating[\s-]+profit|profit[\s-]+margins?|EBITDA|EPS)(?![A-Za-z0-9_])/ => 企业财务与经营业绩（英文）
+
+[商业模式与企业发展]
+/商业模式|商业化|品牌战略|组织变革|企业出海|企业破产|企业注销|出海战略|商业闭环|盈利模式|降本增效|品牌升级|企业转型|企业清算|第二增长曲线/ => 商业模式与企业发展（中文）
+/(?<![A-Za-z0-9_])(?:business[\s-]+models?|commercialization|brand[\s-]+strategy|business[\s-]+bankruptcy|monetization|profit[\s-]+models?|business[\s-]+transformation|cost[\s-]+reduction|international[\s-]+expansion|corporate[\s-]+insolvency|business[\s-]+liquidation)(?![A-Za-z0-9_])/ => 商业模式与企业发展（英文）
+
+# ── 第 23 类：商贸零售与消费 ──
+[电商与平台消费]
+/电商|网络购物|网购|直播带货|即时零售|淘宝|天猫|京东|拼多多|阿里巴巴|唯品会|得物|淘天|淘工厂/ => 电商与平台消费（中文）
+/(?<![A-Za-z0-9_])(?:e[\s-]+commerce|online[\s-]+shopping|live[\s-]+commerce|social[\s-]+commerce|Alibaba|Taobao|Tmall|JD\.com|Pinduoduo|PDD[\s-]+Holdings|Amazon|eBay|Rakuten|Mercado[\s-]+Libre)(?![A-Za-z0-9_])/ => 电商与平台消费（英文）
+
+[实体零售与商业业态]
+/零售|商场|超市|便利店|百货|商业综合体|山姆|盒马|胖东来|永辉|沃尔玛|开市客|奥乐齐|名创优品|折扣店|仓储会员店/ => 实体零售与商业业态（中文）
+/(?<![A-Za-z0-9_])(?:retail|shopping[\s-]+malls?|supermarkets?|convenience[\s-]+stores?|Walmart|Costco|Sam's[\s-]+Club|Aldi|Lidl|Carrefour|7[\s-]+Eleven|MINISO|warehouse[\s-]+clubs?|outlet[\s-]+stores?)(?![A-Za-z0-9_])/ => 实体零售与商业业态（英文）
+
+[消费趋势与市场需求]
+/消费市场|消费升级|消费降级|消费信心|消费意愿|消费券|首发经济|首店经济|国潮消费|悦己消费|情绪消费|假日消费|消费潜力|耐用品/ => 消费趋势与市场需求（中文）
+/(?<![A-Za-z0-9_])(?:consumer[\s-]+confidence|consumer[\s-]+demand|consumption[\s-]+trends?|consumption[\s-]+vouchers?|consumer[\s-]+sentiment|discretionary[\s-]+spending|household[\s-]+consumption|consumer[\s-]+spending|experience[\s-]+economy|durable[\s-]+goods|value[\s-]+consumption)(?![A-Za-z0-9_])/ => 消费趋势与市场需求（英文）
+
+[促销定价与客户体验]
+/促销|折扣|优惠券|定价|会员权益|售后服务|双十一|双十二|年中大促|百亿补贴|满减|价保|先用后付|无理由退货|黑色星期五/ => 促销定价与客户体验（中文）
+/(?<![A-Za-z0-9_])(?:discounts?|coupons?|pricing|after[\s-]+sales[\s-]+services?|Black[\s-]+Friday|Cyber[\s-]+Monday|Singles[\s-]+Day|Prime[\s-]+Day|price[\s-]+protection|buy[\s-]+now[\s-]+pay[\s-]+later|customer[\s-]+experience|return[\s-]+policy)(?![A-Za-z0-9_])/ => 促销定价与客户体验（英文）
+
+[跨境商业与贸易服务]
+/跨境电商|跨境贸易|海外仓|保税|海关|报关|速卖通|希音|虾皮|跨境直邮|海外购|出口退货|跨境履约|独立站/ => 跨境商业与贸易服务（中文）
+/(?<![A-Za-z0-9_])(?:cross[\s-]+border[\s-]+commerce|overseas[\s-]+warehouses?|customs|bonded[\s-]+warehouses?|AliExpress|SHEIN|Temu|Shopee|Lazada|TikTok[\s-]+Shop|Shopify|cross[\s-]+border[\s-]+fulfillment|direct[\s-]+to[\s-]+consumer)(?![A-Za-z0-9_])/ => 跨境商业与贸易服务（英文）
+
+[服务消费与共享业态]
+/服务消费|共享经济|订阅服务|本地生活|预付消费|体验消费|美团|大众点评|饿了么|到店服务|即时配送|团购|储值卡|上门服务/ => 服务消费与共享业态（中文）
+/(?<![A-Za-z0-9_])(?:service[\s-]+consumption|sharing[\s-]+economy|subscription[\s-]+services?|prepaid[\s-]+consumption|Meituan|Dianping|Ele\.me|DoorDash|Deliveroo|Instacart|on[\s-]+demand[\s-]+services?|local[\s-]+services?|membership[\s-]+subscriptions?)(?![A-Za-z0-9_])/ => 服务消费与共享业态（英文）
+
+# ── 第 24 类：房地产与住房 ──
+[房价与楼市交易]
+/房地产|楼市|房价|新房|二手房|购房|售楼|楼盘|商品房|住宅成交|挂牌价|网签|房产中介|贝壳找房|链家/ => 房价与楼市交易（中文）
+/(?<![A-Za-z0-9_])(?:real[\s-]+estate|housing[\s-]+markets?|home[\s-]+prices?|home[\s-]+purchases?|home[\s-]+sales|housing[\s-]+inventory|property[\s-]+transactions?|listing[\s-]+prices?|Zillow|Redfin|KE[\s-]+Holdings|Lianjia)(?![A-Za-z0-9_])/ => 房价与楼市交易（英文）
+
+[房企经营与开发融资]
+/房企|房地产开发|地产融资|保交楼|保交房|项目交付|万科|碧桂园|恒大|龙湖|融创|保利发展|华润置地|绿城|中海地产|土地储备/ => 房企经营与开发融资（中文）
+/(?<![A-Za-z0-9_])(?:property[\s-]+developers?|real[\s-]+estate[\s-]+financing|housing[\s-]+delivery|property[\s-]+sector|Vanke|Country[\s-]+Garden|Evergrande|Longfor|Sunac|China[\s-]+Resources[\s-]+Land|Greentown|land[\s-]+bank|project[\s-]+financing)(?![A-Za-z0-9_])/ => 房企经营与开发融资（英文）
+
+[住房信贷与购房政策]
+/房贷|按揭|首付|公积金|限购|认房认贷|首套房|二套房|商转公|认房不认贷|取消限售|购房补贴|房票安置/ => 住房信贷与购房政策（中文）
+/(?<![A-Za-z0-9_])(?:mortgages?|down[\s-]+payments?|housing[\s-]+provident[\s-]+funds?|home[\s-]+purchase[\s-]+restrictions?|first[\s-]+time[\s-]+homebuyers?|second[\s-]+home[\s-]+loans?|homebuyer[\s-]+subsidy|loan[\s-]+to[\s-]+value|housing[\s-]+purchase[\s-]+policy)(?![A-Za-z0-9_])/ => 住房信贷与购房政策（英文）
+
+[租赁住房与租客服务]
+/租房|房租|长租公寓|租赁住房|租购同权|租赁备案|租客|租金|押金|转租|合租|自如|蛋壳公寓|租赁纠纷/ => 租赁住房与租客服务（中文）
+/(?<![A-Za-z0-9_])(?:rental[\s-]+housing|rents?|tenants?|lease[\s-]+agreements?|security[\s-]+deposits?|subletting|co[\s-]+living|Ziroom|rental[\s-]+disputes?|rental[\s-]+deposits?)(?![A-Za-z0-9_])/ => 租赁住房与租客服务（英文）
+
+[保障住房与居住改善]
+/保障房|公租房|安居房|共有产权房|改善住房|住房保障|配售型住房|配租型住房|人才房|安置房|棚改|危旧房|城镇住房|刚需/ => 保障住房与居住改善（中文）
+/(?<![A-Za-z0-9_])(?:affordable[\s-]+housing|public[\s-]+housing|shared[\s-]+ownership|housing[\s-]+security|social[\s-]+housing|resettlement[\s-]+housing|housing[\s-]+subsidy|housing[\s-]+subsidies|slum[\s-]+renovation|subsidized[\s-]+housing|housing[\s-]+affordability)(?![A-Za-z0-9_])/ => 保障住房与居住改善（英文）
+
+[物业社区与房屋安全]
+/物业|业主|小区|住宅维修|房屋安全|住房质量|电梯加装|住宅电梯|维修基金|住宅漏水|外墙脱落|业委会|房屋体检|住房维修/ => 物业社区与房屋安全（中文）
+/(?<![A-Za-z0-9_])(?:property[\s-]+management|homeowners?|residential[\s-]+community|building[\s-]+inspections?|elevator[\s-]+retrofits?|housing[\s-]+maintenance|building[\s-]+safety|property[\s-]+services?|residential[\s-]+repairs?)(?![A-Za-z0-9_])/ => 物业社区与房屋安全（英文）
+
+# ── 第 25 类：建筑基建与城市建设 ──
+[重大工程交通]
+/高速公路|高铁|铁路工程|桥梁|隧道|通车|路桥|铁路建设|跨海通道|盾构|轨道铺设|中铁|中交|深中通道/ => 重大工程交通（中文）
+/(?<![A-Za-z0-9_])(?:expressways?|high[\s-]+speed[\s-]+rail|bridges?|tunnels?|China[\s-]+Railway[\s-]+Group|CRCC|CCCC|transport[\s-]+infrastructure|cross[\s-]+sea[\s-]+links?|rail[\s-]+construction)(?![A-Za-z0-9_])/ => 重大工程交通（英文）
+
+[水利与公共工程]
+/水利|水库|堤坝|灌区|调水工程|供水工程|南水北调|引江补汉|引水|蓄水|调蓄|防洪工程|河道整治|水资源配置/ => 水利与公共工程（中文）
+/(?<![A-Za-z0-9_])(?:water[\s-]+conservancy|reservoirs?|dams?|water[\s-]+diversion|South[\s-]+North[\s-]+Water[\s-]+Transfer|flood[\s-]+control[\s-]+projects?|irrigation[\s-]+districts?|river[\s-]+regulation|water[\s-]+infrastructure|water[\s-]+allocation)(?![A-Za-z0-9_])/ => 水利与公共工程（英文）
+
+[建筑设计与工程施工]
+/建筑|施工|工程设计|勘察|工程监理|装配式|建材|混凝土|水泥|钢结构|工程总包|竣工|工程验收/ => 建筑设计与工程施工（中文）
+/(?<![A-Za-z0-9_])(?:architecture|construction|engineering[\s-]+design|prefabrication|concrete|cement|structural[\s-]+steel|BIM|EPC[\s-]+contracts?|CSCEC|Anhui[\s-]+Conch|building[\s-]+design|project[\s-]+completion)(?![A-Za-z0-9_])/ => 建筑设计与工程施工（英文）
+
+[城市更新与空间规划]
+/城市更新|城市规划|城中村改造|旧城改造|城市设计|国土空间规划|老旧片区|存量改造|历史街区|片区开发|城市体检|低效用地|综合整治/ => 城市更新与空间规划（中文）
+/(?<![A-Za-z0-9_])(?:urban[\s-]+renewal|urban[\s-]+planning|urban[\s-]+design|spatial[\s-]+planning|brownfield[\s-]+redevelopment|district[\s-]+regeneration|historic[\s-]+districts?|land[\s-]+use[\s-]+planning|urban[\s-]+regeneration|city[\s-]+master[\s-]+plans?)(?![A-Za-z0-9_])/ => 城市更新与空间规划（英文）
+
+[市政设施与公用服务]
+/市政|供水|排水|污水管网|供热|地下管廊|城市管网|排涝|路灯|燃气管道|综合管线|地下空间|道路养护|雨污分流/ => 市政设施与公用服务（中文）
+/(?<![A-Za-z0-9_])(?:municipal[\s-]+infrastructure|water[\s-]+supply|drainage|district[\s-]+heating|sewer[\s-]+networks?|utility[\s-]+tunnels?|street[\s-]+lighting|road[\s-]+maintenance|stormwater[\s-]+management)(?![A-Za-z0-9_])/ => 市政设施与公用服务（英文）
+
+[智慧城市与韧性建设]
+/智慧城市|海绵城市|韧性城市|无障碍设施|适老化改造|新型城镇化|城市大脑|城市生命线|城市感知|数字城市|城市运行|宜居城市|完整社区/ => 智慧城市与韧性建设（中文）
+/(?<![A-Za-z0-9_])(?:smart[\s-]+city|smart[\s-]+cities|sponge[\s-]+city|sponge[\s-]+cities|urban[\s-]+resilience|barrier[\s-]+free[\s-]+facilities|digital[\s-]+city|digital[\s-]+cities|urban[\s-]+sensing|city[\s-]+operations|livable[\s-]+city|livable[\s-]+cities|urban[\s-]+digital[\s-]+twins?|resilient[\s-]+infrastructure)(?![A-Za-z0-9_])/ => 智慧城市与韧性建设（英文）
+
+# ── 第 26 类：交通运输与物流 ──
+[铁路与轨道运输]
+/铁路|列车|火车|动车|轨道交通|国铁|中欧班列|复兴号|和谐号|春运|城际|高铁票|12306/ => 铁路与轨道运输（中文）
+/(?<![A-Za-z0-9_])(?:railways?|railroads?|trains?|rail[\s-]+freight|CRRC|Amtrak|Eurostar|Deutsche[\s-]+Bahn|SNCF|intercity[\s-]+rail|rail[\s-]+timetables?)(?![A-Za-z0-9_])/ => 铁路与轨道运输（英文）
+
+[民航客运与机场]
+/民航|航班|机场|机票|航空公司|航空运输|中国国航|南航|东航|海航|春秋航空|吉祥航空|国泰航空|航空客流|航线开通/ => 民航客运与机场（中文）
+/(?<![A-Za-z0-9_])(?:civil[\s-]+aviation|flights?|airports?|airlines?|Air[\s-]+China|China[\s-]+Southern|China[\s-]+Eastern|Cathay[\s-]+Pacific|Emirates|Qatar[\s-]+Airways|Lufthansa|Delta[\s-]+Air[\s-]+Lines)(?![A-Za-z0-9_])/ => 民航客运与机场（英文）
+
+[公路货运与道路管理]
+/公路运输|道路运输|货车|道路收费|高速收费|治超|货运车辆|重卡运输|公路收费|收费站|超载|超限|高速拥堵|干线运输/ => 公路货运与道路管理（中文）
+/(?<![A-Za-z0-9_])(?:road[\s-]+transport|road[\s-]+freight|trucking|toll[\s-]+roads?|haulage|truck[\s-]+drivers?|truck[\s-]+freight|toll[\s-]+collection|highway[\s-]+congestion|road[\s-]+tolls?)(?![A-Za-z0-9_])/ => 公路货运与道路管理（英文）
+
+[城市公共交通与通勤]
+/公交|地铁|通勤|城市交通|共享单车|慢行交通|有轨电车|轻轨|市域快线|接驳|早高峰|晚高峰|交通卡/ => 城市公共交通与通勤（中文）
+/(?<![A-Za-z0-9_])(?:public[\s-]+transit|metro|commuting|bike[\s-]+sharing|subways?|trams?|light[\s-]+rail|bus[\s-]+rapid[\s-]+transit|transport[\s-]+interchanges?|rush[\s-]+hour|urban[\s-]+mobility|transit[\s-]+cards?)(?![A-Za-z0-9_])/ => 城市公共交通与通勤（英文）
+
+[航运港口与水路运输]
+/航运|港口|码头|集装箱|船舶|内河运输|中远海运|马士基|达飞|招商轮船|苏伊士运河|巴拿马运河|海运费|运价/ => 航运港口与水路运输（中文）
+/(?<![A-Za-z0-9_])(?:shipping|seaports?|container[\s-]+ships?|inland[\s-]+waterways?|Maersk|COSCO|CMA[\s-]+CGM|Hapag[\s-]+Lloyd|Suez[\s-]+Canal|Panama[\s-]+Canal|freight[\s-]+rates?|Baltic[\s-]+Dry[\s-]+Index|BDI)(?![A-Za-z0-9_])/ => 航运港口与水路运输（英文）
+
+[物流快递与仓储]
+/物流|快递|仓储|冷链|货运代理|末端配送|顺丰|中通|圆通|申通|韵达|极兔|菜鸟|中国邮政|分拣中心|即时达/ => 物流快递与仓储（中文）
+/(?<![A-Za-z0-9_])(?:logistics|couriers?|warehousing|cold[\s-]+chains?|SF[\s-]+Express|ZTO|YTO|STO[\s-]+Express|Yunda|J\&T[\s-]+Express|Cainiao|DHL|FedEx|UPS|last[\s-]+mile[\s-]+delivery|fulfillment[\s-]+centers?)(?![A-Za-z0-9_])/ => 物流快递与仓储（英文）
+
+# ── 第 27 类：农林牧渔与乡村发展 ──
+[粮食种植与种业]
+/农业|粮食|种植|种子|育种|耕地|农作物|水稻|小麦|玉米|大豆|春耕|夏收|秋收|单产|高标准农田|转基因作物|先正达|隆平高科/ => 粮食种植与种业（中文）
+/(?<![A-Za-z0-9_])(?:agriculture|grains?|seeds?|breeding|rice|wheat|corn|soybeans?|crop[\s-]+yields?|arable[\s-]+land|Syngenta|Corteva|Bayer[\s-]+Crop[\s-]+Science)(?![A-Za-z0-9_])/ => 粮食种植与种业（英文）
+
+[农机农资与农业服务]
+/农机|化肥|农药|农资|农业服务|农业托管|春播|农膜|农田作业|植保|农技推广|农用无人机|北大荒/ => 农机农资与农业服务（中文）
+/(?<![A-Za-z0-9_])(?:farm[\s-]+machinery|fertilizers?|pesticides?|agricultural[\s-]+services?|tractors?|combine[\s-]+harvesters?|crop[\s-]+protection|precision[\s-]+farming|John[\s-]+Deere|AGCO|CNH[\s-]+Industrial|Kubota)(?![A-Za-z0-9_])/ => 农机农资与农业服务（英文）
+
+[畜牧养殖与动物防疫]
+/畜牧|养殖|饲料|生猪|兽医|动物疫病|猪价|牛羊|肉鸡|蛋鸡|禽流感|非洲猪瘟|布鲁氏菌|牧原|温氏股份|新希望六和/ => 畜牧养殖与动物防疫（中文）
+/(?<![A-Za-z0-9_])(?:livestock|animal[\s-]+husbandry|animal[\s-]+feed|veterinary|hog[\s-]+prices?|poultry|avian[\s-]+influenza|African[\s-]+swine[\s-]+fever|Muyuan|Wens[\s-]+Foodstuff|New[\s-]+Hope[\s-]+Liuhe|animal[\s-]+disease[\s-]+control)(?![A-Za-z0-9_])/ => 畜牧养殖与动物防疫（英文）
+
+[渔业水产与海洋牧场]
+/渔业|水产|捕捞|渔船|海洋牧场|增殖放流|海洋渔场|休渔|禁渔|鱼苗|虾苗|深远海养殖|海参|对虾/ => 渔业水产与海洋牧场（中文）
+/(?<![A-Za-z0-9_])(?:fishery|fisheries|aquaculture|fishing[\s-]+vessels?|marine[\s-]+ranching|fishing[\s-]+bans?|fish[\s-]+stocks?|shrimp[\s-]+farming|salmon[\s-]+farming|sustainable[\s-]+fishing|marine[\s-]+hatchery|marine[\s-]+hatcheries)(?![A-Za-z0-9_])/ => 渔业水产与海洋牧场（英文）
+
+[林业草原与经济作物]
+/林业|林场|草原|牧场|经济作物|林下经济|茶园|果园|油茶|橡胶树|植树造林|退耕还林|森林抚育|林权/ => 林业草原与经济作物（中文）
+/(?<![A-Za-z0-9_])(?:forestry|grasslands?|rangelands?|cash[\s-]+crops?|afforestation|reforestation|orchards?|tea[\s-]+plantations?|forest[\s-]+tenure|forest[\s-]+management|agroforestry)(?![A-Za-z0-9_])/ => 林业草原与经济作物（英文）
+
+[乡村发展与农民权益]
+/农村|乡村振兴|农民|宅基地|土地流转|三农|乡村建设|村集体|村务|土地承包|土地确权|和美乡村/ => 乡村发展与农民权益（中文）
+/(?<![A-Za-z0-9_])(?:village[\s-]+revitalization|rural[\s-]+development|farmers?|land[\s-]+transfers?|rural[\s-]+revitalization|collective[\s-]+land|land[\s-]+contracting|land[\s-]+rights|village[\s-]+governance|rural[\s-]+infrastructure|rural[\s-]+households?)(?![A-Za-z0-9_])/ => 乡村发展与农民权益（英文）
+
+# ── 第 28 类：生态环境与气候 ──
+[气候变化与全球变暖]
+/气候变化|全球变暖|温室气体|气候风险|气候适应|气候融资|巴黎协定|全球升温|极端气候|厄尔尼诺|拉尼娜|气候大会|气候行动|气候减缓/ => 气候变化与全球变暖（中文）
+/(?<![A-Za-z0-9_])(?:climate[\s-]+change|global[\s-]+warming|greenhouse[\s-]+gas|greenhouse[\s-]+gases|climate[\s-]+adaptation|Paris[\s-]+Agreement|IPCC|UNFCCC|El[\s-]+Nino|La[\s-]+Nina|climate[\s-]+mitigation|climate[\s-]+finance|climate[\s-]+summits?)(?![A-Za-z0-9_])/ => 气候变化与全球变暖（英文）
+
+[碳管理与低碳转型]
+/碳排放|碳达峰|碳中和|碳交易|碳足迹|碳捕集|双碳|碳市场|碳汇|碳核算|碳配额|碳信用|碳关税|碳封存|碳抵消/ => 碳管理与低碳转型（中文）
+/(?<![A-Za-z0-9_])(?:carbon[\s-]+emissions?|carbon[\s-]+neutrality|carbon[\s-]+trading|carbon[\s-]+capture|net[\s-]+zero|carbon[\s-]+markets?|carbon[\s-]+sinks?|carbon[\s-]+credits?|carbon[\s-]+accounting|carbon[\s-]+offsets?|CCUS|CBAM|emissions[\s-]+trading)(?![A-Za-z0-9_])/ => 碳管理与低碳转型（英文）
+
+[生态保护与生物多样性]
+/生态|生物多样性|自然保护|湿地|野生动物|栖息地|国家公园|自然保育|物种保护|濒危物种|外来物种|候鸟|荒漠化|长江十年禁渔/ => 生态保护与生物多样性（中文）
+/(?<![A-Za-z0-9_])(?:ecology|biodiversity|wildlife|habitats?|national[\s-]+parks?|endangered[\s-]+species|invasive[\s-]+species|species[\s-]+conservation|desertification|IUCN|WWF|CITES)(?![A-Za-z0-9_])/ => 生态保护与生物多样性（英文）
+
+[污染治理与环境质量]
+/污染|环保|空气质量|水质|土壤修复|环境监测|雾霾|扬尘|黑臭水体|重金属超标|臭氧超标|排污|环卫|酸雨/ => 污染治理与环境质量（中文）
+/(?<![A-Za-z0-9_])(?:pollution|air[\s-]+quality|water[\s-]+quality|environmental[\s-]+monitoring|smog|PM2\.5|PM10|AQI|PFAS|microplastics?|sewage[\s-]+treatment|soil[\s-]+remediation|acid[\s-]+rain)(?![A-Za-z0-9_])/ => 污染治理与环境质量（英文）
+
+[废物处理与循环利用]
+/垃圾分类|固废|危废|资源循环|再生资源|废旧回收|垃圾焚烧|厨余|废弃物|可回收物|废塑料|废纸|再利用|无废城市/ => 废物处理与循环利用（中文）
+/(?<![A-Za-z0-9_])(?:waste[\s-]+sorting|solid[\s-]+waste|hazardous[\s-]+waste|circular[\s-]+economy|waste[\s-]+incineration|food[\s-]+waste|plastic[\s-]+recycling|electronic[\s-]+waste|e[\s-]+waste|zero[\s-]+waste|extended[\s-]+producer[\s-]+responsibility)(?![A-Za-z0-9_])/ => 废物处理与循环利用（英文）
+
+[资源节约与环境治理]
+/节能|节水|绿色发展|环境执法|环境影响评价|生态补偿|环评|节约型社会|绿色认证|绿色采购|绿色金融|排污许可|环境督察|自然资源部/ => 资源节约与环境治理（中文）
+/(?<![A-Za-z0-9_])(?:energy[\s-]+conservation|water[\s-]+conservation|environmental[\s-]+impact[\s-]+assessment|ecological[\s-]+compensation|green[\s-]+finance|green[\s-]+procurement|environmental[\s-]+inspections?|environmental[\s-]+permits?|resource[\s-]+efficiency|green[\s-]+certification|environmental[\s-]+compliance)(?![A-Za-z0-9_])/ => 资源节约与环境治理（英文）
+
+# ── 第 29 类：国内政务与公共治理 ──
+[国家机构与公共决策]
+/人大|政协|两会|立法规划|政府工作报告|国家机构|国务院|中央政治局|中央全会|全国党代会|国家主席|国家领导人|中央委员会|国办/ => 国家机构与公共决策（中文）
+/(?<![A-Za-z0-9_])(?:parliaments?|legislatures?|national[\s-]+assembly|state[\s-]+council|Chinese[\s-]+government|National[\s-]+People's[\s-]+Congress|CPPCC|Politburo|government[\s-]+work[\s-]+report|central[\s-]+committee|national[\s-]+leadership)(?![A-Za-z0-9_])/ => 国家机构与公共决策（英文）
+
+[政策发布与政务服务]
+/政务|政令|行政审批|政策解读|营商环境|国务院常务会议|国常会|行政许可|一网通办|放管服|便民服务|减证便民|办事指南/ => 政策发布与政务服务（中文）
+/(?<![A-Za-z0-9_])(?:public[\s-]+administration|government[\s-]+services?|administrative[\s-]+approval|business[\s-]+environment|policy[\s-]+announcements?|administrative[\s-]+licensing|e[\s-]+government|government[\s-]+transparency|public[\s-]+service[\s-]+portals?)(?![A-Za-z0-9_])/ => 政策发布与政务服务（英文）
 
 [政务纪检]
-/(纪委监委|纪检监察|接受.{0,10}(?:审查调查|纪律审查|监察调查)|涉嫌严重违纪违法|discipline inspection|supervision commission)/ => 审查调查
-/(?:书记|市长|局长|厅长|主席|主任|干部|官员).{0,12}(?:被查|落马|留置)|(?:被查|落马|留置).{0,12}(?:书记|市长|局长|厅长|主席|主任|干部|官员)/ => 官员违纪
-/(巡视组|中央巡视|巡视整改|巡察整改|反腐败.{0,8}(?:斗争|治理)|anti-?corruption)/ => 巡视反腐
-@6
+/纪检|监察|反腐|违纪|巡视|被查|问责|廉政|中纪委|中央纪委|落马|留置|党纪|受贿|贪污|八项规定|四风/ => 政务纪检（中文）
+/(?<![A-Za-z0-9_])(?:anti[\s-]+corruption|disciplinary[\s-]+inspection|government[\s-]+accountability|public[\s-]+integrity|CCDI|corruption[\s-]+investigations?|bribery|embezzlement|disciplinary[\s-]+actions?|integrity[\s-]+investigation|party[\s-]+discipline)(?![A-Za-z0-9_])/ => 政务纪检（英文）
 
-[国资央企]
-/(中央企业|央企|国资委|国企改革|国有资本.{0,8}(?:投资|运营|布局)|state-?owned enterprise|(?<![a-z0-9])SOE(?:s)?(?![a-z0-9]))/ => 国资央企
-/(央企.{0,10}(?:重组|整合|并购|考核|市值管理)|国企.{0,10}(?:混改|重组|整合|治理)|国有经济.{0,8}(?:布局|结构优化))/ => 国企改革
-@6
+[行政改革与基层治理]
+/行政改革|机构改革|基层治理|行政区划|街道办|村委会|乡镇改革|基层减负|县级治理|村民自治|居委会|乡镇政府|行政效能|权责清单/ => 行政改革与基层治理（中文）
+/(?<![A-Za-z0-9_])(?:administrative[\s-]+reform|institutional[\s-]+reform|grassroots[\s-]+governance|administrative[\s-]+divisions?|local[\s-]+government[\s-]+reform|township[\s-]+governments?|village[\s-]+autonomy|administrative[\s-]+efficiency|decentralization|community[\s-]+self[\s-]+governance)(?![A-Za-z0-9_])/ => 行政改革与基层治理（英文）
 
-[军事国防]
-/(航母|驱逐舰|护卫舰|潜艇|两栖攻击舰|aircraft carrier|destroyer|frigate|submarine|amphibious assault ship)/ => 海军舰艇
-/(歼-?\d{1,2}|轰-?[6-8]|运-?2\d|直-?2\d|(?<![a-z0-9])(?:j-?20|j-?35|j-?16|j-?10|h-?6|y-?20|z-?20|f-?16|f-?35|f-?22)(?![a-z0-9]))/ => 军机
-/(高超音速|(?<![a-z0-9])hypersonic(?![a-z0-9])|滑翔飞行器)/ => 高超音速
-/(导弹|核武器|反导|洲际.*导弹|巡航.*导弹|潜射导弹|东风-?[0-9]{2}|(?<![a-z0-9])(?:ICBM|cruise missile|SLBM)(?![a-z0-9]))/ => 导弹/核
-/(无人机.*作战|无人机.*蜂群|察打一体.*无人机|drone.*(?:combat|swarm|reconnaissance))/ => 无人机
-/(军演|环台.*军演|南海.*军演|东海.*军演|联合军演|military drill|Taiwan.*drill)/ => 军演
-/(解放军|国防|军费|军工|defense budget|military spending)/ => 国防
-/(火箭军|战略.*支援|信息.*支援|电磁.*对抗|PLA Rocket Force)/ => 新域新质
-/(电子战|网络战|太空.*军事|electronic warfare|cyber warfare)/ => 新战场
-/(珠海航展|矢量发动机|涡扇.*发动机|涡喷.*发动机|Airshow China|Zhuhai Airshow)/ => 航展/发动机
-@10
+[干部公职与组织人事]
+/公务员|干部|公职人员|组织人事|公职招录|人事调整|任前公示|职务任免|组织部|选调生|事业编|公务考录|领导班子/ => 干部公职与组织人事（中文）
+/(?<![A-Za-z0-9_])(?:civil[\s-]+servants?|public[\s-]+officials?|cadres?|public[\s-]+appointments?|personnel[\s-]+appointments?|public[\s-]+sector[\s-]+recruitment|official[\s-]+promotions?|civil[\s-]+service[\s-]+examinations?|government[\s-]+personnel|public[\s-]+sector[\s-]+staffing)(?![A-Za-z0-9_])/ => 干部公职与组织人事（英文）
 
-# ═══════════════════════════════════════════════════════════════
-#                    社会 / 民生
-# ═══════════════════════════════════════════════════════════════
+[公共政策与社会治理]
+/公共政策|社会治理|公共决策|政策评估|民意征集|网格治理|民生政策|社会协同|基层协商|公众参与|公共议题|热线治理|12345|社会信用/ => 公共政策与社会治理（中文）
+/(?<![A-Za-z0-9_])(?:public[\s-]+policy|public[\s-]+policies|social[\s-]+governance|policy[\s-]+evaluation|public[\s-]+consultation|civic[\s-]+participation|public[\s-]+engagement|policy[\s-]+implementation|collaborative[\s-]+governance|public[\s-]+decision[\s-]+making|social[\s-]+credit)(?![A-Za-z0-9_])/ => 公共政策与社会治理（英文）
 
-[法治]
-/(最高法|最高检|司法部|Supreme People's Court|Supreme People's Procuratorate)/ => 最高法检
-/(刑法|刑法修正案|指导性案例|司法解释|Criminal Law Amendment|guiding case)/ => 修法与案例
-/(正当防卫.*认定|正当防卫.*判|正当防卫|防卫过当|justifiable defense|self-?defense.*(?:ruling|verdict))/ => 正当防卫
-/(未成年人.*保护|未成年人.*犯罪|juvenile protection)/ => 未保法
-/(反电信诈骗|反诈中心|anti-?telecom fraud)/ => 反诈
-/(反垄断|行政垄断|平台经济.*(?:垄断|反垄断)|antitrust)/ => 反垄断
-/(知识产权|数据安全法|专利诉讼|intellectual property|Data Security Law)/ => 知识产权/数据法
-/(网暴|网络暴力|名誉权|诽谤|人肉搜索|cyberbullying|online harassment)/ => 网络暴力
-/(公益诉讼|精神损害赔偿|检察建议|public interest litigation)/ => 公益诉讼
-@8
+# ── 第 30 类：国际关系与全球治理 ──
+[外交事务与双边关系]
+/外交|外长|国事访问|双边关系|建交|大使|中美关系|中欧关系|中俄关系|中日关系|元首会晤|出访|战略对话|中方/ => 外交事务与双边关系（中文）
+/(?<![A-Za-z0-9_])(?:diplomacy|foreign[\s-]+ministers?|bilateral[\s-]+relations?|ambassadors?|foreign[\s-]+affairs|state[\s-]+visits?|diplomatic[\s-]+relations?|strategic[\s-]+dialogue|China[\s-]+US[\s-]+relations|China[\s-]+EU[\s-]+relations)(?![A-Za-z0-9_])/ => 外交事务与双边关系（英文）
 
-[文旅出行]
-/(文旅|旅游|出境游|国内游|假期.*(?:出游|消费)|冰雪游|冰雪经济|研学游|City[ .]?Walk)/ => 文旅
-/(哈尔滨|淄博|天水|阿勒泰|泉州|山西.*(?:文旅|古建|旅游)|入境游|China Travel|免签|过境免签|文博热)/ => 旅游热点
-/(酒店.*(?:价格|投诉|改造)|民宿.*(?:涨价|退订)|机票.*(?:涨价|取消|退改)|景区.*(?:限流|预约|免门票|宰客)|景区门票|hotel.*(?:price|complaint|renovation)|homestay.*(?:price|refund|cancel)|flight.*(?:price|refund|cancel)|scenic area.*(?:crowd|reservation|free entry|rip.?off))/ => 出行服务
-/(节假日.*(?:安排|调休|出行预测)|文旅部.*(?:通知|名单)|文旅.*(?:消费券|免签)|文明旅游|holiday.*(?:schedule|adjustment)|ministry of culture and tourism|visa-?free|tourism.*voucher)/ => 文旅政策
-@6
+[国际组织与多边机制]
+/国际组织|多边机制|国际峰会|国际公约|联合国|安理会|世贸组织|世卫组织|国际货币基金组织|世界银行|经合组织|七国集团|二十国集团/ => 国际组织与多边机制（中文）
+/(?<![A-Za-z0-9_])(?:international[\s-]+organizations?|multilateralism|international[\s-]+summits?|United[\s-]+Nations|WTO|WHO|IMF|World[\s-]+Bank|OECD|G7|G20|UNESCO|UNICEF|UN[\s-]+Security[\s-]+Council)(?![A-Za-z0-9_])/ => 国际组织与多边机制（英文）
 
-[重大工程交通]
-/(?:高铁|铁路).{0,12}(?:开通|投运|建设|试运行|提速)|(?:开通|投运).{0,8}(?:高铁|铁路)|high-?speed rail.{0,12}(?:open|construction|operation)/ => 铁路工程
-/(?:高速公路|隧道|大桥|跨海桥).{0,12}(?:通车|贯通|开工|建成)|(?:通车|贯通).{0,8}(?:高速公路|隧道|大桥)/ => 路桥隧道
-/(?:港口|机场).{0,12}(?:扩建|投运|吞吐量|枢纽|重大工程)|(?:新建|扩建).{0,8}(?:港口|机场)/ => 港口机场
-/(城市轨道交通|轨道交通.{0,10}(?:规划|建设|开通)|地铁.{0,10}(?:开通|延伸|建设)|urban rail transit)/ => 城市轨道
-/(交通强国|国家综合立体交通网|重大工程.{0,10}(?:开工|投产|建成)|国家重大项目)/ => 重大工程
-@6
+[区域合作与全球发展]
+/区域合作|全球发展|国际援助|发展援助|南南合作|自由贸易协定|一带一路|金砖|上合组织|东盟|非盟|亚太经合|南方共同市场|区域全面经济伙伴关系/ => 区域合作与全球发展（中文）
+/(?<![A-Za-z0-9_])(?:regional[\s-]+cooperation|global[\s-]+development|foreign[\s-]+aid|free[\s-]+trade[\s-]+agreements?|Belt[\s-]+and[\s-]+Road|BRICS|ASEAN|African[\s-]+Union|APEC|SCO|RCEP|CPTPP|Mercosur|Global[\s-]+South)(?![A-Za-z0-9_])/ => 区域合作与全球发展（英文）
 
-[教育就业]
-/(高考|中考|考研|考公|国考|省考|考编|专升本|四六级|(?<![a-z0-9])(?:gaokao|college entrance exam|civil service exam|postgraduate entrance exam)(?![a-z0-9]))/ => 考试
-/(教师|教师资格证|师范生|(?<![a-z0-9])(?:teacher|teaching certificate|teaching qualification)(?![a-z0-9]))/ => 教师
-/(校招|社招|春招|秋招|面试|简历|campus recruitment|social recruitment)/ => 招聘
-/(就业|失业|失业率|稳就业|青年失业率|unemployment rate|youth.*unemployment)/ => 就业
-/(公务员|事业编|遴选|civil servant|public institution staff)/ => 公职
-/(裁员|降薪|降本增效|灵活就业|(?<![a-z0-9])layoff(?![a-z0-9])|pay cut|gig work)/ => 裁员降薪
-/(外卖.*骑手|网约车.*司机|灵活用工|food delivery.*rider|ride-?hailing.*driver)/ => 新就业形态
-/(双减|学区房|教培|教师轮岗|Double Reduction|school-?district housing)/ => 教育政策
-/(职业教育|产教融合|新工科|本科层次职业教育|vocational education|industry-?education integration)/ => 职教工科
-/(延迟退休|渐进式延迟退休|社保|五险一金|delayed retirement)/ => 养老社保
-/(?<![a-z0-9])AI(?![a-z0-9]).*取代.*工作|AI.*替代.*岗位|AI.*失业|AI.*replac(?:e|ing).*(?:jobs|roles)|AI.*(?:就业|职场)冲击/ => AI冲击就业
-@8
+[海外政治与选举]
+/大选|选举|议会|内阁|政党|执政联盟|公投|美国总统|白宫|共和党|民主党|欧盟委员会|英国首相|日本首相|议席/ => 海外政治与选举（中文）
+/(?<![A-Za-z0-9_])(?:elections?|cabinets?|political[\s-]+party|political[\s-]+parties|referendums?|White[\s-]+House|Republican[\s-]+Party|Democratic[\s-]+Party|European[\s-]+Parliament|European[\s-]+Commission|UK[\s-]+prime[\s-]+minister|Japan[\s-]+prime[\s-]+minister)(?![A-Za-z0-9_])/ => 海外政治与选举（英文）
 
-[人口与家庭]
-/(人口.*(?:负增长|红利|结构|普查)|出生率|生育率|总和生育率|(?<![a-z0-9])(?:birth rate|fertility rate)(?![a-z0-9]))/ => 人口
-/(生育|育儿|托育|三孩|育儿补贴|辅助生殖|生育友好|出生.*(?:登记|地)|(?<![a-z0-9])(?:fertility|childcare|parenting|assisted reproduction)(?![a-z0-9]))/ => 生育育儿
-/(养老|养老金|个人养老金|长期护理|银发经济|适老化|居家养老|社区.*(?:养老|食堂)|(?<![a-z0-9])pension(?![a-z0-9]))/ => 养老
-/(结婚|离婚率|婚姻登记|彩礼|婚恋|婚育|不婚不育|marriage|divorce rate|bride price)/ => 婚育
-/(儿童.*(?:友好|补贴|医疗)|母婴|养儿成本|教育.*(?:开支|负担)|(?<![a-z0-9])family.*(?:subsidy|economic)(?![a-z0-9]))/ => 家庭负担
-@6
+[国际争端与协调]
+/国际争端|制裁|反制|贸易摩擦|边界争端|和平谈判|地缘政治|经贸磋商|领土争议|外交斡旋|报复措施|人道主义通道|国际调停|出口管制/ => 国际争端与协调（中文）
+/(?<![A-Za-z0-9_])(?:sanctions?|international[\s-]+disputes?|border[\s-]+disputes?|peace[\s-]+talks|geopolitics|export[\s-]+controls?|diplomatic[\s-]+mediation|territorial[\s-]+disputes?|humanitarian[\s-]+corridors?|trade[\s-]+negotiations?|retaliatory[\s-]+measures?)(?![A-Za-z0-9_])/ => 国际争端与协调（英文）
+
+[领事侨务与人口流动]
+/领事|使馆|侨务|侨胞|撤侨|移民|难民|庇护申请|驻外人员|海外侨民|归侨|遣返|永久居留|避难/ => 领事侨务与人口流动（中文）
+/(?<![A-Za-z0-9_])(?:consular|embassy|embassies|immigration|refugees?|diaspora|repatriation|deportation|permanent[\s-]+residency|asylum[\s-]+seekers?|asylum[\s-]+applications?|UNHCR|International[\s-]+Organization[\s-]+for[\s-]+Migration)(?![A-Za-z0-9_])/ => 领事侨务与人口流动（英文）
+
+# ── 第 31 类：国防军事与地缘安全 ──
+[陆军装备与地面作战]
+/陆军|坦克|装甲|火炮|步兵|地面作战|履带式战车|轮式战车|自行榴弹炮|火箭炮|陆战|合成旅|艾布拉姆斯|豹2/ => 陆军装备与地面作战（中文）
+/(?<![A-Za-z0-9_])(?:army|armies|tanks?|artillery|infantry|Abrams|Leopard[\s-]+2|Bradley[\s-]+vehicles?|howitzers?|armored[\s-]+vehicles?|armoured[\s-]+vehicles?|ground[\s-]+forces)(?![A-Za-z0-9_])/ => 陆军装备与地面作战（英文）
+
+[海军舰艇与海上安全]
+/海军|军舰|航母|潜艇|驱逐舰|护航|辽宁舰|山东舰|福建舰|两栖攻击舰|护卫舰|舰载机|舰队|海警|海上巡航/ => 海军舰艇与海上安全（中文）
+/(?<![A-Za-z0-9_])(?:navy|navies|warships?|aircraft[\s-]+carriers?|submarines?|frigates?|destroyers?|amphibious[\s-]+assault[\s-]+ships?|carrier[\s-]+strike[\s-]+groups?|coast[\s-]+guard|maritime[\s-]+security|naval[\s-]+fleets?)(?![A-Za-z0-9_])/ => 海军舰艇与海上安全（英文）
+
+[空天作战与航空装备]
+/空军|战机|军用飞机|战斗机|轰炸机|防空|歼20|歼\-20|歼35|歼\-35|运20|运\-20|预警机|加油机/ => 空天作战与航空装备（中文）
+/(?<![A-Za-z0-9_])(?:air[\s-]+forces?|fighter[\s-]+jets?|bombers?|air[\s-]+defense|F[\s-]+35|F[\s-]+22|J[\s-]+20|J[\s-]+35|Su[\s-]+57|B[\s-]+2|B[\s-]+21|Rafale|Eurofighter|AWACS|stealth[\s-]+fighters?)(?![A-Za-z0-9_])/ => 空天作战与航空装备（英文）
+
+[导弹军备与新域作战]
+/导弹|核武|核威慑|电子战|军事卫星|军事无人系统|高超声速|高超音速|弹道|巡航弹|反导|战略威慑|网络战|定向能/ => 导弹军备与新域作战（中文）
+/(?<![A-Za-z0-9_])(?:missiles?|nuclear[\s-]+weapons?|electronic[\s-]+warfare|military[\s-]+satellites?|THAAD|S[\s-]+400|hypersonic[\s-]+weapons?|nuclear[\s-]+deterrence|cyber[\s-]+warfare|directed[\s-]+energy[\s-]+weapons?)(?![A-Za-z0-9_])/ => 导弹军备与新域作战（英文）
+
+[军事冲突与军控]
+/战争|军事冲突|交火|停火|军控|裁军|战俘|俄乌|巴以|以伊|加沙|红海危机|武装冲突|空袭|战事|停战/ => 军事冲突与军控（中文）
+/(?<![A-Za-z0-9_])(?:war|armed[\s-]+conflicts?|ceasefires?|arms[\s-]+control|disarmament|Russia[\s-]+Ukraine[\s-]+conflict|Gaza|Israeli[\s-]+Palestinian[\s-]+conflict|airstrikes?|armistice|peacekeeping|prisoner[\s-]+exchanges?|nuclear[\s-]+nonproliferation)(?![A-Za-z0-9_])/ => 军事冲突与军控（英文）
+
+[国防战略与军队建设]
+/国防|军事|军队|军演|军费|征兵|解放军|武警|战区|北约|五角大楼|后勤保障|军民融合|战略安全|退伍|军人/ => 国防战略与军队建设（中文）
+/(?<![A-Za-z0-9_])(?:defense[\s-]+policy|military|armed[\s-]+forces|defense[\s-]+budgets?|NATO|Pentagon|PLA|People's[\s-]+Liberation[\s-]+Army|defence[\s-]+policy|defence[\s-]+budgets?|conscription|veterans?)(?![A-Za-z0-9_])/ => 国防战略与军队建设（英文）
+
+# ── 第 32 类：港澳台与区域交流 ──
+[台海两岸]
+/台海|两岸|台湾|对台|海峡交流|九二共识|国台办|陆委会|民进党|国民党|民众党|海基会|海协会|台胞|台企/ => 台海两岸（中文）
+/(?<![A-Za-z0-9_])(?:cross[\s-]+strait|Taiwan|one[\s-]+China[\s-]+principle|Kuomintang|Democratic[\s-]+Progressive[\s-]+Party|Mainland[\s-]+Affairs[\s-]+Council|Straits[\s-]+Exchange[\s-]+Foundation)(?![A-Za-z0-9_])/ => 台海两岸（英文）
+
+[香港治理与民生]
+/香港|港府|港人|立法会|特区政府|一国两制|港岛|九龙|新界|港铁|港警|港区/ => 香港治理与民生（中文）
+/(?<![A-Za-z0-9_])(?:Hong[\s-]+Kong|HKSAR|one[\s-]+country[\s-]+two[\s-]+systems|special[\s-]+administrative[\s-]+regions?|LegCo|MTR[\s-]+Corporation|Kowloon|New[\s-]+Territories|Basic[\s-]+Law[\s-]+Article[\s-]+23)(?![A-Za-z0-9_])/ => 香港治理与民生（英文）
+
+[澳门发展与合作]
+/澳门|澳人|琴澳合作|澳琴一体化|横琴|澳博|金沙中国|澳大/ => 澳门发展与合作（中文）
+/(?<![A-Za-z0-9_])(?:Macao|Macau|MSAR|Hengqin|Sands[\s-]+China|SJM[\s-]+Holdings|Galaxy[\s-]+Entertainment)(?![A-Za-z0-9_])/ => 澳门发展与合作（英文）
+
+[湾区协同与城市联动]
+/粤港澳|大湾区|湾区协同|深港合作|港珠澳|广深港|前海|南沙|河套|深中一体化|港车北上|澳车北上|北部都会区|湾区通勤/ => 湾区协同与城市联动（中文）
+/(?<![A-Za-z0-9_])(?:Greater[\s-]+Bay[\s-]+Area|bay[\s-]+area[\s-]+integration|Shenzhen[\s-]+Hong[\s-]+Kong[\s-]+cooperation|Hong[\s-]+Kong[\s-]+Zhuhai[\s-]+Macao[\s-]+Bridge|Qianhai|Nansha[\s-]+cooperation|Hetao|Northern[\s-]+Metropolis|Guangdong[\s-]+Hong[\s-]+Kong[\s-]+cooperation|Greater[\s-]+Bay[\s-]+integration)(?![A-Za-z0-9_])/ => 湾区协同与城市联动（英文）
+
+[区域经贸与通关便利]
+/港澳经贸|两岸经贸|两岸投资|跨境通关|口岸通关|台商|港商|深港通|沪港通|债券通|跨境理财通|粤港合作|闽台融合|台资|港资/ => 区域经贸与通关便利（中文）
+/(?<![A-Za-z0-9_])(?:cross[\s-]+strait[\s-]+trade|cross[\s-]+strait[\s-]+investment|border[\s-]+clearance|regional[\s-]+trade[\s-]+integration|Stock[\s-]+Connect|Bond[\s-]+Connect|Wealth[\s-]+Management[\s-]+Connect|CEPA|Taiwan[\s-]+investment|Hong[\s-]+Kong[\s-]+investment|customs[\s-]+clearance[\s-]+facilitation)(?![A-Za-z0-9_])/ => 区域经贸与通关便利（英文）
+
+[区域人文与民间交流]
+/台湾青年|两岸交流|港澳交流|同胞|两岸婚姻|港澳通行证|海峡论坛|海峡青年|台青|港青|澳青|寻根交流|两岸青年|两地交流/ => 区域人文与民间交流（中文）
+/(?<![A-Za-z0-9_])(?:cross[\s-]+strait[\s-]+exchanges?|Hong[\s-]+Kong[\s-]+Macao[\s-]+travel[\s-]+permits?|cross[\s-]+strait[\s-]+marriages?|compatriots?|Straits[\s-]+Forum|youth[\s-]+exchanges?|cross[\s-]+strait[\s-]+cultural[\s-]+exchanges?|Hong[\s-]+Kong[\s-]+youth|Macao[\s-]+youth|Taiwan[\s-]+youth|cultural[\s-]+exchange[\s-]+programs?)(?![A-Za-z0-9_])/ => 区域人文与民间交流（英文）
+
+# ── 第 33 类：法律司法与权益保护 ──
+[立法法治与法律制度]
+/法律|法治|立法|宪法|法典|司法解释|法规|刑法|刑诉法|民诉法|行政法|公司法|司法部|法制建设/ => 立法法治与法律制度（中文）
+/(?<![A-Za-z0-9_])(?:law|legislation|constitutions?|civil[\s-]+code|criminal[\s-]+code|legal[\s-]+systems?|Ministry[\s-]+of[\s-]+Justice|statutory[\s-]+interpretation|legal[\s-]+reform)(?![A-Za-z0-9_])/ => 立法法治与法律制度（英文）
+
+[审判诉讼与司法程序]
+/法院|检察院|诉讼|判决|开庭|司法|仲裁|最高法|最高检|一审|二审|再审|抗诉|终审|执行裁定|庭审|听证/ => 审判诉讼与司法程序（中文）
+/(?<![A-Za-z0-9_])(?:courts?|litigation|judgments?|arbitration|Supreme[\s-]+People's[\s-]+Procuratorate|trial[\s-]+hearings?|retrials?|judicial[\s-]+review|enforcement[\s-]+orders?)(?![A-Za-z0-9_])/ => 审判诉讼与司法程序（英文）
+
+[刑事案件与犯罪治理]
+/刑事|犯罪|嫌疑人|逮捕|起诉|量刑|无罪|立案|侦查|拘留|羁押|判刑|缓刑|死刑|扫黑|涉恶|认罪认罚/ => 刑事案件与犯罪治理（中文）
+/(?<![A-Za-z0-9_])(?:criminal[\s-]+cases?|crimes?|arrests?|prosecution|criminal[\s-]+investigations?|detention|indictments?|sentencing|probation|death[\s-]+penalty|plea[\s-]+bargains?)(?![A-Za-z0-9_])/ => 刑事案件与犯罪治理（英文）
+
+[民商事纠纷与合同]
+/民事|商事|合同|违约|赔偿|侵权|执行难|讨债|债权|债务纠纷|财产保全|强制执行|欠款|房屋纠纷|抚养权|继承权/ => 民商事纠纷与合同（中文）
+/(?<![A-Za-z0-9_])(?:civil[\s-]+cases?|commercial[\s-]+disputes?|contracts?|compensation|debt[\s-]+disputes?|asset[\s-]+preservation|civil[\s-]+enforcement|child[\s-]+custody|inheritance[\s-]+disputes?|property[\s-]+disputes?)(?![A-Za-z0-9_])/ => 民商事纠纷与合同（英文）
+
+[消费者权益与法律援助]
+/消费者权益|维权|法律援助|公益诉讼|集体诉讼|消费者投诉|消协|12315|消保委|七天无理由|退一赔三|惩罚性赔偿|司法救助|三包/ => 消费者权益与法律援助（中文）
+/(?<![A-Za-z0-9_])(?:consumer[\s-]+rights|legal[\s-]+aid|public[\s-]+interest[\s-]+litigation|class[\s-]+actions?|consumer[\s-]+protection|consumer[\s-]+complaints?|punitive[\s-]+damages|legal[\s-]+assistance|product[\s-]+liability|Consumer[\s-]+Reports|ombudsman|ombudsmen)(?![A-Za-z0-9_])/ => 消费者权益与法律援助（英文）
+
+[知识产权与创新保护]
+/知识产权|专利|商标|著作权|版权|商业秘密|知产|商业机密|盗版|仿冒|技术秘密|地理标志|集成电路布图/ => 知识产权与创新保护（中文）
+/(?<![A-Za-z0-9_])(?:intellectual[\s-]+property|patents?|trademarks?|copyrights?|WIPO|USPTO|EPO|CNIPA|trade[\s-]+secrets?|geographical[\s-]+indications?|counterfeits?)(?![A-Za-z0-9_])/ => 知识产权与创新保护（英文）
+
+# ── 第 34 类：社会民生与公共服务 ──
+[社会保障与福利]
+/社保|医保|社会保障|失业保险|工伤保险|生育保险|五险一金|异地结算|起付线|报销比例|养老保险|参保|待遇领取/ => 社会保障与福利（中文）
+/(?<![A-Za-z0-9_])(?:social[\s-]+security|social[\s-]+insurance|unemployment[\s-]+insurance|workers[\s-]+compensation|pension[\s-]+insurance|medical[\s-]+reimbursement|benefit[\s-]+eligibility|social[\s-]+protection|insurance[\s-]+contributions?|welfare[\s-]+benefits?|Medicare|Medicaid)(?![A-Za-z0-9_])/ => 社会保障与福利（英文）
+
+[社会救助与困难帮扶]
+/低保|社会救助|临时救助|特困人员|困难群众|救助金|困难家庭|低收入群体|因病致贫|最低生活保障|帮扶政策|救助申请|兜底保障/ => 社会救助与困难帮扶（中文）
+/(?<![A-Za-z0-9_])(?:social[\s-]+assistance|minimum[\s-]+living[\s-]+allowance|poverty[\s-]+relief|emergency[\s-]+assistance|low[\s-]+income[\s-]+households?|social[\s-]+safety[\s-]+nets?|hardship[\s-]+assistance|means[\s-]+tested[\s-]+benefits?|basic[\s-]+income[\s-]+support|poverty[\s-]+alleviation)(?![A-Za-z0-9_])/ => 社会救助与困难帮扶（英文）
+
+[残障权益与无障碍服务]
+/残障|残疾人|助残|导盲|无障碍服务|手语|轮椅|盲道|辅助器具|无障碍出行|残联|听障|视障|肢体障碍/ => 残障权益与无障碍服务（中文）
+/(?<![A-Za-z0-9_])(?:disability[\s-]+rights|disabled[\s-]+people|accessibility|sign[\s-]+language|wheelchairs?|assistive[\s-]+technology|visual[\s-]+impairment|hearing[\s-]+impairment|accessible[\s-]+transport|China[\s-]+Disabled[\s-]+Persons[\s-]+Federation|guide[\s-]+dogs?)(?![A-Za-z0-9_])/ => 残障权益与无障碍服务（英文）
+
+[公益慈善与志愿服务]
+/公益|慈善|志愿者|捐赠|社会组织|义工|红十字|壹基金|爱心捐款|助学行动|扶弱济困|社会工作者|社工|志愿服务/ => 公益慈善与志愿服务（中文）
+/(?<![A-Za-z0-9_])(?:charity|charities|philanthropy|volunteers?|donations?|Red[\s-]+Cross|Red[\s-]+Crescent|One[\s-]+Foundation|United[\s-]+Way|Save[\s-]+the[\s-]+Children|nonprofit[\s-]+organizations?|NGOs?|social[\s-]+workers?)(?![A-Za-z0-9_])/ => 公益慈善与志愿服务（英文）
+
+[人口户籍与基本公共服务]
+/人口|户籍|户口|居住证|公共服务|落户|积分入户|随迁|新市民|常住居民|居住登记|市民卡/ => 人口户籍与基本公共服务（中文）
+/(?<![A-Za-z0-9_])(?:population|household[\s-]+registration|residence[\s-]+permits?|basic[\s-]+public[\s-]+services?|census|censuses|household[\s-]+register|residency[\s-]+registration|urban[\s-]+residency|citizen[\s-]+services?)(?![A-Za-z0-9_])/ => 人口户籍与基本公共服务（英文）
+
+[社区生活与社会议题]
+/社区服务|邻里|社区治理|社会调查|社会热点|婚俗改革|基层生活|社区食堂|社区活动|楼道治理|社区助餐|街坊|网格员/ => 社区生活与社会议题（中文）
+/(?<![A-Za-z0-9_])(?:community[\s-]+services?|neighborhoods?|community[\s-]+governance|social[\s-]+surveys?|community[\s-]+canteens?|community[\s-]+activity|community[\s-]+activities|community[\s-]+dining|local[\s-]+residents?)(?![A-Za-z0-9_])/ => 社区生活与社会议题（英文）
+
+# ── 第 35 类：教育考试与人才培养 ──
+[基础教育与校园]
+/幼儿园|小学|中学|义务教育|学前教育|校园|幼升小|小升初|学区|校服|学生餐|校车|双减|课后服务/ => 基础教育与校园（中文）
+/(?<![A-Za-z0-9_])(?:kindergartens?|primary[\s-]+schools?|secondary[\s-]+schools?|compulsory[\s-]+education|preschools?|elementary[\s-]+schools?|middle[\s-]+schools?|high[\s-]+schools?|school[\s-]+districts?|school[\s-]+meals?|after[\s-]+school[\s-]+services?|school[\s-]+bullying)(?![A-Za-z0-9_])/ => 基础教育与校园（英文）
+
+[高等教育与学位]
+/高校|大学|本科|研究生|硕士|博士|高等教育|清华|北大|复旦|浙大|上交大|中科大|学位|双一流|学科建设/ => 高等教育与学位（中文）
+/(?<![A-Za-z0-9_])(?:university|universities|higher[\s-]+education|postgraduates?|doctoral[\s-]+degrees?|Tsinghua|Fudan|MIT|Stanford|Harvard|Caltech|academic[\s-]+degrees?)(?![A-Za-z0-9_])/ => 高等教育与学位（英文）
+
+[职业教育与技能培养]
+/职业教育|职校|技校|职业技能|产教融合|实训|高职|中职|职教|现代学徒|技师|技能大赛|双师型|职业资格|技能等级/ => 职业教育与技能培养（中文）
+/(?<![A-Za-z0-9_])(?:vocational[\s-]+education|vocational[\s-]+training|technical[\s-]+schools?|skills[\s-]+training|apprenticeships?|polytechnics?|vocational[\s-]+qualifications?|WorldSkills|technical[\s-]+colleges?|industry[\s-]+education[\s-]+integration|professional[\s-]+certifications?)(?![A-Za-z0-9_])/ => 职业教育与技能培养（英文）
+
+[招生升学与各类考试]
+/高考|中考|考研|招生|录取|考试|升学|留学|托福|雅思|考公|考编|专升本|保研|推免|强基计划|志愿填报|调剂/ => 招生升学与各类考试（中文）
+/(?<![A-Za-z0-9_])(?:entrance[\s-]+exams?|admissions?|examinations?|study[\s-]+abroad|TOEFL|IELTS|GRE|GMAT|Gaokao|SAT[\s-]+exams?|ACT[\s-]+exams?|A[\s-]+levels?|college[\s-]+applications?|exam[\s-]+preparation)(?![A-Za-z0-9_])/ => 招生升学与各类考试（英文）
+
+[教师教学与教育改革]
+/教师|教学|教材|课程|教育改革|教育公平|教育政策|师资|师德|班主任|教研|教案|教培|教资|课堂改革|综合素质评价/ => 教师教学与教育改革（中文）
+/(?<![A-Za-z0-9_])(?:teachers?|teaching|curriculum|curricula|education[\s-]+reform|pedagogy|instructional[\s-]+design|classroom[\s-]+management|education[\s-]+policy|education[\s-]+policies|lesson[\s-]+plans?|educational[\s-]+assessment)(?![A-Za-z0-9_])/ => 教师教学与教育改革（英文）
+
+[学习方法与终身教育]
+/学习方法|自学|在线教育|终身学习|继续教育|知识付费|学习资源|新东方|好未来|学而思|猿辅导|作业帮|网易有道|成人教育|慕课|自主学习/ => 学习方法与终身教育（中文）
+/(?<![A-Za-z0-9_])(?:self[\s-]+learning|online[\s-]+education|lifelong[\s-]+learning|continuing[\s-]+education|Coursera|edX|Khan[\s-]+Academy|Duolingo|Udemy|FutureLearn|New[\s-]+Oriental|TAL[\s-]+Education|MOOCs?|adult[\s-]+education)(?![A-Za-z0-9_])/ => 学习方法与终身教育（英文）
+
+# ── 第 36 类：就业职场与劳动保障 ──
+[招聘就业与人才供需]
+/就业|招聘|求职|失业|岗位|人才市场|校招|BOSS直聘|前程无忧|猎聘|拉勾|应届生|春招|秋招|人才引进/ => 招聘就业与人才供需（中文）
+/(?<![A-Za-z0-9_])(?:employment|recruitment|job[\s-]+search|unemployment|LinkedIn|Indeed\.com|Indeed[\s-]+Jobs|Glassdoor|ZipRecruiter|51job|Zhaopin|talent[\s-]+acquisition|job[\s-]+vacancy|job[\s-]+vacancies)(?![A-Za-z0-9_])/ => 招聘就业与人才供需（英文）
+
+[薪酬收入与员工福利]
+/工资|薪资|薪酬|年终奖|员工福利|调薪|降薪|涨薪|薪级|绩效奖|津贴|餐补|房补/ => 薪酬收入与员工福利（中文）
+/(?<![A-Za-z0-9_])(?:wages?|salary|salaries|compensation[\s-]+packages?|employee[\s-]+benefits?|pay[\s-]+rises?|pay[\s-]+raises?|pay[\s-]+cuts?|bonus[\s-]+payments?|income[\s-]+growth|pay[\s-]+transparency|pay[\s-]+equity|benefits[\s-]+packages?)(?![A-Za-z0-9_])/ => 薪酬收入与员工福利（英文）
+
+[劳动关系与权益保障]
+/劳动合同|劳动仲裁|欠薪|工伤|劳动争议|劳动保障|劳动法|劳动监察|劳务派遣|劳务纠纷|仲裁申请|工会|用工合规|竞业限制|经济补偿金/ => 劳动关系与权益保障（中文）
+/(?<![A-Za-z0-9_])(?:labor[\s-]+contracts?|labour[\s-]+contracts?|labor[\s-]+disputes?|occupational[\s-]+injury|occupational[\s-]+injuries|labor[\s-]+unions?|labour[\s-]+unions?|collective[\s-]+bargaining|non[\s-]+compete[\s-]+agreements?|severance[\s-]+pay|employment[\s-]+rights|ILO|wage[\s-]+arrears)(?![A-Za-z0-9_])/ => 劳动关系与权益保障（英文）
+
+[工时休假与工作方式]
+/加班|工时|年假|双休|调休|远程办公|灵活办公|四天工作制|大小周|弹性工作|居家办公|带薪休假|育儿假|产假|病假|996工作制/ => 工时休假与工作方式（中文）
+/(?<![A-Za-z0-9_])(?:overtime|working[\s-]+hours?|annual[\s-]+leave|remote[\s-]+work|four[\s-]+day[\s-]+week|flexible[\s-]+working|hybrid[\s-]+work|paid[\s-]+leave|parental[\s-]+leave|maternity[\s-]+leave|sick[\s-]+leave|work[\s-]+life[\s-]+balance)(?![A-Za-z0-9_])/ => 工时休假与工作方式（英文）
+
+[职业发展与组织变化]
+/职场|晋升|转岗|裁员|离职|职业规划|调岗|降职|转行|跳槽|竞聘|绩效考核|试用期|职业倦怠|年龄歧视/ => 职业发展与组织变化（中文）
+/(?<![A-Za-z0-9_])(?:career[\s-]+advancement|layoffs?|resignation|career[\s-]+planning|career[\s-]+transition|job[\s-]+hopping|performance[\s-]+reviews?|probation[\s-]+periods?|workplace[\s-]+burnout|age[\s-]+discrimination|workplace[\s-]+discrimination)(?![A-Za-z0-9_])/ => 职业发展与组织变化（英文）
+
+[灵活就业与新职业]
+/灵活就业|零工|自由职业|新就业形态|平台用工|数字游民|众包用工|平台骑手|外卖骑手|网约配送|自由接单|兼职|劳务外包|个体经营/ => 灵活就业与新职业（中文）
+/(?<![A-Za-z0-9_])(?:gig[\s-]+economy|freelancers?|platform[\s-]+work|digital[\s-]+nomads?|gig[\s-]+workers?|self[\s-]+employment|independent[\s-]+contractors?|platform[\s-]+labor|platform[\s-]+labour|delivery[\s-]+riders?|part[\s-]+time[\s-]+work)(?![A-Za-z0-9_])/ => 灵活就业与新职业（英文）
+
+# ── 第 37 类：医疗卫生与公共健康 ──
+[疾病诊断与临床治疗]
+/疾病|诊断|治疗|手术|肿瘤|心血管|糖尿病|阿尔茨海默|帕金森|卒中|脑梗|心梗|高血压|冠心病|白血病|罕见病|肾病|哮喘|肺炎|癌症/ => 疾病诊断与临床治疗（中文）
+/(?<![A-Za-z0-9_])(?:diseases?|diagnosis|diagnoses|surgery|surgeries|cancer|diabetes|Alzheimer|Parkinson|strokes?|hypertension|leukemia|asthma|pneumonia)(?![A-Za-z0-9_])/ => 疾病诊断与临床治疗（英文）
+
+[公共卫生与传染防控]
+/公共卫生|传染病|疫情|疾控|流行病|防疫|感染|新冠|流感|猴痘|登革热|诺如|结核|麻疹|百日咳|霍乱|艾滋/ => 公共卫生与传染防控（中文）
+/(?<![A-Za-z0-9_])(?:public[\s-]+health|infectious[\s-]+diseases?|epidemics?|infections?|COVID[\s-]+19|SARS[\s-]+CoV[\s-]+2|mpox|norovirus|dengue|HIV|tuberculosis|influenza|measles|pertussis|cholera|CDC)(?![A-Za-z0-9_])/ => 公共卫生与传染防控（英文）
+
+[医疗资源与医护人才]
+/医护|医生|护士|医疗资源|分级诊疗|医联体|医疗队|医师|护师|住培|规培|医学生|多点执业|医疗编制|卫生人才/ => 医疗资源与医护人才（中文）
+/(?<![A-Za-z0-9_])(?:doctors?|nurses?|healthcare[\s-]+workforce|medical[\s-]+resources?|physicians?|medical[\s-]+residents?|medical[\s-]+staffing|clinical[\s-]+workforce|medical[\s-]+education|medical[\s-]+licensing|health[\s-]+professionals?)(?![A-Za-z0-9_])/ => 医疗资源与医护人才（英文）
+
+[医改医政与医疗服务]
+/医改|医政|医疗改革|医患|医德|医疗质量|诊疗价格|医院管理|医事服务|医联改革|按病组付费|按病种付费|医耗联动|医疗收费|医共体/ => 医改医政与医疗服务（中文）
+/(?<![A-Za-z0-9_])(?:healthcare[\s-]+reform|medical[\s-]+ethics|patient[\s-]+experience|quality[\s-]+of[\s-]+care|DRGs?|DIP[\s-]+payments?|hospital[\s-]+management|health[\s-]+system[\s-]+reform|diagnosis[\s-]+related[\s-]+groups?|patient[\s-]+safety|medical[\s-]+service[\s-]+pricing)(?![A-Za-z0-9_])/ => 医改医政与医疗服务（英文）
+
+[基层卫生与预防保健]
+/基层卫生|家庭医生|社区卫生|体检|疾病筛查|预防接种|社区诊所|卫生院|卫生室|健康档案|预防医学|接种证|公卫服务|家庭病床/ => 基层卫生与预防保健（中文）
+/(?<![A-Za-z0-9_])(?:primary[\s-]+care|family[\s-]+doctors?|health[\s-]+screening|preventive[\s-]+care|community[\s-]+clinics?|rural[\s-]+clinics?|preventive[\s-]+medicine|vaccination[\s-]+programs?|health[\s-]+records?|community[\s-]+health|disease[\s-]+screening)(?![A-Za-z0-9_])/ => 基层卫生与预防保健（英文）
 
 [医疗健康]
-/(医保|集采|医保谈判|医保目录|(?:医保|医疗|医院|支付).{0,12}(?<![a-z0-9])(?:DRG|DIP)(?![a-z0-9])|(?<![a-z0-9])(?:DRG|DIP)(?![a-z0-9]).{0,12}(?:医保|支付|付费|改革|医院)|volume-?based procurement)/ => 医保集采
-/(癌症|创新药|仿制药|仿制药替代|抗癌药|靶向药|罕见病|处方药|(?<![a-z0-9])OTC(?![a-z0-9])|临床试验|(?<![a-z0-9])(?:FDA|NMPA)(?![a-z0-9]))/ => 药品
-/(mRNA|疫苗|新冠|流感|丙流|支原体|猴痘|登革热|(?<![a-z0-9])(?:COVID|mpox|dengue)(?![a-z0-9]))/ => 传染病
-/(呼吸道.*感染|疫情|聚集性疫情|respiratory.*infection)/ => 疫情
-/(三甲医院|分级诊疗|医院.*(?:事故|改革|暴雷)|医疗反腐|tertiary Grade-?A|tiered care)/ => 医院
-/(互联网.*医疗|互联网医院|(?<![a-z0-9])AI(?![a-z0-9]).*医疗|医疗.*AI|medical.*AI)/ => 数字医疗
-/(手术机器人|国产手术机器人|surgical robot)/ => 手术机器人
-/(阿尔茨海默|渐冻症|白血病|罕见病目录|CAR-?T.*治疗|Alzheimer's|(?<![a-z0-9])ALS(?![a-z0-9]))/ => 疑难病
-/(PD.?1|PD.?L1|PD-1抑制剂)/ => 免疫治疗
-/(基因治疗|细胞治疗|癌症早筛|生物类似药|突破性疗法|药械.*审批|临床.*获批|gene therapy|cell therapy|breakthrough therapy)/ => 新药械
-/(细胞基因治疗|(?<![a-z0-9])CAR-?NK(?![a-z0-9])|肿瘤疫苗|数字疗法|(?<![a-z0-9])AI(?![a-z0-9]).*(?:诊断|影像|病理|辅诊)|AI影像|手术机器人.*(?:国产|获批|订单)|medical.*AI|digital therapeutics)/ => 新药械/诊疗
-/(GLP.?1|GLP类|司美格鲁肽|替尔泊肽|减肥药|医美|轻医美|减重.*(?:药|市))/ => 减重医美
-/(国家卫健委|国家疾控局|国家药监局|卫健委.{0,10}(?:发布|通知|回应)|疾控.{0,10}(?:预警|监测|通报)|health commission|disease control authority)/ => 医疗主管部门
-/(医院.{0,10}(?:门诊押金|退费|收费改革|预交金)|门诊.{0,8}(?:押金|预交金|退费)|医疗服务价格.{0,8}(?:改革|调整))/ => 医疗服务治理
-@8
+/医疗|医院|门诊|急诊|诊疗|就医|卫健委|挂号|陪诊|转诊|远程会诊|复诊|出院|入院|病床|病房|在线问诊/ => 医疗健康（中文）
+/(?<![A-Za-z0-9_])(?:healthcare|hospitals?|outpatients?|medical[\s-]+care|telemedicine|telehealth|referrals?|inpatients?|patient[\s-]+admissions?|patient[\s-]+discharge|medical[\s-]+consultations?|clinics?)(?![A-Za-z0-9_])/ => 医疗健康（英文）
 
-[农业水利]
-/(粮食|粮价|收粮|种业|耕地|food.*security|seed industry)/ => 粮食
-/(生猪.*(?:价格|周期)|猪粮比|种质资源|高标准农田|数字农业|粮食.*(?:安全|储备|保障)|玉米.*(?:价格|进口)|转基因.*(?:玉米|大豆)|食品浪费|hogs?.*(?:price|cycle)|high-?standard farmland|food waste)/ => 农粮深度
-/(水资源|南水北调|水灾|South-?North Water Transfer)/ => 水资源
-@6
+# ── 第 38 类：医药器械与生命产业 ──
+[药物研发与新药]
+/新药|药物研发|靶点|临床试验|药物发现|司美格鲁肽|替尔泊肽|利拉鲁肽|奥司他韦|候选药物|药代动力学|适应证|适应症|临床前/ => 药物研发与新药（中文）
+/(?<![A-Za-z0-9_])(?:drug[\s-]+discovery|drug[\s-]+development|clinical[\s-]+trials?|therapeutic[\s-]+targets?|semaglutide|tirzepatide|liraglutide|oseltamivir|GLP[\s-]+1|GLP[\s-]+1RA|pharmacokinetics|drug[\s-]+candidates?|preclinical|phase[\s-]+3[\s-]+trials?)(?![A-Za-z0-9_])/ => 药物研发与新药（英文）
 
-[公共安全]
-/(食品安全|添加剂|瘦肉精|预制菜|地沟油|food safety|pre-?made meal|gutter oil)/ => 食品安全
-/(过期.*食品|造假.*食品|硫磺熏|expired.*food|counterfeit.*food)/ => 食品造假
-/([3３][·.．]15|315晚会|315打假|消费者权益日|消费者.*权益|消费者.*维权|黑猫投诉|consumer.*rights)/ => 315维权
-/(塌方|矿难|火灾|踩踏|交通事故|燃气爆炸|危化品.*爆炸|工厂.*爆炸|仓库.*爆炸|爆炸事故|发生爆炸|mine collapse|stampede|road accident|gas explosion)/ => 安全事故
-/(群体.*事件|信访|上访|维权.*(?:集会|游行)|mass (?:incident|unrest)|petitioning)/ => 群体事件
-/(冤案|错案|冤假错案|平反|wrongful conviction|miscarriage of justice)/ => 司法公正
-/(见义勇为|好人法|Good Samaritan|act of bravery)/ => 见义勇为
-/(有限空间|粉尘爆炸|厂房火灾|商场.*(?:火灾|爆炸)|矿难.*(?:透水|冒顶|瓦斯)|危化品.*(?:泄漏|燃爆)|危化事故|油罐.*(?:燃烧|爆炸)|燃气.*(?:泄漏|闪爆)|confined space|dust explosion|warehouse fire)/ => 事故细分
-@8
+[生物制药与先进疗法]
+/生物制药|抗体|疫苗|细胞治疗|基因治疗|核酸药物|单抗|双抗|细胞免疫|溶瘤病毒|信使核糖核酸|偶联药物|重组蛋白|免疫疗法/ => 生物制药与先进疗法（中文）
+/(?<![A-Za-z0-9_])(?:biopharmaceuticals?|antibody|antibodies|vaccines?|gene[\s-]+therapy|CAR[\s-]+T|ADCs?|PD[\s-]+1|PD[\s-]+L1|mRNA|cell[\s-]+therapy|cell[\s-]+therapies|immunotherapy|oncolytic[\s-]+virus|oncolytic[\s-]+viruses)(?![A-Za-z0-9_])/ => 生物制药与先进疗法（英文）
 
-# ═══════════════════════════════════════════════════════════════
-#                    环境 / 能源
-# ═══════════════════════════════════════════════════════════════
+[医疗器械与诊断技术]
+/医疗器械|医学影像|体外诊断|诊断试剂|手术机器人|医用耗材|迈瑞|联影|鱼跃|万孚|华大智造|达安基因|磁共振|超声|血糖仪|可穿戴监测/ => 医疗器械与诊断技术（中文）
+/(?<![A-Za-z0-9_])(?:medical[\s-]+devices?|medical[\s-]+imaging|in[\s-]+vitro[\s-]+diagnostics|diagnostic[\s-]+reagents?|MRI|CT[\s-]+scans?|PET[\s-]+CT|Medtronic|GE[\s-]+HealthCare|Siemens[\s-]+Healthineers|Mindray|United[\s-]+Imaging|Intuitive[\s-]+Surgical|Dexcom)(?![A-Za-z0-9_])/ => 医疗器械与诊断技术（英文）
 
-[气候环境]
-/(气候.*变化|全球变暖|极端气候变化|climate.*change|global warming)/ => 气候变化
-/(极端天气|暴雨|洪涝|干旱|高温|热浪|强对流天气|extreme weather|heatwave)/ => 极端天气
-/(台风|飓风|地震|海啸|山火|泥石流|暴雪|冰雹|寒潮|沙尘暴|滑坡|崩塌|龙卷风|typhoon|hurricane|earthquake|tsunami|wildfire|mudslide|tornado)/ => 自然灾害
-/(雾霾|PM2[.]5|空气污染|空气质量|air quality)/ => 空气质量
-/(碳中和|碳达峰|碳足迹|碳汇|(?<![a-z0-9])ESG(?![a-z0-9])|双碳|carbon neutrality|carbon peak|carbon sink)/ => 双碳
-/(碳捕集|(?<![a-z0-9])CCUS(?![a-z0-9])|carbon capture)/ => 碳捕集
-/(CCER|碳市场|碳配额|碳税|绿色金融|气候投融资|(?<![a-z0-9])EU[ .]ETS(?![a-z0-9]))/ => 碳市场
-@8
+[药品监管与流通]
+/药品|药监|药店|处方|仿制药|药物警戒|药检|药械|药审|药物不良反应|药价|断供药|临床用药|一致性评价/ => 药品监管与流通（中文）
+/(?<![A-Za-z0-9_])(?:pharmaceuticals?|pharmacy|pharmacies|generic[\s-]+drugs?|pharmacovigilance|FDA|NMPA|EMA|drug[\s-]+approvals?|drug[\s-]+pricing|drug[\s-]+shortages?|adverse[\s-]+drug[\s-]+reactions?|bioequivalence|prescription[\s-]+drugs?)(?![A-Za-z0-9_])/ => 药品监管与流通（英文）
 
-[能源矿产]
-/(油价|原油|石油.*价格|原油.*价格|布伦特|(?<![a-z0-9])(?:WTI|OPEC)(?![a-z0-9])|页岩油|页岩气|成品油.*调价|oil.*price|crude.*price|(?<![a-z0-9])Brent(?![a-z0-9]))/ => 石油
-/(天然气|北溪|液化天然气|natural gas|Nord Stream|(?<![a-z0-9])LNG(?![a-z0-9]))/ => 天然气
-/(煤炭|电网|电力|储能|新型储能|虚拟电厂|energy storage|virtual power plant)/ => 电力/储能
-/(稀土|稀土永磁|rare earth)/ => 稀土
-/(锂矿|锂.*资源|钴矿|镍矿|铜矿|铁矿石|铜矿.*资源|lithium mine|cobalt mine|iron ore)/ => 矿产
-/(光伏.*组件|光伏.*装机|风电.*装机|海上风电|大基地.*(?:光伏|风电)|offshore wind)/ => 新能源装机
-/(光伏|风电|水电|核电|氢能|绿色.*能源|可再生能源|solar (?:power|panel)|wind power|hydropower|nuclear power|renewable energy)/ => 清洁能源
-/(氢能.*产业链|氢能.*制|氢能.*储|氢能.*运|绿氢|hydrogen.*(?:value chain|produc|stor|transport)|green hydrogen)/ => 氢能
-/(能源.*安全|能源.*自主|战略.*储备|能源转型|energy.*security|strategic.*reserve)/ => 能源安全
-/(特高压|风光大基地|零碳园区|绿电|绿证|分布式光伏|(?<![a-z0-9])UHV(?![a-z0-9])|ultra-?high voltage)/ => 电力新基建
-@8
+[中医中药与传统医学]
+/中医|中药|中成药|针灸|传统医学|艾灸|推拿|拔罐|经络|本草|道地药材|同仁堂|片仔癀|云南白药|以岭药业/ => 中医中药与传统医学（中文）
+/(?<![A-Za-z0-9_])(?:traditional[\s-]+medicine|Chinese[\s-]+medicine|herbal[\s-]+medicine|acupuncture|moxibustion|cupping[\s-]+therapy|tuina|Tong[\s-]+Ren[\s-]+Tang|Pien[\s-]+Tze[\s-]+Huang|Yunnan[\s-]+Baiyao|TCM|herbal[\s-]+formulations?)(?![A-Za-z0-9_])/ => 中医中药与传统医学（英文）
 
-# ═══════════════════════════════════════════════════════════════
-#                    体育 / 电竞
-# ═══════════════════════════════════════════════════════════════
+[医药产业与研发服务]
+/医药|研发外包|生物制造|药物生产|恒瑞|百济神州|信达生物|君实生物|复宏汉霖|药明康德|药明生物|康龙化成|辉瑞|诺华|罗氏|阿斯利康|礼来|诺和诺德/ => 医药产业与研发服务（中文）
+/(?<![A-Za-z0-9_])(?:pharma[\s-]+industry|contract[\s-]+research|contract[\s-]+manufacturing|biomanufacturing|Pfizer|Novartis|Roche|AstraZeneca|Sanofi|GSK|Eli[\s-]+Lilly|Novo[\s-]+Nordisk|Bristol[\s-]+Myers[\s-]+Squibb|WuXi[\s-]+AppTec|WuXi[\s-]+Biologics|CDMOs?|CXOs?|BeOne[\s-]+Medicines)(?![A-Za-z0-9_])/ => 医药产业与研发服务（英文）
 
-[足球]
-/(足球|世界杯|世俱杯|(?<![a-z0-9])(?:football|soccer|World Cup)(?![a-z0-9]))/ => 足球/世界杯
-/(国足|中国男足|中国女足|女足.*世界杯|中超|Chinese Super League)/ => 中国足球
-/(金球奖|世界足球先生|Ballon d'Or)/ => 金球奖
-/(欧冠|英超|西甲|意甲|德甲|法甲|欧联杯|Champions League|Premier League|La Liga|Serie A|Bundesliga|Ligue 1)/ => 欧洲联赛
-/(亚洲杯|欧洲杯|世预赛|亚冠|美洲杯|AFC Asian Cup|UEFA Euro|World Cup qualifier)/ => 杯赛
-/((?<![a-z0-9])FIFA(?![a-z0-9])|国际足联|亚足联|(?<![a-z0-9])VAR(?![a-z0-9])|视频助理裁判|半自动越位)/ => FIFA/VAR
-@8
+# ── 第 39 类：健康生活与心理关怀 ──
+[睡眠作息与疲劳管理]
+/睡眠|失眠|作息|熬夜|打鼾|疲劳|睡不好|睡不着|早醒|午睡|补觉|生物钟/ => 睡眠作息与疲劳管理（中文）
+/(?<![A-Za-z0-9_])(?:sleep|insomnia|circadian[\s-]+rhythms?|fatigue|snoring|melatonin|restless[\s-]+legs[\s-]+syndrome|circadian[\s-]+disruption)(?![A-Za-z0-9_])/ => 睡眠作息与疲劳管理（英文）
 
-[篮球]
-/(篮球|(?<![a-z0-9])NBA(?![a-z0-9])|WNBA)/ => 篮球/NBA
-/((?<![a-z0-9])CBA(?![a-z0-9])|中国男子篮球职业联赛|中国女篮)/ => CBA
-/(FIBA|世界杯.*篮球|奥运会.*篮球|亚洲杯.*篮球|男篮世界杯)/ => 篮球大赛
-/(篮球.*(?:季后赛|总决赛|全明星|附加赛)|NBA.*(?:季后赛|总决赛|全明星))/ => 赛程
-/(选秀|状元签|摆烂|工资帽|奢侈税|交易截止日|NBA draft|salary cap|luxury tax)/ => 交易选秀
-@8
+[运动健身与体重管理]
+/健身|减脂|减重|体重管理|增肌|久坐|肥胖|超重|体脂|腰围|燃脂|有氧运动|抗阻训练|力量训练|普拉提|瑜伽/ => 运动健身与体重管理（中文）
+/(?<![A-Za-z0-9_])(?:fitness|weight[\s-]+loss|weight[\s-]+management|sedentary[\s-]+lifestyle|obesity|overweight|body[\s-]+fat|BMI|aerobic[\s-]+exercise|resistance[\s-]+training|strength[\s-]+training|Pilates|yoga)(?![A-Za-z0-9_])/ => 运动健身与体重管理（英文）
 
-[电竞游戏]
-/(3A大作|(?<![a-z0-9])(?:TGA|Steam|Epic Games)(?![a-z0-9])|任天堂|(?<![a-z0-9])(?:Switch|PlayStation|PS5|PS6|Xbox|Nintendo)(?![a-z0-9]))/ => 主机/平台
-/(电竞|电子竞技|亚运电竞|(?<![a-z0-9])esports(?![a-z0-9]))/ => 电竞
-/(主机游戏|独立游戏|游戏.*发布|游戏.*获奖|Steam.*在线|太空狼人杀|indie game|game awards?)/ => 游戏动态
-/(王者荣耀|英雄联盟|原神|米哈游|黑神话|(?<![a-z0-9])(?:LoL|DOTA2?|Genshin|CS2)(?![a-z0-9]))/ => 热门游戏
-@8
+[日常保健与慢病管理]
+/养生|健康管理|慢病管理|血压|血糖|血脂|口腔健康|血尿酸|痛风|牙周|龋齿|护眼|近视|视力|骨密度|骨质疏松|代谢健康/ => 日常保健与慢病管理（中文）
+/(?<![A-Za-z0-9_])(?:wellness|chronic[\s-]+disease[\s-]+management|blood[\s-]+pressure|blood[\s-]+sugar|uric[\s-]+acid|gout|oral[\s-]+health|dental[\s-]+care|myopia|osteoporosis|bone[\s-]+density|metabolic[\s-]+health|cholesterol)(?![A-Za-z0-9_])/ => 日常保健与慢病管理（英文）
 
-[综合体育]
-/(奥运会|亚运会|冬奥|大运会|(?<![a-z0-9])(?:Olympics|Asian Games|Winter Olympics)(?![a-z0-9]))/ => 奥运亚运
-/(超级碗|温网|美网|大师赛|环法|世界杯.*(?:橄榄球|板球)|Super Bowl|(?<![a-z0-9])Wimbledon(?![a-z0-9])|US Open|Tour de France)/ => 国际赛事
-/((?<![a-z0-9])UFC(?![a-z0-9])|拳击|综合格斗|自由搏击|格斗游戏)/ => 格斗
-/(田径|游泳|跳水|乒乓球|羽毛球|国乒|网球|斯诺克|花样游泳|athletics|swimming|diving|table tennis|badminton|tennis|snooker)/ => 传统项目
-/(?<![a-z0-9])F1(?![a-z0-9])|一级方程式|拉力赛|F1中国大奖赛/ => 赛车
-@8
+[心理健康与情绪支持]
+/心理健康|心理咨询|心理治疗|情绪管理|心理危机|心理援助|情绪疏导|心理韧性|心理测评|自我关怀|危机干预|正念|冥想|精神内耗/ => 心理健康与情绪支持（中文）
+/(?<![A-Za-z0-9_])(?:mental[\s-]+health|psychotherapy|counseling|emotion[\s-]+regulation|mindfulness|meditation|stress[\s-]+management|psychological[\s-]+resilience|self[\s-]+care|emotional[\s-]+support|cognitive[\s-]+behavioral[\s-]+therapy)(?![A-Za-z0-9_])/ => 心理健康与情绪支持（英文）
 
-# ═══════════════════════════════════════════════════════════════
-#                    娱乐 / 文化
-# ═══════════════════════════════════════════════════════════════
+[精神障碍与成瘾防治]
+/抑郁|焦虑|精神障碍|成瘾|戒烟|戒酒|注意缺陷|双相|孤独症|自闭症|强迫症|创伤后应激|注意力障碍|精神分裂|药物依赖/ => 精神障碍与成瘾防治（中文）
+/(?<![A-Za-z0-9_])(?:depression|anxiety|mental[\s-]+disorders?|addiction|ADHD|OCD|PTSD|bipolar[\s-]+disorders?|autism|schizophrenia|substance[\s-]+use[\s-]+disorders?|alcohol[\s-]+dependence|smoking[\s-]+cessation)(?![A-Za-z0-9_])/ => 精神障碍与成瘾防治（英文）
 
-[电影]
-/(电影|新片|票房|年度票房|(?<![a-z0-9])(?:film|movie)(?![a-z0-9]))/ => 电影
-/(春节档|暑期档|国庆档|贺岁档|元旦档|Lunar New Year window|summer window)/ => 热门档期
-/(院线|(?<![a-z0-9])IMAX(?![a-z0-9])|首映|box office)/ => 院线
-/(导演|编剧|制片人|director|screenwriter|producer)/ => 导演编剧
-/(奥斯卡|戛纳|柏林电影节|威尼斯电影节|圣丹斯电影节|(?<![a-z0-9])(?:Oscars|Cannes)(?![a-z0-9])|Berlin Film Festival|Venice Film Festival|Sundance Film Festival)/ => 电影节
-/(金像奖|金马奖|Hong Kong Film Awards|Golden Horse)/ => 华语电影奖
-/(国产.*电影|好莱坞|(?<![a-z0-9])Hollywood(?![a-z0-9]))/ => 国产/好莱坞
-/(漫威|(?<![a-z0-9])Marvel(?![a-z0-9])|DC Comics|DC宇宙|华纳DC|MCU)/ => 超英
-/(科幻.*电影|动画.*电影|纪录.*电影|纪录.*片|悬疑.*电影|sci-?fi.*(?:film|movie)|animated film|documentary film)/ => 类型片
-@8
+[康复护理与健康科普]
+/康复|护理|健康科普|急救知识|健康素养|健康误区|物理疗法|作业疗法|言语训练|功能恢复|术后照护|压疮|急救培训/ => 康复护理与健康科普（中文）
+/(?<![A-Za-z0-9_])(?:rehabilitation|nursing|health[\s-]+literacy|health[\s-]+education|physiotherapy|physical[\s-]+therapy|occupational[\s-]+therapy|speech[\s-]+therapy|postoperative[\s-]+care|first[\s-]+aid[\s-]+training|CPR|AEDs?)(?![A-Za-z0-9_])/ => 康复护理与健康科普（英文）
+
+# ── 第 40 类：食品餐饮与营养 ──
+[食品安全与质量]
+/食品安全|食安|食源性疾病|食品添加剂|食物中毒|食品抽检|三聚氰胺|黄曲霉毒素|农残|兽残|地沟油|瘦肉精|过期食材|冷链卫生|致病菌/ => 食品安全与质量（中文）
+/(?<![A-Za-z0-9_])(?:food[\s-]+safety|foodborne[\s-]+illness|food[\s-]+additives?|food[\s-]+poisoning|aflatoxins?|melamine|pesticide[\s-]+residues?|food[\s-]+recalls?|food[\s-]+contamination|salmonella|listeria|HACCP)(?![A-Za-z0-9_])/ => 食品安全与质量（英文）
+
+[营养膳食与饮食习惯]
+/营养|膳食|饮食|蛋白摄入|控糖|低盐|高蛋白|低脂|维生素|矿物质|微量元素|不饱和脂肪|反式脂肪|超加工|代糖|益生菌/ => 营养膳食与饮食习惯（中文）
+/(?<![A-Za-z0-9_])(?:nutrition|diets?|dietary[\s-]+fiber|vitamins?|probiotics?|prebiotics?|omega[\s-]+3|trans[\s-]+fats?|ultra[\s-]+processed[\s-]+foods?|intermittent[\s-]+fasting|glycemic[\s-]+index)(?![A-Za-z0-9_])/ => 营养膳食与饮食习惯（英文）
+
+[烹饪美食与餐饮服务]
+/美食|烹饪|菜谱|餐饮|餐厅|外卖|海底捞|肯德基|麦当劳|必胜客|达美乐|西贝|老乡鸡|沙县小吃|火锅|烧烤/ => 烹饪美食与餐饮服务（中文）
+/(?<![A-Za-z0-9_])(?:cuisine|cooking|recipes?|restaurants?|Haidilao|KFC|McDonald's|Pizza[\s-]+Hut|Domino's|hot[\s-]+pot|barbecue|food[\s-]+delivery)(?![A-Za-z0-9_])/ => 烹饪美食与餐饮服务（英文）
+
+[粮油蔬果与生鲜]
+/粮油|蔬菜|水果|生鲜|肉类|海鲜|食用油|菜价|猪肉|牛肉|羊肉|鸡蛋|鲜奶|粮价|米价|食用菌|水产价格/ => 粮油蔬果与生鲜（中文）
+/(?<![A-Za-z0-9_])(?:vegetables?|fruits?|fresh[\s-]+food|edible[\s-]+oils?|pork|beef|mutton|poultry[\s-]+meat|egg[\s-]+prices?|fresh[\s-]+milk|produce[\s-]+prices?|cooking[\s-]+oils?|edible[\s-]+mushrooms?)(?![A-Za-z0-9_])/ => 粮油蔬果与生鲜（英文）
+
+[饮品茶酒与咖啡]
+/饮料|饮品|茶叶|咖啡|酒类|奶茶|啤酒|瑞幸|星巴克|蜜雪冰城|喜茶|奈雪|霸王茶姬|茶百道|古茗|农夫山泉|怡宝|茅台|五粮液|泸州老窖|汾酒/ => 饮品茶酒与咖啡（中文）
+/(?<![A-Za-z0-9_])(?:beverages?|coffee|tea|beer|Starbucks|Luckin|Mixue|CHAGEE|HEYTEA|Nayuki|Coca[\s-]+Cola|Pepsi|PepsiCo|Kweichow[\s-]+Moutai|Wuliangye|AB[\s-]+InBev|Heineken|Nongfu[\s-]+Spring)(?![A-Za-z0-9_])/ => 饮品茶酒与咖啡（英文）
+
+[食品加工与食品消费]
+/食品|预制菜|乳制品|零食|烘焙|伊利|蒙牛|光明乳业|飞鹤|三只松鼠|良品铺子|来伊份|桃李面包|旺旺集团|速冻/ => 食品加工与食品消费（中文）
+/(?<![A-Za-z0-9_])(?:food[\s-]+processing|prepared[\s-]+foods?|dairy[\s-]+products?|snacks?|Yili|Mengniu|Nestle|Danone|Mondelez|Kraft[\s-]+Heinz|General[\s-]+Mills|Fonterra|frozen[\s-]+foods?|bakery[\s-]+products?|confectionery)(?![A-Za-z0-9_])/ => 食品加工与食品消费（英文）
+
+# ── 第 41 类：家庭育儿与养老 ──
+[婚恋关系与家庭生活]
+/婚恋|婚姻|结婚|离婚|家庭关系|伴侣|彩礼|相亲|领证|婚登|婚育|婚礼|夫妻|婆媳|家暴|婚内财产|婚前协议/ => 婚恋关系与家庭生活（中文）
+/(?<![A-Za-z0-9_])(?:marriages?|divorce|dating|family[\s-]+relationships?|weddings?|married[\s-]+couples?|domestic[\s-]+violence|prenuptial[\s-]+agreements?|marital[\s-]+property|relationship[\s-]+counseling|matchmaking)(?![A-Za-z0-9_])/ => 婚恋关系与家庭生活（英文）
+
+[生育孕产与母婴]
+/生育|怀孕|孕产|产检|分娩|母婴|产后|备孕|试管婴儿|辅助生殖|冻卵|优生优育|不孕|不育|妊娠|围产期/ => 生育孕产与母婴（中文）
+/(?<![A-Za-z0-9_])(?:fertility|pregnancy|maternity|childbirth|IVF|assisted[\s-]+reproduction|egg[\s-]+freezing|infertility|prenatal|perinatal|postpartum|cesarean[\s-]+sections?|antenatal[\s-]+care)(?![A-Za-z0-9_])/ => 生育孕产与母婴（英文）
+
+[婴幼儿养育与托育]
+/育儿|婴儿|幼儿|托育|喂养|早教|奶粉|奶瓶|纸尿裤|尿不湿|辅食|托班|安抚奶嘴|贝亲|帮宝适|好孩子集团/ => 婴幼儿养育与托育（中文）
+/(?<![A-Za-z0-9_])(?:parenting|infants?|childcare|early[\s-]+childhood|baby[\s-]+bottles?|diapers?|nappies|nappy|Pampers|Huggies|Aptamil|Nutrilon|Babycare|weaning)(?![A-Za-z0-9_])/ => 婴幼儿养育与托育（英文）
+
+[儿童成长与家庭教育]
+/儿童|亲子|家庭教育|未成年人|青春期|监护人|监护权|家庭陪伴|性教育|防性侵|校园霸凌|家校共育|成长发育/ => 儿童成长与家庭教育（中文）
+/(?<![A-Za-z0-9_])(?:children|child[\s-]+protection|family[\s-]+education|adolescence|legal[\s-]+guardians?|child[\s-]+guardians?|guardianship|child[\s-]+development|child[\s-]+safeguarding|sex[\s-]+education|parent[\s-]+child[\s-]+communication|school[\s-]+family[\s-]+cooperation)(?![A-Za-z0-9_])/ => 儿童成长与家庭教育（英文）
+
+[养老服务与银发生活]
+/养老|老年人|老人|银发经济|居家照护|适老服务|失能|失智|高龄|助浴|助餐|安宁疗护|临终关怀|长护险|泰康之家|亲和源/ => 养老服务与银发生活（中文）
+/(?<![A-Za-z0-9_])(?:elder[\s-]+care|elderly|silver[\s-]+economy|home[\s-]+care|senior[\s-]+living|assisted[\s-]+living|palliative[\s-]+care|hospice[\s-]+care|Brookdale|age[\s-]+friendly[\s-]+services|adult[\s-]+day[\s-]+care)(?![A-Za-z0-9_])/ => 养老服务与银发生活（英文）
+
+[代际关系与家庭支持]
+/代际|赡养|隔代抚养|空巢|失独|家庭照护|独居长者|独居老人|探亲假|家属照护|家庭互助|照护负担|隔代教育|多代同住/ => 代际关系与家庭支持（中文）
+/(?<![A-Za-z0-9_])(?:intergenerational|elderly[\s-]+support|grandparenting|empty[\s-]+nests?|caregivers?|caregiving|multigenerational[\s-]+households?|family[\s-]+support|respite[\s-]+care)(?![A-Za-z0-9_])/ => 代际关系与家庭支持（英文）
+
+# ── 第 42 类：文学艺术与文化传承 ──
+[文学阅读与出版]
+/文学|小说|诗歌|散文|阅读|出版|图书|鲁迅|莫言|余华|刘慈欣|东野圭吾|村上春树|三体|红楼梦|西游记|阅文|掌阅|微信读书/ => 文学阅读与出版（中文）
+/(?<![A-Za-z0-9_])(?:literature|novels?|poetry|publishing|Penguin[\s-]+Random[\s-]+House|HarperCollins|Simon[\s-]+\&[\s-]+Schuster|Goodreads|Kindle|Kobo|Booker[\s-]+Prize|Hugo[\s-]+Awards?|audiobooks?|ebooks?)(?![A-Za-z0-9_])/ => 文学阅读与出版（英文）
+
+[历史考古与文明研究]
+/历史|考古|文物|古籍|文明史|遗址|三星堆|殷墟|良渚|石峁|兵马俑|马王堆|二里头|出土|古文字|考据|文献修复/ => 历史考古与文明研究（中文）
+/(?<![A-Za-z0-9_])(?:history|archaeology|cultural[\s-]+relics?|archaeological[\s-]+sites?|Sanxingdui|Yinxu|Liangzhu|Terracotta[\s-]+Army|paleography|excavations?|ancient[\s-]+civilizations?|historical[\s-]+manuscripts?)(?![A-Za-z0-9_])/ => 历史考古与文明研究（英文）
+
+[文化遗产与传统民俗]
+/文化遗产|非遗|民俗|传统文化|节气|传统节日|春节|端午|中秋|清明|元宵|重阳|春联|龙舟|皮影|剪纸|民间技艺/ => 文化遗产与传统民俗（中文）
+/(?<![A-Za-z0-9_])(?:cultural[\s-]+heritage|intangible[\s-]+heritage|folklore|traditional[\s-]+culture|Spring[\s-]+Festival|Lunar[\s-]+New[\s-]+Year|Dragon[\s-]+Boat[\s-]+Festival|Mid[\s-]+Autumn[\s-]+Festival|Qingming|Lantern[\s-]+Festival|traditional[\s-]+craftsmanship|paper[\s-]+cutting)(?![A-Za-z0-9_])/ => 文化遗产与传统民俗（英文）
+
+[美术书法与视觉艺术]
+/美术|绘画|书法|雕塑|版画|艺术展|水墨|油画|国画|篆刻|装置艺术|当代艺术|视觉设计|艺术拍卖|苏富比|佳士得/ => 美术书法与视觉艺术（中文）
+/(?<![A-Za-z0-9_])(?:fine[\s-]+arts?|paintings?|calligraphy|sculptures?|Sotheby's|Christie's|installation[\s-]+art|contemporary[\s-]+art|watercolor|watercolour|printmaking|art[\s-]+auctions?)(?![A-Za-z0-9_])/ => 美术书法与视觉艺术（英文）
+
+[哲学思想与人文社科]
+/哲学|伦理学|社会学|人类学|宗教学|人文社科|儒学|道家|孔子|孟子|庄子|认识论|形而上学|政治学|儒家|思想史/ => 哲学思想与人文社科（中文）
+/(?<![A-Za-z0-9_])(?:philosophy|ethics|sociology|anthropology|Confucius|Aristotle|Plato|Kant|Nietzsche|epistemology|metaphysics|political[\s-]+science|humanities|intellectual[\s-]+history)(?![A-Za-z0-9_])/ => 哲学思想与人文社科（英文）
+
+[文化场馆与公共文化]
+/博物馆|美术馆|图书馆|文化馆|公共文化|文化产业|故宫|国博|敦煌|莫高窟|公共阅读|文化惠民|文化消费|展陈|策展/ => 文化场馆与公共文化（中文）
+/(?<![A-Za-z0-9_])(?:museums?|art[\s-]+gallery|art[\s-]+galleries|library|libraries|cultural[\s-]+industry|Dunhuang|Mogao|Louvre|Smithsonian|cultural[\s-]+venues?|curation|public[\s-]+cultural[\s-]+services?)(?![A-Za-z0-9_])/ => 文化场馆与公共文化（英文）
+
+# ── 第 43 类：影视音乐与演艺娱乐 ──
+[电影与院线]
+/电影|影院|院线|票房|首映|影评|流浪地球|封神三部曲|唐探|漫威|奥斯卡|金鸡奖|金像奖|戛纳|银幕|点映/ => 电影与院线（中文）
+/(?<![A-Za-z0-9_])(?:films?|movies?|box[\s-]+office|cinema|Oscars|Academy[\s-]+Awards|Cannes|Marvel|DC[\s-]+Studios|Pixar|IMAX|cinematic[\s-]+releases?)(?![A-Za-z0-9_])/ => 电影与院线（英文）
 
 [剧集综艺]
-/(电视剧|网剧|短剧|微短剧|TV series|web series)/ => 剧集
-/(综艺|真人秀|慢综艺|variety show|reality show)/ => 综艺
-/(脱口秀|喜剧.*大会|吐槽大会|一年一度喜剧|stand-?up comedy|单口喜剧)/ => 喜剧节目
-/(第[一二三四五六七八九十百0-9]+.*季.*定档|第[一二三四五六七八九十百0-9]+.*季.*开播|Season[ .]?[2-9].*续订|续作.*定档|回归.*开播)/ => 续作上线
-/(艾美奖|(?<![a-z0-9])Emmy(?![a-z0-9])|电视节)/ => 电视奖
-/(浪姐|披哥|歌手[ .]?(?:[1-9]|[1-9][0-9])|歌手[ .]?202[0-9]|Sisters Who Make Waves|Call Me by Fire|Singer[ .]?20[0-9][0-9]|无限超越班)/ => 热门综艺
-/(热播剧|爆款剧|收视率|播放量.*破|三体.*剧|待播剧|hit series|ratings|viewership|Three-?Body Problem)/ => 热门剧集
-@8
+/电视剧|剧集|综艺|短剧|网剧|真人秀|追剧|爱奇艺|优酷|芒果TV|腾讯视频|庆余年|琅琊榜|甄嬛传|竖屏剧|长剧/ => 剧集综艺（中文）
+/(?<![A-Za-z0-9_])(?:TV[\s-]+series|television[\s-]+dramas?|variety[\s-]+shows?|reality[\s-]+shows?|iQIYI|Youku|Mango[\s-]+TV|Tencent[\s-]+Video|K[\s-]+dramas?|C[\s-]+dramas?|miniseries|reality[\s-]+television|short[\s-]+dramas?)(?![A-Za-z0-9_])/ => 剧集综艺（英文）
 
-[音乐演出]
-/(格莱美|(?<![a-z0-9])Grammy(?![a-z0-9])|金音奖)/ => 音乐奖
-/(音乐|音乐节|演唱会|巡演|音乐会|虚拟演唱会|(?<![a-z0-9])livehouse(?![a-z0-9])|music festival)/ => 音乐
-/(专辑|单曲|新歌|(?<![a-z0-9])album(?![a-z0-9])|(?<![a-z0-9])single(?![a-z0-9])|new song)/ => 新作品
-/(乐队|说唱|嘻哈|(?<![a-z0-9])rap(?![a-z0-9])|摇滚|民谣|电子.*音乐|古典.*音乐|爵士|国风音乐)/ => 音乐类型
-/(新专辑|新单曲|乐坛|音乐节.*阵容|new album|new single)/ => 乐坛动态
-/(演唱会.*门票|黄牛|票务.*演出|抢票|退票|concert.*ticket|(?<![a-z0-9])scalper(?![a-z0-9]))/ => 演出票务
-@8
+[音乐创作与演出]
+/音乐|歌曲|歌手|演唱会|专辑|乐队|周杰伦|林俊杰|陈奕迅|五月天|凤凰传奇|格莱美|金曲奖|巡演|新歌|单曲|乐坛/ => 音乐创作与演出（中文）
+/(?<![A-Za-z0-9_])(?:music|songs?|singers?|concerts?|albums?|Spotify|Billboard|Grammys?|songwriting|musicians?|orchestras?)(?![A-Za-z0-9_])/ => 音乐创作与演出（英文）
 
-[文学出版]
-/(茅盾文学奖|鲁迅文学奖|雨果奖|星云奖|诺贝尔.*文学|普利策奖|德国图书奖|Mao Dun Literature Prize|Hugo Award|Nebula Award|Nobel.*[Ll]iterature|(?<![a-z0-9])Pulitzer(?![a-z0-9]))/ => 文学奖
-/(新书|畅销.*书|年度好书|new book|best-?seller)/ => 新书
-/(作家|小说|散文|诗歌|科幻小说|writer|novel|essay|poetry)/ => 文学体裁
-/(全民阅读|书店|书香|读书日|世界读书日|national reading|bookstore|World Book Day)/ => 阅读推广
-/(图书|童书|绘本|有声书|电子书|出版物|盲文图书|picture book|audiobook|e-?book|publication)/ => 图书
-/(作协|作家.*新作|长篇小说|年度图书|writers.?association|new novel|book of the year)/ => 文学动态
-/(网文|网络.*文学|IP.*改编|短篇网文)/ => 网文IP
-/(出版|版权|书展|图书.*排行|版权纠纷|publishing|copyright|book fair|book ranking)/ => 出版业
-@8
+[戏剧舞台与表演]
+/戏剧|话剧|戏曲|舞蹈|舞台剧|脱口秀|相声|剧院|开心麻花|德云社|京剧|昆曲|越剧|豫剧|音乐剧|芭蕾|沪剧|舞剧/ => 戏剧舞台与表演（中文）
+/(?<![A-Za-z0-9_])(?:theater|theatre|opera|dance|stand[\s-]+up[\s-]+comedy|Broadway|Kunqu|ballet|stage[\s-]+performances?|standup[\s-]+comedy|improv[\s-]+comedy)(?![A-Za-z0-9_])/ => 戏剧舞台与表演（英文）
 
-# ═══════════════════════════════════════════════════════════════
-#                    科学 / 学术
-# ═══════════════════════════════════════════════════════════════
+[艺人经纪与演艺动态]
+/演员|艺人|明星|经纪公司|粉丝|饭圈|演艺|刘德华|成龙|周星驰|黄渤|沈腾|杨紫|肖战|迪丽热巴|追星|乐华娱乐/ => 艺人经纪与演艺动态（中文）
+/(?<![A-Za-z0-9_])(?:actors?|actress|actresses|celebrity|celebrities|talent[\s-]+agency|talent[\s-]+agencies|Taylor[\s-]+Swift|Beyonce|Beyoncé|Lady[\s-]+Gaga|Adele|Jackie[\s-]+Chan|Tom[\s-]+Cruise|Leonardo[\s-]+DiCaprio|artist[\s-]+management|fan[\s-]+community)(?![A-Za-z0-9_])/ => 艺人经纪与演艺动态（英文）
 
-[前沿科学]
-/(量子|量子霸权|量子纠错|quantum.*(?:comput|commun|entangle|supremacy))/ => 量子
-/(超导|室温.*超导|高温超导|superconduct(?:or|ivity)|room-?temperature.*superconduct|high-?temperature superconduct)/ => 超导
-/(核聚变|人造太阳|托卡马克|东方超环|(?<![a-z0-9])ITER(?![a-z0-9])|controlled nuclear fusion|tokamak)/ => 核聚变
-/(中微子|暗物质|暗能量|引力波|黑洞|中子星|脉冲星|宇宙线|dark matter|gravitational wave|black hole|neutron star)/ => 天体物理
-/(光子.*芯片|光计算|光量子.*(?:芯片|计算)|photonic.*chip|optical computing)/ => 光芯片
-/(拓扑.*绝缘体|二维材料|石墨烯|纳米材料|纳米芯片|钙钛矿.*(?:光伏|电池)|topological.*insulator|graphene)/ => 新材料
-/(合成生物|人造生命|细胞工厂|synthetic biology|artificial life)/ => 合成生物
-/(?<![a-z0-9])LHC(?![a-z0-9])/ => 对撞机
-/(冷冻电镜|超分辨.*显微镜|光镊|cryo-?EM|super-?resolution microscopy)/ => 成像技术
-/(诺贝尔|诺奖|诺奖.*(?:得主|公布)|(?<![a-z0-9])Nobel(?![a-z0-9]))/ => 诺贝尔
-/(爱因斯坦|(?<![a-z0-9])Albert[ .]?Einstein(?![a-z0-9])|图灵|(?<![a-z0-9])Alan[ .]?Turing(?![a-z0-9]))/ => 科学人物
-@8
+[影视制作与娱乐产业]
+/影视|编剧|导演|制片|娱乐产业|演出市场|华谊兄弟|光线传媒|博纳|华策|柠萌|正午阳光|特效制作|虚拟拍摄/ => 影视制作与娱乐产业（中文）
+/(?<![A-Za-z0-9_])(?:screenwriters?|film[\s-]+directors?|film[\s-]+production|entertainment[\s-]+industry|Warner[\s-]+Bros|Walt[\s-]+Disney|Universal[\s-]+Pictures|Paramount[\s-]+Pictures|Sony[\s-]+Pictures|Lionsgate|A24|DreamWorks|VFX|virtual[\s-]+production)(?![A-Za-z0-9_])/ => 影视制作与娱乐产业（英文）
 
-[生命科学]
-/(基因|基因编辑|(?<![a-z0-9])CRISPR(?![a-z0-9])|蛋白质.*结构|(?<![a-z0-9])AlphaFold(?![a-z0-9]))/ => 基因
-/(干细胞|免疫.*疗法|CAR-T|CAR.?T(?:细胞|疗法|治疗)|免疫细胞.*治疗|stem cell|immuno.*therap)/ => 干细胞免疫
-/(mRNA.*疫苗|mRNA.*肿瘤|环状RNA|mRNA.*vaccine|mRNA.*cancer|circRNA)/ => mRNA技术
-/(神经.*科学|脑科学|脑机接口|临床脑机|(?<![a-z0-9])Neuralink(?![a-z0-9])|brain-?computer interface)/ => 神经脑科学
-/(衰老.*研究|长寿.*科学|抗衰老.*(?:研究|科学)|aging.*research|longevity.*science)/ => 衰老研究
-/(器官.*移植|克隆人|器官.*克隆|异种移植|organ.*transplant|xenotransplant)/ => 器官移植
-/(合成.*生物学|微生物组|肠道菌群|microbiome|gut flora)/ => 合成生物/菌群
-/(精准医疗|个体化治疗|precision medicine|personalized medicine)/ => 精准医疗
-@8
+# ── 第 44 类：游戏动漫与数字内容 ──
+[游戏研发与发行]
+/游戏开发|游戏引擎|游戏发行|游戏版号|游戏美术|游戏策划|米哈游|网易游戏|腾讯游戏|育碧|卡普空|科乐美|任天堂|暴雪娱乐|叠纸|莉莉丝|鹰角|游戏科学/ => 游戏研发与发行（中文）
+/(?<![A-Za-z0-9_])(?:game[\s-]+development|game[\s-]+engines?|game[\s-]+publishing|game[\s-]+design|Unity[\s-]+engine|Unity[\s-]+Technologies|Unreal[\s-]+Engine|Godot[\s-]+Engine|Epic[\s-]+Games|Ubisoft|Capcom|Konami|Nintendo|HoYoverse|miHoYo|Electronic[\s-]+Arts|Take[\s-]+Two|CD[\s-]+Projekt|Bandai[\s-]+Namco|Blizzard[\s-]+Entertainment)(?![A-Za-z0-9_])/ => 游戏研发与发行（英文）
 
-[数学计算机]
-/(数学.*证明|黎曼猜想|哥德巴赫|图灵完备|P.?vs.?NP|P\/NP|Riemann hypothesis|Goldbach)/ => 数学前沿
-/(开源.*(?:项目|软件|模型|社区|协议|许可证)|(?<![a-z0-9])(?:GitHub|Github|Hugging[ -]?Face|GitLab)(?![a-z0-9])|open.?source)/ => 开源
-/(图灵奖|开源许可证|开发者大会|技术标准|AI大会|Turing Award|developer conference)/ => 计算机动态
-/(密码学|后量子.*密码|零知识证明|同态加密|多方安全计算|cryptography|post-?quantum cryptography|zero-?knowledge proof|homomorphic encryption|multi-?party computation)/ => 密码学
-/(形式化验证|自动推理|formal verification)/ => 形式化验证
-/(编程|编程语言|(?<![a-z0-9])(?:Rust|Go|Golang|Python|JavaScript|TypeScript|Java|Swift|Kotlin)(?![a-z0-9])|(?<![a-z0-9])(?:C\+\+|C\#)(?![a-z0-9]))/ => 编程语言
-/(算法|信息学|LeetCode|编程竞赛|黑客松|算法竞赛)/ => 算法
-/(Copilot.*代码|Cursor.*(?:AI|人工智能|编辑器|IDE|代码)|(?:AI|代码|编程).*Devin|(?<![a-z0-9])Devin(?![a-z0-9]).*(?:AI|代码|编程|Agent))/ => AI编程
-/((?<![a-z0-9])Linux(?![a-z0-9])|(?<![a-z0-9])LLVM(?![a-z0-9])|WebAssembly|(?<![a-z0-9])WASM(?![a-z0-9])|编译.*优化|性能优化)/ => 底层技术
-@8
+[电竞赛事与俱乐部]
+/电竞|电子竞技|职业战队|英雄联盟全球总决赛|季中冠军赛|成都AG|重庆狼队|武汉eStar|北京WB|滔搏战队|京东战队|BLG战队|T1战队/ => 电竞赛事与俱乐部（中文）
+/(?<![A-Za-z0-9_])(?:esports?|competitive[\s-]+gaming|KPL|LPL|LCK|LEC|LCS|VCT|Dota[\s-]+2[\s-]+International|EDG|Gen\.G|Team[\s-]+Liquid|Fnatic|League[\s-]+of[\s-]+Legends[\s-]+Worlds)(?![A-Za-z0-9_])/ => 电竞赛事与俱乐部（英文）
 
-# ═══════════════════════════════════════════════════════════════
-#                         时效词说明
-# ═══════════════════════════════════════════════════════════════
-# 具体产品型号、人物、影视、赛事和季度热点请放到：
-#   config/custom/keyword/<profile>.txt
-# 再通过 config/timeline.yaml 的 frequency_file 选择，避免默认词库长期积累失效项。
+[动画漫画与二次元]
+/动画|动漫|漫画|二次元|番剧|国漫|集英社|讲谈社|吉卜力|京阿尼|新海诚|宫崎骏|海贼王|航海王|火影忍者|名侦探柯南|鬼灭之刃|咒术回战|进击的巨人|斗罗大陆|斗破苍穹|凡人修仙传/ => 动画漫画与二次元（中文）
+/(?<![A-Za-z0-9_])(?:anime|animation|manga|comics|Studio[\s-]+Ghibli|MAPPA|Shueisha|Naruto|Demon[\s-]+Slayer|Attack[\s-]+on[\s-]+Titan|Detective[\s-]+Conan|Jujutsu[\s-]+Kaisen)(?![A-Za-z0-9_])/ => 动画漫画与二次元（英文）
+
+[同人创作与兴趣社群]
+/同人|漫展|角色扮演|手办|模型玩具|同好社区|谷子经济|谷圈|痛包|乙女向|盲盒|泡泡玛特|万代|乐高|高达|二创|潮玩/ => 同人创作与兴趣社群（中文）
+/(?<![A-Za-z0-9_])(?:fan[\s-]+fiction|cosplay|anime[\s-]+conventions?|figurines?|Pop[\s-]+Mart|LABUBU|LEGO|Gundam|Good[\s-]+Smile[\s-]+Company|Kotobukiya|doujinshi|blind[\s-]+box|blind[\s-]+boxes|fan[\s-]+art)(?![A-Za-z0-9_])/ => 同人创作与兴趣社群（英文）
+
+[数字内容与虚拟互动]
+/数字内容|虚拟主播|虚拟偶像|互动叙事|数字藏品|元宇宙|洛天依|初音未来|绊爱|虚拟演出|虚拟形象|虚拟社交|互动影像|数字分身/ => 数字内容与虚拟互动（中文）
+/(?<![A-Za-z0-9_])(?:digital[\s-]+content|VTubers?|virtual[\s-]+idols?|metaverse|Hatsune[\s-]+Miku|Luo[\s-]+Tianyi|Kizuna[\s-]+AI|Hololive|Nijisanji|VRChat|Live2D|MetaHuman|virtual[\s-]+concerts?|virtual[\s-]+avatars?)(?![A-Za-z0-9_])/ => 数字内容与虚拟互动（英文）
+
+[电子游戏与平台]
+/游戏|手游|端游|黑神话|原神|星穹铁道|崩坏3|王者荣耀|英雄联盟|无畏契约|和平精英|明日方舟|鸣潮|绝区零|蛋仔派对|三角洲行动|地下城与勇士|魔兽世界|我的世界|宝可梦/ => 电子游戏与平台（中文）
+/(?<![A-Za-z0-9_])(?:video[\s-]+games?|mobile[\s-]+games?|console[\s-]+games?|indie[\s-]+games?|Steam|PlayStation|Xbox|Nintendo[\s-]+Switch|Switch[\s-]+2|Genshin[\s-]+Impact|Honkai|League[\s-]+of[\s-]+Legends|Valorant|Minecraft|Fortnite|Roblox|World[\s-]+of[\s-]+Warcraft|Black[\s-]+Myth|Elden[\s-]+Ring|Pokemon|Pokémon|Dota[\s-]+2|Counter[\s-]+Strike|GTA[\s-]+6|GTA6|Grand[\s-]+Theft[\s-]+Auto)(?![A-Za-z0-9_])/ => 电子游戏与平台（英文）
+
+# ── 第 45 类：体育运动与赛事 ──
+[足球与篮球]
+/足球|篮球|国足|男足|女足|男篮|女篮|英超|西甲|意甲|德甲|法甲|中超|欧冠|皇马|巴萨|曼联|曼城|利物浦|湖人|勇士队|梅西|C罗|詹姆斯|库里/ => 足球与篮球（中文）
+/(?<![A-Za-z0-9_])(?:football|soccer|basketball|futsal|NBA|CBA|WNBA|Premier[\s-]+League|La[\s-]+Liga|Bundesliga|Serie[\s-]+A|Ligue[\s-]+1|UEFA|FIFA|FIBA|Real[\s-]+Madrid|FC[\s-]+Barcelona|Manchester[\s-]+United|Manchester[\s-]+City|Liverpool[\s-]+FC|PSG|Los[\s-]+Angeles[\s-]+Lakers|Golden[\s-]+State[\s-]+Warriors)(?![A-Za-z0-9_])/ => 足球与篮球（英文）
+
+[球拍与其他球类]
+/乒乓球|羽毛球|网球|排球|棒球|高尔夫|台球|国乒|乒超|温网|澳网|美网|大满贯|斯诺克|乒协|羽协|乒联|樊振东|孙颖莎|王楚钦|郑钦文/ => 球拍与其他球类（中文）
+/(?<![A-Za-z0-9_])(?:badminton|tennis|volleyball|baseball|golf|ATP|WTA|ITTF|BWF|ITF|Wimbledon|Roland[\s-]+Garros|Australian[\s-]+Open|US[\s-]+Open|PGA[\s-]+Tour|MLB|snooker)(?![A-Za-z0-9_])/ => 球拍与其他球类（英文）
+
+[田径跑步与耐力运动]
+/田径|马拉松|跑步|短跑|跳高|跳远|竞走|长跑|越野跑|半马|全马|接力赛|百米|撑杆跳|铁人三项|十项全能|路跑/ => 田径跑步与耐力运动（中文）
+/(?<![A-Za-z0-9_])(?:athletics|marathons?|running|track[\s-]+and[\s-]+field|triathlons?|ultramarathons?|relay[\s-]+races?|pole[\s-]+vault|decathlons?|sprints?)(?![A-Za-z0-9_])/ => 田径跑步与耐力运动（英文）
+
+[水上冰雪与户外竞技]
+/游泳|跳水|赛艇|帆船|滑雪|滑冰|冰球|自由泳|蝶泳|蛙泳|仰泳|单板|冰壶|短道|冲浪|环法|公路自行车|谷爱凌|苏翊鸣|全红婵|潘展乐/ => 水上冰雪与户外竞技（中文）
+/(?<![A-Za-z0-9_])(?:swimming|diving|rowing|skiing|ice[\s-]+hockey|World[\s-]+Aquatics|ISU|FIS|NHL|Tour[\s-]+de[\s-]+France|UCI|surfing|speed[\s-]+skating|snowboarding|curling)(?![A-Za-z0-9_])/ => 水上冰雪与户外竞技（英文）
+
+[搏击体操与综合运动]
+/拳击|摔跤|柔道|击剑|体操|举重|武术|柔术|跆拳道|空手道|综合格斗|射击|射箭|马术|攀岩竞技|蹦床|散打/ => 搏击体操与综合运动（中文）
+/(?<![A-Za-z0-9_])(?:boxing|wrestling|gymnastics|weightlifting|martial[\s-]+arts|MMA|UFC|taekwondo|judo|karate|fencing|archery|equestrian|sport[\s-]+shooting|trampolining)(?![A-Za-z0-9_])/ => 搏击体操与综合运动（英文）
+
+[体育赛事与运动产业]
+/体育|运动员|赛事|奥运|世锦赛|锦标赛|联赛|全民健身|亚运|全运会|大运会|残奥|世界杯|世俱杯|世预赛|体总|奥委会|世运会|运动品牌/ => 体育赛事与运动产业（中文）
+/(?<![A-Za-z0-9_])(?:sports?|athletes?|Olympics|championships?|IOC|IPC|Paralympics|Asian[\s-]+Games|FISU[\s-]+Games|World[\s-]+Games|World[\s-]+Cup|sportswear|Olympic[\s-]+committees?)(?![A-Za-z0-9_])/ => 体育赛事与运动产业（英文）
+
+# ── 第 46 类：旅游休闲与户外 ──
+[旅游目的地与景区]
+/旅游|景区|景点|名胜|度假区|文旅|八达岭|慕田峪|九寨沟|黄果树|天门山|鼓浪屿|西双版纳|丽江古城|布达拉宫/ => 旅游目的地与景区（中文）
+/(?<![A-Za-z0-9_])(?:tourism|tourist[\s-]+destinations?|tourist[\s-]+attractions?|resorts?|Jiuzhaigou|Gulangyu|Potala[\s-]+Palace|Angkor[\s-]+Wat|Machu[\s-]+Picchu|Eiffel[\s-]+Tower|Great[\s-]+Barrier[\s-]+Reef|scenic[\s-]+areas?)(?![A-Za-z0-9_])/ => 旅游目的地与景区（英文）
+
+[旅行规划与服务]
+/旅行|旅途|旅游攻略|跟团游|自由行|导游|携程|去哪儿|飞猪|同程|途牛|马蜂窝|穷游|行程单|旅拍|研学游/ => 旅行规划与服务（中文）
+/(?<![A-Za-z0-9_])(?:travel|itinerary|itineraries|tour[\s-]+operators?|tour[\s-]+guides?|Trip\.com|Ctrip|Booking\.com|Expedia|Tripadvisor|Klook|GetYourGuide|Agoda|Traveloka|guided[\s-]+tours?)(?![A-Za-z0-9_])/ => 旅行规划与服务（英文）
+
+[酒店民宿与住宿]
+/酒店|民宿|旅馆|住宿|客房|青年旅舍|希尔顿|万豪|凯悦|洲际|雅高|华住|亚朵|如家|汉庭|爱彼迎|丽枫/ => 酒店民宿与住宿（中文）
+/(?<![A-Za-z0-9_])(?:hotels?|homestays?|accommodation|hostels?|Hilton|Marriott|Hyatt|IHG|Accor|H[\s-]+World|Atour|Airbnb|OYO|Wyndham|boutique[\s-]+lodging)(?![A-Za-z0-9_])/ => 酒店民宿与住宿（英文）
+
+[户外露营与山野活动]
+/户外|露营|徒步|登山|攀岩|探洞|野营|野炊|营地|营帐|溯溪|高海拔|登顶|自然步道/ => 户外露营与山野活动（中文）
+/(?<![A-Za-z0-9_])(?:outdoor[\s-]+recreation|camping|hiking|mountaineering|rock[\s-]+climbing|trekking|backpacking|glamping|campsites?|outdoor[\s-]+gear|summit[\s-]+treks?|nature[\s-]+trails?|canyoning)(?![A-Za-z0-9_])/ => 户外露营与山野活动（英文）
+
+[休闲度假与特色出游]
+/休闲|度假|自驾游|邮轮|温泉|主题公园|乡村游|环球影城|长隆|方特|欢乐谷|乐园|康养旅居|亲子游|周边游|避暑游/ => 休闲度假与特色出游（中文）
+/(?<![A-Za-z0-9_])(?:vacations?|road[\s-]+trips?|cruises?|theme[\s-]+parks?|Disneyland|Walt[\s-]+Disney[\s-]+World|Universal[\s-]+Studios|LEGOLAND|Royal[\s-]+Caribbean|staycations?|wellness[\s-]+retreats?)(?![A-Za-z0-9_])/ => 休闲度假与特色出游（英文）
+
+[出入境旅游与签证]
+/出境游|入境游|签证|免签|护照|边检|旅游退税|入境许可|电子签|落地签|申根|出入境|外国游客|边境检查|通关便利|出境手续/ => 出入境旅游与签证（中文）
+/(?<![A-Za-z0-9_])(?:outbound[\s-]+tourism|inbound[\s-]+tourism|visas?|passports?|Schengen|ESTA|ETIAS|entry[\s-]+permits?|transit[\s-]+exemption|international[\s-]+visitors?)(?![A-Za-z0-9_])/ => 出入境旅游与签证（英文）
+
+# ── 第 47 类：时尚美妆与家居生活 ──
+[服装穿搭与时尚]
+/时尚|服装|服饰|穿搭|成衣|鞋履|耐克|阿迪达斯|安踏|李宁|特步|波司登|优衣库|迪奥|香奈儿|古驰|普拉达|汉服|防晒衣|冲锋衣/ => 服装穿搭与时尚（中文）
+/(?<![A-Za-z0-9_])(?:fashion|clothing|apparel|footwear|Nike|Adidas|Anta|Li[\s-]+Ning|Uniqlo|Zara|H\&M|lululemon|LVMH|Gucci|Prada|Chanel|Dior|Burberry|Balenciaga|Armani)(?![A-Za-z0-9_])/ => 服装穿搭与时尚（英文）
+
+[美妆护肤与个人护理]
+/美妆|护肤|化妆品|彩妆|香水|洗护|防晒|欧莱雅|雅诗兰黛|资生堂|兰蔻|海蓝之谜|珀莱雅|薇诺娜|自然堂|韩束|毛戈平|敷尔佳|玉泽|洗发|护发/ => 美妆护肤与个人护理（中文）
+/(?<![A-Za-z0-9_])(?:cosmetics|skincare|makeup|perfumes?|L'Oreal|L'Oréal|Loreal|Estee[\s-]+Lauder|Estée[\s-]+Lauder|Shiseido|Lancome|Lancôme|La[\s-]+Mer|Proya|Unilever|Beiersdorf|Nivea|SK[\s-]+II|Cetaphil)(?![A-Za-z0-9_])/ => 美妆护肤与个人护理（英文）
+
+[珠宝配饰与工艺消费]
+/珠宝|首饰|配饰|腕表|钻石|玉石|周大福|周生生|老凤祥|六福|周大生|潮宏基|卡地亚|蒂芙尼|宝格丽|劳力士|欧米茄|翡翠|珍珠/ => 珠宝配饰与工艺消费（中文）
+/(?<![A-Za-z0-9_])(?:jewelry|jewellery|accessories|gemstones?|Chow[\s-]+Tai[\s-]+Fook|Chow[\s-]+Sang[\s-]+Sang|Cartier|Tiffany|Bulgari|Rolex|Omega[\s-]+watch|Omega[\s-]+watches|Patek[\s-]+Philippe|Van[\s-]+Cleef[\s-]+\&[\s-]+Arpels|Swarovski|jade|pearls?)(?![A-Za-z0-9_])/ => 珠宝配饰与工艺消费（英文）
+
+[家居家具与装修]
+/家居|家具|装修|装饰|家装|收纳|宜家|欧派|索菲亚|顾家|慕思|喜临门|居然智家|红星美凯龙|沙发|床垫|橱柜|软装|全屋定制/ => 家居家具与装修（中文）
+/(?<![A-Za-z0-9_])(?:furniture|home[\s-]+decor|home[\s-]+renovation|home[\s-]+organization|IKEA|La[\s-]+Z[\s-]+Boy|Oppein|mattress|mattresses|sofas?|cabinetry|interior[\s-]+design|custom[\s-]+furnishings?)(?![A-Za-z0-9_])/ => 家居家具与装修（英文）
+
+[家电家务与居家服务]
+/家电|冰箱|洗衣机|空调|厨电|家政|保洁|海尔|美的|格力|海信|松下|老板电器|方太|小熊电器|苏泊尔|九阳|洗碗机|烘干机|扫地机/ => 家电家务与居家服务（中文）
+/(?<![A-Za-z0-9_])(?:home[\s-]+appliances?|refrigerators?|washing[\s-]+machines?|housekeeping|Haier|Midea|Gree|Hisense|TCL|Panasonic|Whirlpool|Electrolux|Dyson|Miele|dishwashers?|clothes[\s-]+dryers?)(?![A-Za-z0-9_])/ => 家电家务与居家服务（英文）
+
+[宠物园艺与生活爱好]
+/宠物|养宠|园艺|花卉|盆栽|手工|猫咪|狗狗|铲屎官|猫粮|狗粮|猫砂|多肉植物|插花|盆景|绿植|鱼缸|水族/ => 宠物园艺与生活爱好（中文）
+/(?<![A-Za-z0-9_])(?:pets?|gardening|houseplants?|Royal[\s-]+Canin|Purina|Hill's[\s-]+Science[\s-]+Diet|Orijen|Acana|Mars[\s-]+Petcare|Chewy|Petco|terrariums?|succulent[\s-]+plants?|cat[\s-]+care|dog[\s-]+care|aquariums?)(?![A-Za-z0-9_])/ => 宠物园艺与生活爱好（英文）
+
+# ── 第 48 类：应急安全与灾害防治 ──
+[气象灾害与天气预警]
+/暴雨|暴雪|台风|龙卷风|高温预警|寒潮|雷暴|气象灾害|天气预报|中央气象台|气象局|强对流|雷电|冰雹|大风|寒冷预警|降温|霜冻|冻雨|沙尘暴|降水|降雪/ => 气象灾害与天气预警（中文）
+/(?<![A-Za-z0-9_])(?:typhoons?|hurricanes?|tornados?|heatwaves?|weather[\s-]+warnings?|blizzards?|thunderstorms?|hailstorms?|cold[\s-]+waves?|freezing[\s-]+rain|sandstorms?|meteorological[\s-]+warnings?|WMO|NOAA|heavy[\s-]+rainfall)(?![A-Za-z0-9_])/ => 气象灾害与天气预警（英文）
+
+[地质洪涝与自然灾害]
+/地震|海啸|山洪|洪水|泥石流|滑坡|旱灾|自然灾害|震中|余震|震感|震级|震源|堰塞湖|洪峰|内涝|山体崩塌|火山喷发|山体垮塌/ => 地质洪涝与自然灾害（中文）
+/(?<![A-Za-z0-9_])(?:earthquakes?|tsunamis?|floods?|landslides?|droughts?|aftershocks?|epicenters?|epicentres?|seismic[\s-]+activity|volcanic[\s-]+eruptions?|subsidence|mudslides?|USGS)(?![A-Za-z0-9_])/ => 地质洪涝与自然灾害（英文）
+
+[消防防火与火灾处置]
+/消防|火灾|火情|防火|灭火|火险|起火|失火|自燃|火警|烟感|烟雾报警|燃烧事故/ => 消防防火与火灾处置（中文）
+/(?<![A-Za-z0-9_])(?:fire[\s-]+safety|firefighting|wildfires?|fire[\s-]+alarms?|structure[\s-]+fires?|building[\s-]+fires?|smoke[\s-]+alarms?|fire[\s-]+extinguishers?|fire[\s-]+hydrants?|spontaneous[\s-]+combustion|fire[\s-]+prevention|NFPA)(?![A-Za-z0-9_])/ => 消防防火与火灾处置（英文）
+
+[生产交通与事故防范]
+/安全生产|生产安全|交通事故|车祸|爆炸|坍塌|危化品|事故调查|工厂事故|矿难|塌方|追尾|侧翻|燃爆|泄漏事故|高处坠落|有限空间作业|安全隐患/ => 生产交通与事故防范（中文）
+/(?<![A-Za-z0-9_])(?:workplace[\s-]+safety|traffic[\s-]+accidents?|explosions?|accident[\s-]+investigation|industrial[\s-]+accidents?|mining[\s-]+accidents?|road[\s-]+collisions?|train[\s-]+derailments?|chemical[\s-]+leaks?|confined[\s-]+space[\s-]+safety|OSHA|NTSB)(?![A-Za-z0-9_])/ => 生产交通与事故防范（英文）
+
+[治安反诈与公共安全]
+/公安|警方|治安|诈骗|反诈|失踪|拐卖|公共安全|刷单|杀猪盘|帮信|电诈|冒充客服|虚假投资|涉诈账户|走失|盗窃|盗抢|绑架/ => 治安反诈与公共安全（中文）
+/(?<![A-Za-z0-9_])(?:police|fraud|public[\s-]+safety|human[\s-]+trafficking|scams?|identity[\s-]+theft|kidnapping|abductions?|Interpol|Europol|public[\s-]+security)(?![A-Za-z0-9_])/ => 治安反诈与公共安全（英文）
+
+[应急救援与防灾准备]
+/应急|救援|救灾|防灾|避险|疏散|灾后重建|搜救|防汛|抗旱|抗震|抢险|避难所|逃生|急救|搜寻|转移安置/ => 应急救援与防灾准备（中文）
+/(?<![A-Za-z0-9_])(?:rescue|disaster[\s-]+relief|evacuation|emergency[\s-]+preparedness|FEMA|UNDRR|civil[\s-]+protection|emergency[\s-]+shelters?|emergency[\s-]+drills?|humanitarian[\s-]+response|disaster[\s-]+preparedness)(?![A-Za-z0-9_])/ => 应急救援与防灾准备（英文）
+
+# ── 第 49 类：媒体传播与信息生态 ──
+[新闻采编与媒体行业]
+/新闻|媒体|记者|采访|报道|通讯社|新华社|人民日报|央视|中央广播电视总台|光明日报|经济日报|澎湃|财新|南方周末|南方都市报/ => 新闻采编与媒体行业（中文）
+/(?<![A-Za-z0-9_])(?:journalism|news[\s-]+media|reporters?|news[\s-]+agency|news[\s-]+agencies|Reuters|Associated[\s-]+Press|AP[\s-]+News|AFP|BBC|CNN|Bloomberg|Financial[\s-]+Times|Wall[\s-]+Street[\s-]+Journal|New[\s-]+York[\s-]+Times|Al[\s-]+Jazeera|Nikkei[\s-]+Asia)(?![A-Za-z0-9_])/ => 新闻采编与媒体行业（英文）
+
+[自媒体与内容创作者]
+/自媒体|博主|内容创作|短视频|播客|直播|抖音|快手|哔哩哔哩|B站|小红书|微博|视频号|公众号|头条号|西瓜视频|喜马拉雅|推特/ => 自媒体与内容创作者（中文）
+/(?<![A-Za-z0-9_])(?:content[\s-]+creators?|bloggers?|podcasts?|live[\s-]+streaming|YouTube|TikTok|Kuaishou|Bilibili|Xiaohongshu|RedNote|Weibo|Instagram|Twitch|Substack|Patreon|Twitter|X[\s-]+platform)(?![A-Za-z0-9_])/ => 自媒体与内容创作者（英文）
+
+[广告营销与品牌传播]
+/广告|营销|品牌传播|公关|传播效果|商业推广|奥美|蓝色光标|分众传媒|利欧股份|华扬联众|省广集团|流量投放|种草|媒介购买/ => 广告营销与品牌传播（中文）
+/(?<![A-Za-z0-9_])(?:advertising|marketing|public[\s-]+relations|brand[\s-]+communication|WPP|Omnicom|Publicis|Dentsu|Interpublic|Ogilvy|adtech|martech|media[\s-]+buying|brand[\s-]+campaigns?)(?![A-Za-z0-9_])/ => 广告营销与品牌传播（英文）
+
+[传播技术与内容分发]
+/内容分发|算法推荐|推荐系统|信息流|流媒体|订阅推送|点播|音视频平台|视听平台|网络视听|长视频|内容聚合|算法分发|互联网电视/ => 传播技术与内容分发（中文）
+/(?<![A-Za-z0-9_])(?:content[\s-]+distribution|recommender[\s-]+systems?|news[\s-]+feeds?|streaming[\s-]+media|Netflix|Disney\+|HBO[\s-]+Max|Max[\s-]+streaming|Hulu|Prime[\s-]+Video|Apple[\s-]+TV\+|Paramount\+|Peacock[\s-]+streaming|Roku|DAZN|OTT|video[\s-]+on[\s-]+demand)(?![A-Za-z0-9_])/ => 传播技术与内容分发（英文）
+
+[事实核查与信息素养]
+/事实核查|辟谣|谣言|虚假信息|媒介素养|信息茧房|假新闻|不实消息|以讹传讹|网传不实|断章取义|伪科学|信息辨识/ => 事实核查与信息素养（中文）
+/(?<![A-Za-z0-9_])(?:fact[\s-]+checking|misinformation|disinformation|media[\s-]+literacy|fake[\s-]+news|false[\s-]+claims?|information[\s-]+literacy|digital[\s-]+literacy|Snopes|PolitiFact|Full[\s-]+Fact|verification[\s-]+networks?)(?![A-Za-z0-9_])/ => 事实核查与信息素养（英文）
+
+[网络舆情与平台治理]
+/舆情|舆论|网络暴力|网暴|内容审核|平台治理|账号治理|网信办|清朗行动|算法治理|网络水军|恶意炒作|账号封禁|平台规则|网络举报|网络生态/ => 网络舆情与平台治理（中文）
+/(?<![A-Za-z0-9_])(?:public[\s-]+opinion|cyberbullying|content[\s-]+moderation|platform[\s-]+governance|Cyberspace[\s-]+Administration[\s-]+of[\s-]+China|platform[\s-]+accountability|online[\s-]+harassment|account[\s-]+suspensions?|platform[\s-]+transparency|Digital[\s-]+Services[\s-]+Act|online[\s-]+safety)(?![A-Za-z0-9_])/ => 网络舆情与平台治理（英文）

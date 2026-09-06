@@ -1,0 +1,24 @@
+# Last-Reviewed: 2026-09-07
+# 自动与 config/frequency_words.txt 合并，优先匹配。
+#
+[WORD_GROUPS]
+
+[马斯克]
+马斯克
+/(?<![A-Za-z0-9_])Elon[\s-]+Musk(?![A-Za-z0-9_])/ => Elon Musk
+@5
+
+[黄仁勋]
+黄仁勋
+/(?<![A-Za-z0-9_])Jensen[\s-]+Huang(?![A-Za-z0-9_])/ => Jensen Huang
+@5
+
+[雷军]
+雷军
+/(?<![A-Za-z0-9_])Lei[\s-]+Jun(?![A-Za-z0-9_])/ => Lei Jun
+@5
+
+[山姆·奥尔特曼]
+/[山萨]姆[·・\s]*奥(?:尔)?特曼/ => 山姆·奥尔特曼
+/(?<![A-Za-z0-9_])Sam[\s-]+Altman(?![A-Za-z0-9_])/ => Sam Altman
+@5
