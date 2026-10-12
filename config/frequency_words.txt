@@ -1,258 +1,4910 @@
 # ═══════════════════════════════════════════════════════════════
 #                    TrendRadar 频率词配置文件
-#                         Version: 1.1.0
+#                         Version: 10.0.1
 # ═══════════════════════════════════════════════════════════════
 
-# 可视化配置编辑器地址: https://sansan0.github.io/TrendRadar/
+# TrendRadar 关键词配置
+# 整理依据：本地「新闻仅标题.csv」；任务与统计见 docs/关键词整理任务.md。
 #
-# 凡是左侧有 # 的都是仅供阅读的说明性文字
+# 维护方法：
+# 1. 层级为 [分组名称] → ## 分类 → ### 子分类 → 关键词。
+#    先定位分类和子分类，再每行添加一个关键词。
+# 2. 同组关键词是“或”的关系；只在两个分组之间留空行。
+# 3. 组内不要插入空行，否则程序会把后续关键词当成新组。
+# 4. 中文直接写词；英文用单关键词边界规则，程序自动忽略大小写。
+#    例如 /(?<![a-z])AI(?![a-z])/ 能匹配 AI、AI应用，避开 MAIL。
+#    英文可与数字相邻，便于匹配 iOS18、GPT5 等版本写法。
+#    词尾 s? 仅合并同一词的单复数；不把多个独立关键词并在一行。
+# 5. 标题归入第一个命中组；具体主题在品牌与综合平台之前。
+#    导航与地理信息排在航天之前，避免遥感、导航标题被“卫星”抢先归组。
+# 6. 同名词优先用完整名称或领域短语，例如 CNN模型、RPA软件。
+# 7. 子分类按固定主题顺序；组内中文按拼音、英文按名称与数字自然顺序。
 #
-# 这个文件用来设置你想关注的新闻关键词。
-# 系统会自动抓取包含这些关键词的热榜新闻推送给你。
-#
-# 文件分为两个区域：
-#   [GLOBAL_FILTER]  - 全局过滤区：排除不想看的内容
-#   [WORD_GROUPS]    - 词组定义区：设置想关注的关键词
-#
-# ═══════════════════════════════════════════════════════════════
-
-
-# ───────────────────────────────────────────────────────────────
-#                        全局过滤区
-# ───────────────────────────────────────────────────────────────
-# 在这里写入你不想看到的词，每行一个。
-# 包含这些词的新闻会被自动排除，不会出现在推送中。
-#
-# 使用方法：
-#   震惊              直接写词，包含"震惊"的新闻会被过滤
-#   /赌博|博彩/       用 /.../ 包裹可以匹配多个词（用 | 分隔）
+# 下方保留原有的空全局过滤区；需要全局排除时，每行填写一个普通词。
 
 [GLOBAL_FILTER]
-# 过滤标题党
-震惊
-
-
-
-# ───────────────────────────────────────────────────────────────
-#                        词组定义区
-# ───────────────────────────────────────────────────────────────
-# 在这里写入你想关注的关键词。
-# 每个词组用空行分隔，同一词组内的关键词是"或"的关系。
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      语法总览（快速参考）                      │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 关键词语法：
-#   关键词            普通关键词，标题包含即匹配
-#   /正则/            正则表达式匹配（自动忽略大小写）
-#   关键词 => 别名    给关键词指定显示别名
-#   [组别名]          词组第一行，给整组指定别名
-#   +关键词           必须词，所有必须词都要匹配才算匹配
-#   !关键词           过滤词，匹配则排除该条新闻（仅限当前词组）
-#   @数字             限制该词组最多显示多少条
-#
-# 显示名称优先级：
-#   1. 有组别名 → 显示组别名
-#   2. 没有组别名 → 显示各行别名拼接（用 " / " 连接）
-#   3. 没有别名 → 显示关键词本身
-#
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      基础用法（推荐新手）                      │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 1. 最简单：直接写关键词
-#    ────────────────────
-#    华为
-#
-#    效果：匹配所有包含"华为"的新闻
-#
-#
-# 2. 多个关键词归为一组
-#    ────────────────────
-#    华为
-#    鸿蒙
-#    任正非
-#
-#    效果：匹配包含"华为"或"鸿蒙"或"任正非"的新闻，统一显示为"华为 / 鸿蒙 / 任正非"
-#
-#
-# 3. 给词组起个名字（推荐）
-#    ────────────────────
-#    [华为]
-#    华为
-#    鸿蒙
-#    任正非
-#
-#    效果：同上，但显示名称为"华为"（更简洁）
-#
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      进阶用法（可选）                         │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 4. 用正则表达式匹配多个词（一行搞定）
-#    ────────────────────
-#    /华为|鸿蒙|任正非/ => 华为
-#
-#    效果：匹配包含"华为"或"鸿蒙"或"任正非"的新闻，显示为"华为"
-#    说明：/.../ 里用 | 分隔多个词，=> 后面是显示名称
-#
-#    💡 不懂正则？问 AI：
-#       "帮我写一个正则表达式，匹配包含'华为'或'鸿蒙'或'任正非'的文本，
-#        格式要求：/正则/ => 显示名称"
-#
-#
-# 5. 精确匹配英文单词（避免误匹配）
-#    ────────────────────
-#    /\bAI\b/i => AI
-#
-#    说明：\b 表示单词边界，避免匹配到 "MAIL" 中的 "AI"
-#          /i 表示忽略大小写，"ai"、"AI"、"Ai" 都能匹配
-#
-#    💡 不懂正则？问 AI：
-#       "帮我写一个正则表达式，精确匹配英文单词'AI'（不匹配 MAIL 中的 AI），
-#        忽略大小写，格式要求：/正则/i => 显示名称"
-#
-#
-# 6. 排除特定内容
-#    ────────────────────
-#    [苹果公司]
-#    苹果
-#    !水果
-#    !果园
-#
-#    效果：匹配"苹果"但排除包含"水果"或"果园"的新闻
-#    说明：! 开头的词表示"排除"
-#
-#
-# 7. 限制显示条数
-#    ────────────────────
-#    [科技新闻]
-#    科技
-#    @5
-#
-#    效果：最多显示 5 条匹配的新闻
-#    说明：@数字 表示限制条数
-#
-#
-# 8. 必须同时包含多个词
-#    ────────────────────
-#    +苹果
-#    +发布会
-#
-#    效果：必须同时包含"苹果"和"发布会"才匹配
-#    说明：+ 开头的词表示"必须包含"
-#
-# ───────────────────────────────────────────────────────────────
 
 [WORD_GROUPS]
 
-# ═══════════════════════════════════════════════════════════════
-#                         企业与品牌
-# ═══════════════════════════════════════════════════════════════
-
-/胖东来|于东来/ => 胖东来
-
-/深度求索|幻方量化|梁文锋|\bDeepSeek\b/ => DeepSeek
-
-/华为|任正非|余承东|鸿蒙|海思|昇腾|鲲鹏|\bHUAWEI\b|\bHarmonyOS\b|\bHiSilicon\b/ => 华为
-
-/比亚迪|王传福|方程豹|腾势|仰望|弗迪|刀片电池|云辇|\bBYD\b|\bDenza\b|\bYangwang\b/ => 比亚迪
-
-/大疆|汪滔|灵眸|如影|\bDJI\b|\bRoboMaster\b|\bMavic\b|\bZenmuse\b/ => 大疆
-
-/宇树|王兴兴|\bUnitree\b/ => 宇树机器人
-
-/智元|灵犀|稚晖君|彭志辉|AgiBot/ => 智元机器人
-/众擎|EngineAI|赵同阳/ => 众擎机器人
-
-/黑神话|冯骥/ => 黑神话悟空
-
-/影之刃零|梁其伟/ => 影之刃零
-
-/三体|流浪地球|刘慈欣|郭帆/ => 三体/流浪地球
-
-申奥
-
-/京东|刘强东|\bJD\b|\bJingdong\b/ => 京东
-
-/字节|张一鸣|梁汝波|抖音|\bByteDance\b|\bTikTok\b|\bDouyin\b|\bLark\b|\bCapCut\b/ => 字节跳动
-
-/腾讯|鹅厂|马化腾|微信|QQ|天美|阅文集团|微众银行|\bTencent\b|\bPony Ma\b|\bWeChat\b|\bLightSpeed\b|\bWeBank\b/ => 腾讯
-
-/qwen|minimax|glm/ => 国产开源模型
-
-/特斯拉|马斯克|\bTesla\b|\bElon Musk\b|\bCybertruck\b|\bModel 3\b|\bModel Y\b|\bModel S\b|\bModel X\b|\bFSD\b/ => 特斯拉
-
-/英伟达|黄仁勋|\bNVIDIA\b|\bGeForce\b|\bRTX\b|\bCUDA\b|\bJensen Huang\b/ => 英伟达
-/苏姿丰|锐龙|霄龙|\bAMD\b|\bRyzen\b|\bEPYC\b|\bRadeon\b|\bLisa Su\b/ => AMD
-
-/微软|\bMicrosoft\b|\bWindows\b|\bAzure\b|\bSatya Nadella\b|\bCopilot\b/ => 微软
-/谷歌|皮查伊|安卓|油管|\bGoogle\b|\bAlphabet\b|\bAndroid\b|\bChrome\b|\bYouTube\b|\bGemini\b|\bDeepMind\b|\bWaymo\b/ => 谷歌
-/库克|\biPhone\b|\biPad\b|\bMacBook\b|\biOS\b|\bVision Pro\b|\bAirPods\b|\bApple\b|\bTim Cook\b/ => 苹果
-
-/\bOpenAI\b|\bChatGPT\b|\bSora\b|\bDALL-E\b|\bSam Altman\b|\bGreg Brockman\b/ => OpenAI
-/\bAnthropic\b|\bClaude\b|\bDario Amodei\b/ => Claude
-
-
-# ═══════════════════════════════════════════════════════════════
-#                         国家与地区
-# ═══════════════════════════════════════════════════════════════
-
-[中国]
-国产
-中国
-
-[东亚]
-日本
-朝鲜
-韩国
-
-[北美]
-美国
-加拿大
-
-[西欧]
-法国
-英国
-
-/俄罗斯|俄国/ => 俄罗斯
-
-印度
-
-
-# ═══════════════════════════════════════════════════════════════
-#                         科技领域
-# ═══════════════════════════════════════════════════════════════
-
-[AI 相关]
-/(?<![a-zA-Z])ai(?![a-zA-Z])/
+[人工智能]
+## 模型与开发
+### 基础概念、机构与模型产品
+百川智能
+出门问问
+大模型
+豆包
+阶跃星辰
+科大讯飞
+可灵
+旷视科技
+零一万物
+面壁智能
+千问
 人工智能
-
-[芯片]
-芯片
-光刻机
-半导体
-
-/水电|雅鲁藏布江/ => 水电
-/光伏|太阳能/ => 光伏
-核能
-能源
-
-/自动驾驶|无人驾驶|智驾/ => 自动驾驶
-
-机器人
-/机械狗|四足/ => 机器狗
+商汤大装置
+商汤科技
+深度求索
+/文心X(?![a-z])/
+文心一言
+稀宇科技
+讯飞星火
+依图科技
+月之暗面
+云知声
+语言模型
+智谱
+/(?<![a-z])AI(?![a-z])/
+/(?<![a-z])AIGC(?![a-z])/
+/(?<![a-z])Alexa\+/
+/(?<![a-z])AlphaFold(?![a-z])/
+/(?<![a-z])AlphaGo(?![a-z])/
+/(?<![a-z])AlphaZero(?![a-z])/
+/(?<![a-z])Anthropic(?![a-z])/
+/(?<![a-z])artificial intelligence(?![a-z])/
+/(?<![a-z])ChatGPT(?![a-z])/
+/(?<![a-z])Claude(?![a-z])/
+/(?<![a-z])Cortana(?![a-z])/
+/(?<![a-z])DALL\-E(?![a-z])/
+/(?<![a-z])DALL·E(?![a-z])/
+/(?<![a-z])DeepL(?![a-z])/
+/(?<![a-z])DeepMind(?![a-z])/
+/(?<![a-z])DeepSeek(?![a-z])/
+/(?<![a-z])ElevenLabs(?![a-z])/
+/(?<![a-z])Gemini Advanced(?![a-z])/
+/(?<![a-z])Gemini Flash(?![a-z])/
+/(?<![a-z])Gemini Nano(?![a-z])/
+/(?<![a-z])Gemini Pro(?![a-z])/
+/(?<![a-z])Gemini Ultra(?![a-z])/
+/(?<![a-z])GenAI(?![a-z])/
+/(?<![a-z])Google Gemini(?![a-z])/
+/(?<![a-z])GPT(?![a-z])/
+/(?<![a-z])Grok(?![a-z])/
+/(?<![a-z])Kimi K(?![a-z])/
+/(?<![a-z])Kimi模型/
+/(?<![a-z])Kimi版o(?![a-z])/
+/(?<![a-z])LLMs?(?![a-z])/
+/(?<![a-z])Midjourney(?![a-z])/
+/(?<![a-z])MiniMax H(?![a-z])/
+/(?<![a-z])MiniMax M(?![a-z])/
+/(?<![a-z])Mistral Large(?![a-z])/
+/(?<![a-z])Mistral Small(?![a-z])/
+/(?<![a-z])Nano Banana(?![a-z])/
+/(?<![a-z])OpenAI(?![a-z])/
+/(?<![a-z])Perplexity(?![a-z])/
+/(?<![a-z])Qwen(?![a-z])/
+/(?<![a-z])Seedance(?![a-z])/
+/(?<![a-z])SenseTime(?![a-z])/
+/(?<![a-z])Sora2(?![a-z])/
+/(?<![a-z])Sora 2(?![a-z])/
+/(?<![a-z])Stable Diffusion(?![a-z])/
+/(?<![a-z])Suno(?![a-z])/
+/(?<![a-z])Veo 2(?![a-z])/
+/(?<![a-z])Veo 3(?![a-z])/
+/(?<![a-z])xAI(?![a-z])/
+/(?<![a-z])Xmax X(?![a-z])/
+### 开发框架、编程助手与智能体工具
+/办公Agent(?![a-z])/
+抱抱脸
+翻译软件
+扣子空间
+/牛马Agent(?![a-z])/
+/企业级 Agent(?![a-z])/
+/企业级Agent(?![a-z])/
+/设计Agent(?![a-z])/
+向量数据库
+智能体
+/志愿填报Agent(?![a-z])/
+/(?<![a-z])Agent 专属/
+/(?<![a-z])Agent 工具/
+/(?<![a-z])agentic coding(?![a-z])/
+/(?<![a-z])agentic systems?(?![a-z])/
+/(?<![a-z])agentic workflows?(?![a-z])/
+/(?<![a-z])Agent专属/
+/(?<![a-z])Agent原生/
+/(?<![a-z])Agent工具/
+/(?<![a-z])Antigravity(?![a-z])/
+/(?<![a-z])ArkClaw(?![a-z])/
+/(?<![a-z])artificial general intelligence(?![a-z])/
+/(?<![a-z])coding agents?(?![a-z])/
+/(?<![a-z])ComfyUI(?![a-z])/
+/(?<![a-z])Copilot(?![a-z])/
+/(?<![a-z])Coze(?![a-z])/
+/(?<![a-z])faster whisper(?![a-z])/
+/(?<![a-z])Hugging Face(?![a-z])/
+/(?<![a-z])HuggingFace(?![a-z])/
+/(?<![a-z])LangChain(?![a-z])/
+/(?<![a-z])LlamaIndex(?![a-z])/
+/(?<![a-z])MCP servers?(?![a-z])/
+/(?<![a-z])Model Context Protocol(?![a-z])/
+/(?<![a-z])NotebookLM(?![a-z])/
+/(?<![a-z])Ollama(?![a-z])/
+/(?<![a-z])OpenClaw(?![a-z])/
+/(?<![a-z])OpenRouter(?![a-z])/
+/(?<![a-z])OpenSquilla(?![a-z])/
+/(?<![a-z])PPHermes(?![a-z])/
+/(?<![a-z])PyTorch(?![a-z])/
+/(?<![a-z])QClaw(?![a-z])/
+/(?<![a-z])TensorFlow(?![a-z])/
+/(?<![a-z])vLLM(?![a-z])/
+/(?<![a-z])Whisper transcription(?![a-z])/
+/(?<![a-z])Windsurf(?![a-z])/
+## 学习方法与应用任务
+### 训练方法、网络架构与推理
+测试时训练
+多模态
+机器学习
+具身大脑
+具身模型
+具身赛道
+具身原生
 具身智能
+空间智能
+扩散模型
+强化学习
+迁移学习
+上下文工程
+深度学习
+生成模型
+神经-符号
+神经网络
+世界模型
+思维链
+提示词工程
+提示工程
+图像编辑模型
+/文本 embedding(?![a-z])/
+预训练
+知识蒸馏
+自监督算法
+自监督学习
+/(?<![a-z])AGI(?![a-z])/
+/(?<![a-z])BERT models?(?![a-z])/
+/(?<![a-z])BERT\-based(?![a-z])/
+/(?<![a-z])BungeeNeRF(?![a-z])/
+/(?<![a-z])CatBoost(?![a-z])/
+/(?<![a-z])CNN architecture(?![a-z])/
+/(?<![a-z])CNN models?(?![a-z])/
+/(?<![a-z])CNN network(?![a-z])/
+/(?<![a-z])CNN\-based(?![a-z])/
+/(?<![a-z])context engineering(?![a-z])/
+/(?<![a-z])contrastive learning(?![a-z])/
+/(?<![a-z])deep learning(?![a-z])/
+/(?<![a-z])diffusion transformers?(?![a-z])/
+/(?<![a-z])doc2vec(?![a-z])/
+/(?<![a-z])few\-shot learning(?![a-z])/
+/(?<![a-z])foundation models?(?![a-z])/
+/(?<![a-z])generative adversarial(?![a-z])/
+/(?<![a-z])gradient boosting(?![a-z])/
+/(?<![a-z])knowledge distillation(?![a-z])/
+/(?<![a-z])language models?(?![a-z])/
+/(?<![a-z])latent Dirichlet allocation(?![a-z])/
+/(?<![a-z])LightGBM(?![a-z])/
+/(?<![a-z])LSTMs?(?![a-z])/
+/(?<![a-z])machine learning(?![a-z])/
+/(?<![a-z])meta learning(?![a-z])/
+/(?<![a-z])meta\-learning(?![a-z])/
+/(?<![a-z])multimodal models?(?![a-z])/
+/(?<![a-z])multimodal reasoning(?![a-z])/
+/(?<![a-z])neural networks?(?![a-z])/
+/(?<![a-z])NLP models?(?![a-z])/
+/(?<![a-z])NLP模型/
+/(?<![a-z])prompt engineering(?![a-z])/
+/(?<![a-z])QLoRA(?![a-z])/
+/(?<![a-z])RAG(?![a-z])/
+/(?<![a-z])random forests?(?![a-z])/
+/(?<![a-z])reinforcement learning(?![a-z])/
+/(?<![a-z])ResNet(?![a-z])/
+/(?<![a-z])RNNs?(?![a-z])/
+/(?<![a-z])self\-supervised learning(?![a-z])/
+/(?<![a-z])support vector machines?(?![a-z])/
+/(?<![a-z])transfer learning(?![a-z])/
+/(?<![a-z])Transformer architecture(?![a-z])/
+/(?<![a-z])Transformer models?(?![a-z])/
+/(?<![a-z])Transformer networks?(?![a-z])/
+/(?<![a-z])Transformer\-based models?(?![a-z])/
+/(?<![a-z])Transformer\-based network(?![a-z])/
+/(?<![a-z])Transformers models?(?![a-z])/
+/(?<![a-z])Transformer架构/
+/(?<![a-z])U\-Net(?![a-z])/
+/(?<![a-z])UNet(?![a-z])/
+/(?<![a-z])vision transformers?(?![a-z])/
+/(?<![a-z])word2vec(?![a-z])/
+/(?<![a-z])word embeddings?(?![a-z])/
+/(?<![a-z])world models?(?![a-z])/
+/(?<![a-z])XGBoost(?![a-z])/
+/(?<![a-z])YOLO(?![a-z])/
+/(?<![a-z])YOLOv(?![a-z])/
+/(?<![a-z])zero\-shot learning(?![a-z])/
+### 视觉、语音与语言任务
+机器翻译
+计算机视觉
+面部识别
+命名实体识别
+目标检测
+情感分析
+人脸检测
+人脸识别
+声音克隆
+实时翻译
+手写识别
+图生视频
+图像分割
+文本转语音
+文生图
+语音合成
+语音交互
+语音克隆
+语音识别
+语音助手
+知识图谱
+自然语言处理
+自然语言理解
+/(?<![a-z])computer vision(?![a-z])/
+/(?<![a-z])face detection(?![a-z])/
+/(?<![a-z])face recognition(?![a-z])/
+/(?<![a-z])facial recognition(?![a-z])/
+/(?<![a-z])handwriting recognition(?![a-z])/
+/(?<![a-z])image captioning(?![a-z])/
+/(?<![a-z])image segmentation(?![a-z])/
+/(?<![a-z])knowledge graphs?(?![a-z])/
+/(?<![a-z])machine translation(?![a-z])/
+/(?<![a-z])named entity recognition(?![a-z])/
+/(?<![a-z])natural language processing(?![a-z])/
+/(?<![a-z])object detection(?![a-z])/
+/(?<![a-z])relation extraction(?![a-z])/
+/(?<![a-z])semantic segmentation(?![a-z])/
+/(?<![a-z])sentiment analysis(?![a-z])/
+/(?<![a-z])speech recognition(?![a-z])/
+/(?<![a-z])speech synthesis(?![a-z])/
+/(?<![a-z])speech to text(?![a-z])/
+/(?<![a-z])speech\-to\-text(?![a-z])/
+/(?<![a-z])text classification(?![a-z])/
+/(?<![a-z])text mining(?![a-z])/
+/(?<![a-z])text to image(?![a-z])/
+/(?<![a-z])text to speech(?![a-z])/
+/(?<![a-z])text\-to\-image(?![a-z])/
+/(?<![a-z])text\-to\-speech(?![a-z])/
+/(?<![a-z])text\-to\-video(?![a-z])/
+/(?<![a-z])topic modeling(?![a-z])/
+/(?<![a-z])topic modelling(?![a-z])/
+/(?<![a-z])visual question answering(?![a-z])/
+/(?<![a-z])voice assistants?(?![a-z])/
+/(?<![a-z])voice cloning(?![a-z])/
+### 数据集、评测与学术活动
+测试集污染
+智源
+/(?<![a-z])CVPR(?![a-z])/
+/(?<![a-z])ICLR(?![a-z])/
+/(?<![a-z])ICML(?![a-z])/
+/(?<![a-z])Kaggle(?![a-z])/
+/(?<![a-z])Market 1501(?![a-z])/
+/(?<![a-z])MNIST(?![a-z])/
+/(?<![a-z])model evaluations?(?![a-z])/
+/(?<![a-z])MS COCO(?![a-z])/
+/(?<![a-z])NeurIPS(?![a-z])/
+/(?<![a-z])PASCAL VOC(?![a-z])/
 
-/月球|登月|火星|宇宙|飞船|航天|空间站|卫星/ => 航天
+[网络安全]
+## 安全风险与防护
+### 攻击、漏洞与防护
+安全软件
+暗网
+代码泄露
+电信诈骗
+钓鱼攻击
+钓鱼网站
+钓鱼邮件
+端到端加密
+短信嗅探
+多因素认证
+多因素验证
+恶意扩展
+恶意软件
+防火墙
+供应链攻击
+黑客
+后门程序
+火绒
+间谍软件
+僵尸网络
+键盘记录器
+卡巴斯基
+勒索病毒
+勒索软件
+两步验证
+零信任
+漏洞
+木马病毒
+软件后门
+杀毒软件
+身份验证
+双重认证
+数据泄露
+网络安全
+网络钓鱼
+网络攻击
+网络诈骗
+远程代码执行
+重装攻击
+/(?<![a-z])account hacked(?![a-z])/
+/(?<![a-z])accounts hacked(?![a-z])/
+/(?<![a-z])antivirus(?![a-z])/
+/(?<![a-z])Authy(?![a-z])/
+/(?<![a-z])Avast(?![a-z])/
+/(?<![a-z])backdoor access(?![a-z])/
+/(?<![a-z])backdoor attacks?(?![a-z])/
+/(?<![a-z])banking trojans?(?![a-z])/
+/(?<![a-z])Bitdefender(?![a-z])/
+/(?<![a-z])Black Basta(?![a-z])/
+/(?<![a-z])botnets?(?![a-z])/
+/(?<![a-z])buffer overflows?(?![a-z])/
+/(?<![a-z])code leak(?![a-z])/
+/(?<![a-z])command injection(?![a-z])/
+/(?<![a-z])credential stealing(?![a-z])/
+/(?<![a-z])credential stuffing(?![a-z])/
+/(?<![a-z])credential theft(?![a-z])/
+/(?<![a-z])cross\-site request forgery(?![a-z])/
+/(?<![a-z])cross\-site scripting(?![a-z])/
+/(?<![a-z])CrowdStrike(?![a-z])/
+/(?<![a-z])CVE(?![a-z])/
+/(?<![a-z])cyber attacks?(?![a-z])/
+/(?<![a-z])cyber\-attacks?(?![a-z])/
+/(?<![a-z])cyberattacks?(?![a-z])/
+/(?<![a-z])cybercrime(?![a-z])/
+/(?<![a-z])cybersecurity(?![a-z])/
+/(?<![a-z])data breach(?![a-z])/
+/(?<![a-z])data breaches?(?![a-z])/
+/(?<![a-z])data leaks?(?![a-z])/
+/(?<![a-z])data protection(?![a-z])/
+/(?<![a-z])DDoS(?![a-z])/
+/(?<![a-z])encryption(?![a-z])/
+/(?<![a-z])ESET(?![a-z])/
+/(?<![a-z])exploit kits?(?![a-z])/
+/(?<![a-z])firewalls?(?![a-z])/
+/(?<![a-z])Fortinet(?![a-z])/
+/(?<![a-z])GDPR(?![a-z])/
+/(?<![a-z])hackers?(?![a-z])/
+/(?<![a-z])hacking(?![a-z])/
+/(?<![a-z])Kaspersky(?![a-z])/
+/(?<![a-z])LockBit(?![a-z])/
+/(?<![a-z])malware(?![a-z])/
+/(?<![a-z])McAfee(?![a-z])/
+/(?<![a-z])multi\-factor authentication(?![a-z])/
+/(?<![a-z])password cracking(?![a-z])/
+/(?<![a-z])phishing(?![a-z])/
+/(?<![a-z])privilege escalation(?![a-z])/
+/(?<![a-z])QakBot(?![a-z])/
+/(?<![a-z])Qbot(?![a-z])/
+/(?<![a-z])QQ信封号/
+/(?<![a-z])ransomware(?![a-z])/
+/(?<![a-z])remote code execution(?![a-z])/
+/(?<![a-z])REvil(?![a-z])/
+/(?<![a-z])security breach(?![a-z])/
+/(?<![a-z])security breaches(?![a-z])/
+/(?<![a-z])security vulnerabilities(?![a-z])/
+/(?<![a-z])security vulnerability(?![a-z])/
+/(?<![a-z])Sophos(?![a-z])/
+/(?<![a-z])spyware(?![a-z])/
+/(?<![a-z])SQL injection(?![a-z])/
+/(?<![a-z])supply chain attacks?(?![a-z])/
+/(?<![a-z])supply\-chain attacks?(?![a-z])/
+/(?<![a-z])Symantec(?![a-z])/
+/(?<![a-z])two factor authentication(?![a-z])/
+/(?<![a-z])two\-factor authentication(?![a-z])/
+/(?<![a-z])website hacked(?![a-z])/
+/(?<![a-z])websites hacked(?![a-z])/
+/(?<![a-z])zero day(?![a-z])/
+/(?<![a-z])zero trust(?![a-z])/
+/(?<![a-z])zero\-day(?![a-z])/
+/(?<![a-z])zeroday(?![a-z])/
+### 身份认证、加密与隐私工具
+安全公告
+安全删除数据
+安全删除文件
+病毒木马
+磁盘加密
+盗号木马
+恶意代码
+后量子加密
+加密工具
+加密软件
+加密文件
+加密信息
+计算机病毒
+冷启动攻击
+密码保险箱
+密码管理
+密码还原工具
+密码还原软件
+密码恢复
+密码解密
+密码记忆
+密码生成管理
+密码生成器
+密码显示工具
+木马查杀
+渗透测试
+数据安全删除
+数据加密
+数字签名
+数字证书
+通行密钥
+图片加密
+文档加密
+文件安全删除
+文件粉碎
+文件夹加密
+文件加密
+无密码登录
+信息加密
+隐私
+账户信息
+/(?<![a-z])1Password(?![a-z])/
+/(?<![a-z])abylon APP\-BLOCKER(?![a-z])/
+/(?<![a-z])abylon BASIC(?![a-z])/
+/(?<![a-z])abylon LOGON(?![a-z])/
+/(?<![a-z])acme\.sh(?![a-z])/
+/(?<![a-z])Bitwarden(?![a-z])/
+/(?<![a-z])CC攻击/
+/(?<![a-z])certificate authority(?![a-z])/
+/(?<![a-z])Diffie\-Hellman(?![a-z])/
+/(?<![a-z])digital signatures?(?![a-z])/
+/(?<![a-z])FIDO2(?![a-z])/
+/(?<![a-z])GnuPG(?![a-z])/
+/(?<![a-z])have i been pwned(?![a-z])/
+/(?<![a-z])Heartbleed(?![a-z])/
+/(?<![a-z])KeePass(?![a-z])/
+/(?<![a-z])Let's Encrypt(?![a-z])/
+/(?<![a-z])Lets Encrypt(?![a-z])/
+/(?<![a-z])OAuth(?![a-z])/
+/(?<![a-z])OpenID(?![a-z])/
+/(?<![a-z])OpenSSL(?![a-z])/
+/(?<![a-z])passkeys?(?![a-z])/
+/(?<![a-z])password managers?(?![a-z])/
+/(?<![a-z])passwordless(?![a-z])/
+/(?<![a-z])penetration testing(?![a-z])/
+/(?<![a-z])PGP keys?(?![a-z])/
+/(?<![a-z])privacy(?![a-z])/
+/(?<![a-z])Rowhammer(?![a-z])/
+/(?<![a-z])security advisories(?![a-z])/
+/(?<![a-z])Security Affairs(?![a-z])/
+/(?<![a-z])Shellshock bug(?![a-z])/
+/(?<![a-z])SSL certificates?(?![a-z])/
+/(?<![a-z])SSL 证书/
+/(?<![a-z])SSL加密/
+/(?<![a-z])SSL证书/
+/(?<![a-z])TLS(?![a-z])/
+/(?<![a-z])TOTP(?![a-z])/
+/(?<![a-z])WebAuthn(?![a-z])/
+## 安全生态、工具与事件
+### 安全厂商、组织与攻防工具
+恶意广告
+浏览器劫持
+密码喷洒
+赛门铁克
+网络间谍
+威胁情报
+中间人攻击
+/(?<![a-z])APT28(?![a-z])/
+/(?<![a-z])APT29(?![a-z])/
+/(?<![a-z])APT41(?![a-z])/
+/(?<![a-z])APT groups?(?![a-z])/
+/(?<![a-z])attack surface management(?![a-z])/
+/(?<![a-z])Burp Suite(?![a-z])/
+/(?<![a-z])CISA(?![a-z])/
+/(?<![a-z])clickjacking(?![a-z])/
+/(?<![a-z])Cobalt Strike(?![a-z])/
+/(?<![a-z])cryptojacking(?![a-z])/
+/(?<![a-z])CVSS(?![a-z])/
+/(?<![a-z])dark web(?![a-z])/
+/(?<![a-z])data exfiltration(?![a-z])/
+/(?<![a-z])Emotet(?![a-z])/
+/(?<![a-z])information stealer(?![a-z])/
+/(?<![a-z])infostealers?(?![a-z])/
+/(?<![a-z])Lazarus Group(?![a-z])/
+/(?<![a-z])malvertising(?![a-z])/
+/(?<![a-z])Metasploit(?![a-z])/
+/(?<![a-z])MITRE(?![a-z])/
+/(?<![a-z])Nmap(?![a-z])/
+/(?<![a-z])OWASP(?![a-z])/
+/(?<![a-z])password spraying(?![a-z])/
+/(?<![a-z])Proofpoint(?![a-z])/
+/(?<![a-z])rootkits?(?![a-z])/
+/(?<![a-z])secret scanning(?![a-z])/
+/(?<![a-z])security operations center(?![a-z])/
+/(?<![a-z])security patches(?![a-z])/
+/(?<![a-z])SentinelOne(?![a-z])/
+/(?<![a-z])session hijacking(?![a-z])/
+/(?<![a-z])SIEM(?![a-z])/
+/(?<![a-z])SOC 2(?![a-z])/
+/(?<![a-z])TeamTNT(?![a-z])/
+/(?<![a-z])threat actors?(?![a-z])/
+/(?<![a-z])threat intelligence(?![a-z])/
+/(?<![a-z])TrickBot(?![a-z])/
+/(?<![a-z])Wireshark(?![a-z])/
+/(?<![a-z])zero\-click(?![a-z])/
+/(?<![a-z])Zscaler(?![a-z])/
 
-# 前沿科技
-量子
-脑机
-基因
+[开源与开发]
+## 开发生态与平台
+### 开源协作与开发社区
+版本控制
+独立开发者
+开发者关系
+开源
+科技爱好者周刊
+学习周刊
+自托管
+自由软件
+/(?<![a-z])app developers?(?![a-z])/
+/(?<![a-z])Bitbucket(?![a-z])/
+/(?<![a-z])DevRel(?![a-z])/
+/(?<![a-z])Eclipse Foundation(?![a-z])/
+/(?<![a-z])free software(?![a-z])/
+/(?<![a-z])Git(?![a-z])/
+/(?<![a-z])GitHub(?![a-z])/
+/(?<![a-z])GitLab(?![a-z])/
+/(?<![a-z])open source(?![a-z])/
+/(?<![a-z])open\-source(?![a-z])/
+/(?<![a-z])pull requests?(?![a-z])/
+/(?<![a-z])self hosted(?![a-z])/
+/(?<![a-z])self\-hosted(?![a-z])/
+/(?<![a-z])software developers?(?![a-z])/
+/(?<![a-z])software licenses?(?![a-z])/
+/(?<![a-z])software licensing(?![a-z])/
+/(?<![a-z])SourceForge(?![a-z])/
+/(?<![a-z])Stack Exchange(?![a-z])/
+/(?<![a-z])Stack Overflow(?![a-z])/
+/(?<![a-z])StackOverflow(?![a-z])/
+/(?<![a-z])version control(?![a-z])/
+### 编程语言与运行环境
+编程
+程序员
+类加载器
+字节码
+/\.NET SDK(?![a-z])/
+/(?<![a-z])Ansible(?![a-z])/
+/(?<![a-z])Bash(?![a-z])/
+/(?<![a-z])C\#/
+/(?<![a-z])C\+\+/
+/(?<![a-z])Clojure(?![a-z])/
+/(?<![a-z])dotnet(?![a-z])/
+/(?<![a-z])ECMAScript(?![a-z])/
+/(?<![a-z])Erlang(?![a-z])/
+/(?<![a-z])Golang(?![a-z])/
+/(?<![a-z])Go开发/
+/(?<![a-z])Go语言/
+/(?<![a-z])GraphQL(?![a-z])/
+/(?<![a-z])gRPC(?![a-z])/
+/(?<![a-z])Haskell(?![a-z])/
+/(?<![a-z])Java applications?(?![a-z])/
+/(?<![a-z])Java developer(?![a-z])/
+/(?<![a-z])Java development(?![a-z])/
+/(?<![a-z])Java EE(?![a-z])/
+/(?<![a-z])Java Keytool(?![a-z])/
+/(?<![a-z])Java programming(?![a-z])/
+/(?<![a-z])Java SDK(?![a-z])/
+/(?<![a-z])Java SE(?![a-z])/
+/(?<![a-z])Java stream(?![a-z])/
+/(?<![a-z])Java 入门/
+/(?<![a-z])JavaFX(?![a-z])/
+/(?<![a-z])JavaScript(?![a-z])/
+/(?<![a-z])Javassist(?![a-z])/
+/(?<![a-z])Java开发/
+/(?<![a-z])Java日志/
+/(?<![a-z])Java程序/
+/(?<![a-z])Java线程/
+/(?<![a-z])Java语言/
+/(?<![a-z])JDK(?![a-z])/
+/(?<![a-z])JSON(?![a-z])/
+/(?<![a-z])Julia programming(?![a-z])/
+/(?<![a-z])JVM(?![a-z])/
+/(?<![a-z])Kotlin(?![a-z])/
+/(?<![a-z])Lua(?![a-z])/
+/(?<![a-z])MATLAB(?![a-z])/
+/(?<![a-z])Node\.js(?![a-z])/
+/(?<![a-z])Nodejs(?![a-z])/
+/(?<![a-z])Package\.swift(?![a-z])/
+/(?<![a-z])Perl(?![a-z])/
+/(?<![a-z])PHP(?![a-z])/
+/(?<![a-z])PowerShell(?![a-z])/
+/(?<![a-z])programming language(?![a-z])/
+/(?<![a-z])Python(?![a-z])/
+/(?<![a-z])Rust crates?(?![a-z])/
+/(?<![a-z])Rust language(?![a-z])/
+/(?<![a-z])Rust 开发/
+/(?<![a-z])Rust\-v(?![a-z])/
+/(?<![a-z])Rust开发/
+/(?<![a-z])Scala(?![a-z])/
+/(?<![a-z])SwiftUI(?![a-z])/
+/(?<![a-z])Terraform provider(?![a-z])/
+/(?<![a-z])TypeScript(?![a-z])/
+/(?<![a-z])YAML(?![a-z])/
+/(?<![a-z])Zsh(?![a-z])/
+### 应用框架、网站与内容管理
+静态网站
+前端工程
+前端开发
+网页布局
+网页设计
+网站建设
+响应式布局
+响应式网页
+/\.NET Core(?![a-z])/
+/\.NET Framework(?![a-z])/
+/\.NET MAUI(?![a-z])/
+/\.NETCore(?![a-z])/
+/\.NET框架/
+/(?<![a-z])ASP\.NET(?![a-z])/
+/(?<![a-z])Avada(?![a-z])/
+/(?<![a-z])Cocos2d(?![a-z])/
+/(?<![a-z])CSS(?![a-z])/
+/(?<![a-z])Django(?![a-z])/
+/(?<![a-z])Drupal(?![a-z])/
+/(?<![a-z])Elementor(?![a-z])/
+/(?<![a-z])FastAPI(?![a-z])/
+/(?<![a-z])Flask教程/
+/(?<![a-z])Flexbox(?![a-z])/
+/(?<![a-z])Flutter 3(?![a-z])/
+/(?<![a-z])Flutter apps?(?![a-z])/
+/(?<![a-z])Flutter framework(?![a-z])/
+/(?<![a-z])Ghost CMS(?![a-z])/
+/(?<![a-z])GLSL(?![a-z])/
+/(?<![a-z])Hexo(?![a-z])/
+/(?<![a-z])HTML(?![a-z])/
+/(?<![a-z])Joomla(?![a-z])/
+/(?<![a-z])Laravel(?![a-z])/
+/(?<![a-z])Material UI(?![a-z])/
+/(?<![a-z])MyBatis(?![a-z])/
+/(?<![a-z])Netlify(?![a-z])/
+/(?<![a-z])Next\.js(?![a-z])/
+/(?<![a-z])OpenCV(?![a-z])/
+/(?<![a-z])OpenGL(?![a-z])/
+/(?<![a-z])PyQt(?![a-z])/
+/(?<![a-z])QML(?![a-z])/
+/(?<![a-z])Qt5(?![a-z])/
+/(?<![a-z])Qt 4(?![a-z])/
+/(?<![a-z])Qt 5(?![a-z])/
+/(?<![a-z])Qt Quick(?![a-z])/
+/(?<![a-z])React framework(?![a-z])/
+/(?<![a-z])React Hooks?(?![a-z])/
+/(?<![a-z])React Native(?![a-z])/
+/(?<![a-z])React Router(?![a-z])/
+/(?<![a-z])React\.js(?![a-z])/
+/(?<![a-z])ReactJS(?![a-z])/
+/(?<![a-z])Replit(?![a-z])/
+/(?<![a-z])Ruby on Rails(?![a-z])/
+/(?<![a-z])Spring Boot(?![a-z])/
+/(?<![a-z])SpringBoot(?![a-z])/
+/(?<![a-z])TailwindCSS(?![a-z])/
+/(?<![a-z])Typecho(?![a-z])/
+/(?<![a-z])Vercel(?![a-z])/
+/(?<![a-z])Vue\.js(?![a-z])/
+/(?<![a-z])Vulkan API(?![a-z])/
+/(?<![a-z])Web Components?(?![a-z])/
+/(?<![a-z])WebAssembly(?![a-z])/
+/(?<![a-z])WebGL(?![a-z])/
+/(?<![a-z])WebGPU(?![a-z])/
+/(?<![a-z])WebKit(?![a-z])/
+/(?<![a-z])WinForm(?![a-z])/
+/(?<![a-z])WordPress(?![a-z])/
+/(?<![a-z])wxPython(?![a-z])/
+/(?<![a-z])Xamarin(?![a-z])/
+### 数据库、数据处理与计算库
+火车头采集器
+数据仓库
+数据库
+/(?<![a-z])Apache Cassandra(?![a-z])/
+/(?<![a-z])Apache Kafka(?![a-z])/
+/(?<![a-z])Apache Spark(?![a-z])/
+/(?<![a-z])ClickHouse(?![a-z])/
+/(?<![a-z])data lakes?(?![a-z])/
+/(?<![a-z])data warehouses?(?![a-z])/
+/(?<![a-z])Databricks(?![a-z])/
+/(?<![a-z])DuckDB(?![a-z])/
+/(?<![a-z])Elasticsearch(?![a-z])/
+/(?<![a-z])Hadoop(?![a-z])/
+/(?<![a-z])HDFS(?![a-z])/
+/(?<![a-z])Kafka brokers?(?![a-z])/
+/(?<![a-z])Kafka consumer(?![a-z])/
+/(?<![a-z])Kafka messaging(?![a-z])/
+/(?<![a-z])Kafka running(?![a-z])/
+/(?<![a-z])Kafka集群/
+/(?<![a-z])MongoDB(?![a-z])/
+/(?<![a-z])MySQL(?![a-z])/
+/(?<![a-z])NoSQL(?![a-z])/
+/(?<![a-z])NumPy(?![a-z])/
+/(?<![a-z])PostgreSQL(?![a-z])/
+/(?<![a-z])PySpark(?![a-z])/
+/(?<![a-z])Redis(?![a-z])/
+/(?<![a-z])SciPy(?![a-z])/
+/(?<![a-z])Spark with k8s(?![a-z])/
+/(?<![a-z])SQL(?![a-z])/
+/(?<![a-z])SQLite(?![a-z])/
+## 工程方法与工具
+### 工程实践、协议与接口
+持续集成
+代码覆盖率
+代码规范
+代码审查
+单元测试
+多线程
+反编译
+反序列化
+分布式计算
+分布式锁
+分布式系统
+解析源码
+空指针
+乐观锁
+连接池
+逆向工程
+请求头
+软件工程
+软件架构
+软件开发
+软件质量测试
+设计模式
+事件循环
+微服务
+线程池
+消息队列
+依赖注入
+源码分析
+源码解读
+源码解析
+正则表达式
+/(?<![a-z])API endpoints?(?![a-z])/
+/(?<![a-z])API 接口/
+/(?<![a-z])API接口/
+/(?<![a-z])API网关/
+/(?<![a-z])code coverage(?![a-z])/
+/(?<![a-z])code reviews?(?![a-z])/
+/(?<![a-z])computer programming(?![a-z])/
+/(?<![a-z])continuous integration(?![a-z])/
+/(?<![a-z])debugging(?![a-z])/
+/(?<![a-z])dependency management(?![a-z])/
+/(?<![a-z])Dockerfile(?![a-z])/
+/(?<![a-z])Fetch API(?![a-z])/
+/(?<![a-z])functional programming(?![a-z])/
+/(?<![a-z])IntersectionObserver(?![a-z])/
+/(?<![a-z])memory leaks?(?![a-z])/
+/(?<![a-z])microservices?(?![a-z])/
+/(?<![a-z])object oriented programming(?![a-z])/
+/(?<![a-z])object\-oriented programming(?![a-z])/
+/(?<![a-z])OpenAPI(?![a-z])/
+/(?<![a-z])race condition(?![a-z])/
+/(?<![a-z])rate limiter(?![a-z])/
+/(?<![a-z])refactoring(?![a-z])/
+/(?<![a-z])regex(?![a-z])/
+/(?<![a-z])regular expressions?(?![a-z])/
+/(?<![a-z])REST APIs?(?![a-z])/
+/(?<![a-z])Rust programming(?![a-z])/
+/(?<![a-z])service mesh(?![a-z])/
+/(?<![a-z])service meshes(?![a-z])/
+/(?<![a-z])software architecture(?![a-z])/
+/(?<![a-z])source code(?![a-z])/
+/(?<![a-z])stack trace(?![a-z])/
+/(?<![a-z])Swagger UI(?![a-z])/
+/(?<![a-z])unit testing(?![a-z])/
+/(?<![a-z])Unix timestamp(?![a-z])/
+/(?<![a-z])WebRTC(?![a-z])/
+### 编辑器、构建与测试工具
+编译器
+代码编辑器
+代码补全
+代码生成
+交叉编译
+集成开发环境
+开发环境配置
+软件包管理
+源码安装
+源码编译
+/(?<![a-z])Android Studio(?![a-z])/
+/(?<![a-z])Apache Maven(?![a-z])/
+/(?<![a-z])AutoHotkey(?![a-z])/
+/(?<![a-z])Bazel(?![a-z])/
+/(?<![a-z])CLion(?![a-z])/
+/(?<![a-z])CMake(?![a-z])/
+/(?<![a-z])Cmder(?![a-z])/
+/(?<![a-z])code generation(?![a-z])/
+/(?<![a-z])CodeQL(?![a-z])/
+/(?<![a-z])Emacs(?![a-z])/
+/(?<![a-z])ESLint(?![a-z])/
+/(?<![a-z])GCC降级/
+/(?<![a-z])GoLand(?![a-z])/
+/(?<![a-z])Gradle(?![a-z])/
+/(?<![a-z])IntelliJ(?![a-z])/
+/(?<![a-z])Jenkins(?![a-z])/
+/(?<![a-z])JetBrains(?![a-z])/
+/(?<![a-z])JUnit(?![a-z])/
+/(?<![a-z])Jupyter(?![a-z])/
+/(?<![a-z])lint\-staged(?![a-z])/
+/(?<![a-z])LLVM(?![a-z])/
+/(?<![a-z])Makefile(?![a-z])/
+/(?<![a-z])Maven依赖/
+/(?<![a-z])mvn(?![a-z])/
+/(?<![a-z])Neovim(?![a-z])/
+/(?<![a-z])Notepad\+\+/
+/(?<![a-z])npm(?![a-z])/
+/(?<![a-z])nvim(?![a-z])/
+/(?<![a-z])pnpm(?![a-z])/
+/(?<![a-z])PyCharm(?![a-z])/
+/(?<![a-z])Qt Creator(?![a-z])/
+/(?<![a-z])Qt SDK(?![a-z])/
+/(?<![a-z])QtCreator(?![a-z])/
+/(?<![a-z])Selenium WebDriver(?![a-z])/
+/(?<![a-z])SpaceVim(?![a-z])/
+/(?<![a-z])static code analysis(?![a-z])/
+/(?<![a-z])Sublime Text(?![a-z])/
+/(?<![a-z])test automation(?![a-z])/
+/(?<![a-z])Vimrc(?![a-z])/
+/(?<![a-z])Visual Studio(?![a-z])/
+/(?<![a-z])VS Code(?![a-z])/
+/(?<![a-z])VSCode(?![a-z])/
+/(?<![a-z])Xcode(?![a-z])/
+### 数据结构与算法
+并查集
+布隆过滤器
+动态规划
+哈希表
+记忆化搜索
+蓝桥杯
+链表
+数据结构
+树状数组
+线段树
+最大子矩阵
+/(?<![a-z])binary search trees?(?![a-z])/
+/(?<![a-z])Codeforces(?![a-z])/
+/(?<![a-z])data structures?(?![a-z])/
+/(?<![a-z])dynamic programming(?![a-z])/
+/(?<![a-z])HDOJ(?![a-z])/
+/(?<![a-z])HDU(?![a-z])/
+/(?<![a-z])LeetCode(?![a-z])/
+/(?<![a-z])linked lists?(?![a-z])/
 
-# 产业政策
-生产力
+[云计算与网络服务]
+## 云平台与网络基础
+### 云平台、服务器与虚拟化
+阿里云
+边缘计算
+对象存储
+服务器
+火山引擎
+甲骨文云
+数据中心
+虚拟化
+虚拟机
+域名
+云存储
+云服务
+云计算
+云原生
+云主机
+/(?<![a-z])Amazon Web Services(?![a-z])/
+/(?<![a-z])AWS(?![a-z])/
+/(?<![a-z])Azure(?![a-z])/
+/(?<![a-z])cloud computing(?![a-z])/
+/(?<![a-z])cloud infrastructure(?![a-z])/
+/(?<![a-z])cloud native(?![a-z])/
+/(?<![a-z])cloud services?(?![a-z])/
+/(?<![a-z])cloud storage(?![a-z])/
+/(?<![a-z])cloud\-native(?![a-z])/
+/(?<![a-z])CloudCone(?![a-z])/
+/(?<![a-z])Cloudflare(?![a-z])/
+/(?<![a-z])data centers?(?![a-z])/
+/(?<![a-z])data centres?(?![a-z])/
+/(?<![a-z])dedicated servers?(?![a-z])/
+/(?<![a-z])DigitalOcean(?![a-z])/
+/(?<![a-z])edge computing(?![a-z])/
+/(?<![a-z])Hyper\-V(?![a-z])/
+/(?<![a-z])Linode(?![a-z])/
+/(?<![a-z])OpenStack(?![a-z])/
+/(?<![a-z])Proxmox(?![a-z])/
+/(?<![a-z])QEMU(?![a-z])/
+/(?<![a-z])Rackspace(?![a-z])/
+/(?<![a-z])serverless(?![a-z])/
+/(?<![a-z])virtual machines?(?![a-z])/
+/(?<![a-z])VirtualBox(?![a-z])/
+/(?<![a-z])virtualization(?![a-z])/
+/(?<![a-z])VMware(?![a-z])/
+/(?<![a-z])VPS(?![a-z])/
+/(?<![a-z])vSphere(?![a-z])/
+/(?<![a-z])web servers?(?![a-z])/
+### 网络协议、路由与远程连接
+端口转发
+互联网交换中心
+家庭网络
+路由器
+内网穿透
+网络代理
+网络协议
+网络中断
+远程连接
+/(?<![a-z])BGP(?![a-z])/
+/(?<![a-z])BIND 9(?![a-z])/
+/(?<![a-z])CDN(?![a-z])/
+/(?<![a-z])content delivery networks?(?![a-z])/
+/(?<![a-z])D\-Link(?![a-z])/
+/(?<![a-z])DDNS(?![a-z])/
+/(?<![a-z])DNS(?![a-z])/
+/(?<![a-z])DNScache(?![a-z])/
+/(?<![a-z])DNSSEC(?![a-z])/
+/(?<![a-z])Domain Name System(?![a-z])/
+/(?<![a-z])Ethernet(?![a-z])/
+/(?<![a-z])frp教程/
+/(?<![a-z])HTTPs?(?![a-z])/
+/(?<![a-z])IMAP(?![a-z])/
+/(?<![a-z])IPv4(?![a-z])/
+/(?<![a-z])IPv6(?![a-z])/
+/(?<![a-z])Linksys(?![a-z])/
+/(?<![a-z])MikroTik(?![a-z])/
+/(?<![a-z])MobaXterm(?![a-z])/
+/(?<![a-z])MQTT协议/
+/(?<![a-z])Netgear(?![a-z])/
+/(?<![a-z])ngrok(?![a-z])/
+/(?<![a-z])OpenSSH(?![a-z])/
+/(?<![a-z])OpenVPN(?![a-z])/
+/(?<![a-z])OpenWrt(?![a-z])/
+/(?<![a-z])pfSense(?![a-z])/
+/(?<![a-z])POP3(?![a-z])/
+/(?<![a-z])port forwarding(?![a-z])/
+/(?<![a-z])PuTTY(?![a-z])/
+/(?<![a-z])SecureCRT(?![a-z])/
+/(?<![a-z])SFTP(?![a-z])/
+/(?<![a-z])SMB3(?![a-z])/
+/(?<![a-z])SMB v2(?![a-z])/
+/(?<![a-z])SMBv1(?![a-z])/
+/(?<![a-z])SMBv2(?![a-z])/
+/(?<![a-z])SMBv3(?![a-z])/
+/(?<![a-z])SMB共享/
+/(?<![a-z])SMB协议/
+/(?<![a-z])SMTP(?![a-z])/
+/(?<![a-z])SSH(?![a-z])/
+/(?<![a-z])Tailscale(?![a-z])/
+/(?<![a-z])TCP(?![a-z])/
+/(?<![a-z])TP\-Link(?![a-z])/
+/(?<![a-z])Ubiquiti(?![a-z])/
+/(?<![a-z])UDP(?![a-z])/
+/(?<![a-z])VPNs?(?![a-z])/
+/(?<![a-z])webhooks?(?![a-z])/
+/(?<![a-z])WebSockets?(?![a-z])/
+/(?<![a-z])Wi\-Fi(?![a-z])/
+/(?<![a-z])WiFi(?![a-z])/
+/(?<![a-z])WireGuard(?![a-z])/
+/(?<![a-z])Xshell(?![a-z])/
+/(?<![a-z])ZeroTier(?![a-z])/
+## 部署、运维与在线服务
+### 容器、编排与可观测性
+反向代理
+负载均衡
+网络监控
+/(?<![a-z])Datadog(?![a-z])/
+/(?<![a-z])DevOps(?![a-z])/
+/(?<![a-z])Docker(?![a-z])/
+/(?<![a-z])Dynatrace(?![a-z])/
+/(?<![a-z])etcd(?![a-z])/
+/(?<![a-z])Grafana(?![a-z])/
+/(?<![a-z])HAProxy(?![a-z])/
+/(?<![a-z])K3s(?![a-z])/
+/(?<![a-z])K8s(?![a-z])/
+/(?<![a-z])Kubeadm(?![a-z])/
+/(?<![a-z])Kubelet(?![a-z])/
+/(?<![a-z])Kubernetes(?![a-z])/
+/(?<![a-z])load balancers?(?![a-z])/
+/(?<![a-z])load balancing(?![a-z])/
+/(?<![a-z])Nagios(?![a-z])/
+/(?<![a-z])New Relic(?![a-z])/
+/(?<![a-z])NGINX(?![a-z])/
+/(?<![a-z])OpenShift(?![a-z])/
+/(?<![a-z])OpenTelemetry(?![a-z])/
+/(?<![a-z])reverse proxy(?![a-z])/
+/(?<![a-z])Traefik(?![a-z])/
+### 托管、存储与在线服务
+搬瓦工
+宝塔面板
+七牛云
+天翼云盘
+网络存储
+沃云
+虚拟主机
+又拍云
+115网盘
+123云盘
+/(?<![a-z])Box\.com(?![a-z])/
+/(?<![a-z])cFosSpeed(?![a-z])/
+/(?<![a-z])ClawCloud(?![a-z])/
+/(?<![a-z])DogYun(?![a-z])/
+/(?<![a-z])domain registrars?(?![a-z])/
+/(?<![a-z])DreamHost(?![a-z])/
+/(?<![a-z])Dropbox(?![a-z])/
+/(?<![a-z])FTP 客户端/
+/(?<![a-z])GoDaddy(?![a-z])/
+/(?<![a-z])GreenCloud(?![a-z])/
+/(?<![a-z])Hetzner(?![a-z])/
+/(?<![a-z])Hostinger(?![a-z])/
+/(?<![a-z])iCloud(?![a-z])/
+/(?<![a-z])MinIO(?![a-z])/
+/(?<![a-z])Namecheap(?![a-z])/
+/(?<![a-z])NAS(?![a-z])/
+/(?<![a-z])NetApp(?![a-z])/
+/(?<![a-z])network attached storage(?![a-z])/
+/(?<![a-z])network\-attached storage(?![a-z])/
+/(?<![a-z])Nextcloud(?![a-z])/
+/(?<![a-z])OneDrive(?![a-z])/
+/(?<![a-z])OpenDNS(?![a-z])/
+/(?<![a-z])OVH(?![a-z])/
+/(?<![a-z])OVHcloud(?![a-z])/
+/(?<![a-z])ownCloud(?![a-z])/
+/(?<![a-z])RackNerd(?![a-z])/
+/(?<![a-z])TrueNAS(?![a-z])/
+/(?<![a-z])UltraVPS(?![a-z])/
+/(?<![a-z])Vultr(?![a-z])/
+/(?<![a-z])WHMCS(?![a-z])/
+### 云数据库与消息服务
+/(?<![a-z])CockroachDB(?![a-z])/
+/(?<![a-z])Couchbase(?![a-z])/
+/(?<![a-z])CouchDB(?![a-z])/
+/(?<![a-z])HBase(?![a-z])/
+/(?<![a-z])MariaDB(?![a-z])/
+/(?<![a-z])MQTT broker(?![a-z])/
+/(?<![a-z])RocketMQ(?![a-z])/
+
+[企业软件与客户管理]
+## 企业应用与业务流程
+### 企业管理、数字化与软件产品
+低代码
+金蝶
+客服系统
+客户关系管理
+企业软件
+数字化转型
+无代码
+用友
+/(?<![a-z])Airtable(?![a-z])/
+/(?<![a-z])Atlassian(?![a-z])/
+/(?<![a-z])ClickUp(?![a-z])/
+/(?<![a-z])CRM platforms?(?![a-z])/
+/(?<![a-z])CRM software(?![a-z])/
+/(?<![a-z])CRM systems?(?![a-z])/
+/(?<![a-z])CRM tools?(?![a-z])/
+/(?<![a-z])customer relationship management(?![a-z])/
+/(?<![a-z])DocuSign(?![a-z])/
+/(?<![a-z])enterprise resource planning(?![a-z])/
+/(?<![a-z])enterprise software(?![a-z])/
+/(?<![a-z])ERP platform(?![a-z])/
+/(?<![a-z])ERP software(?![a-z])/
+/(?<![a-z])ERP systems?(?![a-z])/
+/(?<![a-z])Freshdesk(?![a-z])/
+/(?<![a-z])Freshworks(?![a-z])/
+/(?<![a-z])HubSpot(?![a-z])/
+/(?<![a-z])Intuit(?![a-z])/
+/(?<![a-z])low code(?![a-z])/
+/(?<![a-z])low\-code(?![a-z])/
+/(?<![a-z])Monday\.com(?![a-z])/
+/(?<![a-z])no code(?![a-z])/
+/(?<![a-z])no\-code(?![a-z])/
+/(?<![a-z])Oracle cloud(?![a-z])/
+/(?<![a-z])Pipedrive(?![a-z])/
+/(?<![a-z])process mining(?![a-z])/
+/(?<![a-z])QuickBooks(?![a-z])/
+/(?<![a-z])SaaS(?![a-z])/
+/(?<![a-z])Salesforce(?![a-z])/
+/(?<![a-z])SAP hana(?![a-z])/
+/(?<![a-z])ServiceNow(?![a-z])/
+/(?<![a-z])Smartsheet(?![a-z])/
+/(?<![a-z])software as a service(?![a-z])/
+/(?<![a-z])software\-as\-a\-service(?![a-z])/
+/(?<![a-z])Zendesk(?![a-z])/
+/(?<![a-z])Zoho(?![a-z])/
+### 企业协作与办公平台
+钉钉
+飞书
+/(?<![a-z])Google Meet(?![a-z])/
+/(?<![a-z])Slack(?![a-z])/
+### 流程自动化与 ERP 产品
+简道云
+/(?<![a-z])process automation(?![a-z])/
+/(?<![a-z])QoderWake(?![a-z])/
+/(?<![a-z])RPA software(?![a-z])/
+/(?<![a-z])RPA startup(?![a-z])/
+/(?<![a-z])SAP ERP(?![a-z])/
+/(?<![a-z])workflow automation(?![a-z])/
+
+[通信网络与运营商]
+## 通信技术与服务
+### 运营商、通信制式与资费服务
+爱立信
+阿里小号
+安徽移动
+澳门电信
+北京电信
+北京联通
+电话卡
+电信日
+蜂窝网络
+广东移动
+光无线通信
+光纤通信
+海底电缆
+海底光缆
+海底通信电缆
+海底通信光缆
+宽带
+流量卡
+流量漫游费
+流量套餐
+上海移动
+手机卡
+双卡双待
+四川联通
+通信管理局
+网络电话
+无线电通信
+携号转网
+虚拟号码
+运营商
+中国电信
+中国联通
+中国移动
+中兴通讯
+中移动
+/(?<![a-z])4G(?![a-z])/
+/(?<![a-z])5G(?![a-z])/
+/(?<![a-z])AT\&T(?![a-z])/
+/(?<![a-z])broadband(?![a-z])/
+/(?<![a-z])CDMA(?![a-z])/
+/(?<![a-z])cellular networks?(?![a-z])/
+/(?<![a-z])China Mobile(?![a-z])/
+/(?<![a-z])China Unicom(?![a-z])/
+/(?<![a-z])Comcast(?![a-z])/
+/(?<![a-z])dual SIM(?![a-z])/
+/(?<![a-z])dual\-SIM(?![a-z])/
+/(?<![a-z])Ericsson(?![a-z])/
+/(?<![a-z])eSIM卡/
+/(?<![a-z])fiber optic communications?(?![a-z])/
+/(?<![a-z])GSM(?![a-z])/
+/(?<![a-z])international roaming(?![a-z])/
+/(?<![a-z])LTE(?![a-z])/
+/(?<![a-z])mobile networks?(?![a-z])/
+/(?<![a-z])number porting(?![a-z])/
+/(?<![a-z])SIM卡/
+/(?<![a-z])T Mobile(?![a-z])/
+/(?<![a-z])T\-Mobile(?![a-z])/
+/(?<![a-z])telecoms?(?![a-z])/
+/(?<![a-z])telecommunications(?![a-z])/
+/(?<![a-z])Verizon(?![a-z])/
+/(?<![a-z])visible light communication(?![a-z])/
+/(?<![a-z])VLC network(?![a-z])/
+/(?<![a-z])VLC\-RF communication(?![a-z])/
+/(?<![a-z])Vodafone(?![a-z])/
+/(?<![a-z])voice\-over\-IP(?![a-z])/
+/(?<![a-z])VoIP(?![a-z])/
+/(?<![a-z])WCDMA(?![a-z])/
+/(?<![a-z])WiMAX(?![a-z])/
+/(?<![a-z])ZTE(?![a-z])/
+
+[芯片与算力]
+## 计算硬件与半导体
+### 处理器、芯片架构与计算接口
+半导体
+长江存储
+处理器
+高通
+联发科
+摩尔线程
+算力
+台积电
+显卡
+芯片
+英特尔
+英伟达
+中芯国际
+/(?<![a-z])ARM Holdings(?![a-z])/
+/(?<![a-z])ASIC chips?(?![a-z])/
+/(?<![a-z])ASML(?![a-z])/
+/(?<![a-z])Broadcom(?![a-z])/
+/(?<![a-z])chipsets?(?![a-z])/
+/(?<![a-z])Cortex A(?![a-z])/
+/(?<![a-z])Cortex M(?![a-z])/
+/(?<![a-z])CPUs?(?![a-z])/
+/(?<![a-z])CUDA(?![a-z])/
+/(?<![a-z])EPYC(?![a-z])/
+/(?<![a-z])field\-programmable gate array(?![a-z])/
+/(?<![a-z])FPGAs?(?![a-z])/
+/(?<![a-z])GPUs?(?![a-z])/
+/(?<![a-z])Intel(?![a-z])/
+/(?<![a-z])MediaTek(?![a-z])/
+/(?<![a-z])microchips?(?![a-z])/
+/(?<![a-z])microprocessors?(?![a-z])/
+/(?<![a-z])Neoverse(?![a-z])/
+/(?<![a-z])NVIDIA(?![a-z])/
+/(?<![a-z])OpenCL(?![a-z])/
+/(?<![a-z])Qualcomm(?![a-z])/
+/(?<![a-z])Radeon(?![a-z])/
+/(?<![a-z])RISC\-V(?![a-z])/
+/(?<![a-z])Ryzen(?![a-z])/
+/(?<![a-z])semiconductors?(?![a-z])/
+/(?<![a-z])SMIC(?![a-z])/
+/(?<![a-z])Snapdragon(?![a-z])/
+/(?<![a-z])TSMC(?![a-z])/
+### 显卡、存储与半导体制造
+海力士
+晶圆厂
+晶圆代工
+晶圆工厂
+铠侠
+内存条
+锐龙
+闪存
+显存
+骁龙
+西部数据
+希捷
+主板
+/(?<![a-z])DDR3(?![a-z])/
+/(?<![a-z])DDR4(?![a-z])/
+/(?<![a-z])DDR5(?![a-z])/
+/(?<![a-z])GDDR5(?![a-z])/
+/(?<![a-z])GDDR7(?![a-z])/
+/(?<![a-z])GeForce(?![a-z])/
+/(?<![a-z])LPDDR4(?![a-z])/
+/(?<![a-z])LPDDR5(?![a-z])/
+/(?<![a-z])NAND flash(?![a-z])/
+/(?<![a-z])NVMe(?![a-z])/
+/(?<![a-z])PCI Express(?![a-z])/
+/(?<![a-z])PCI\-Express(?![a-z])/
+/(?<![a-z])PCIe(?![a-z])/
+/(?<![a-z])RTX3(?![a-z])/
+/(?<![a-z])RTX4(?![a-z])/
+/(?<![a-z])RTX 2(?![a-z])/
+/(?<![a-z])RTX 3(?![a-z])/
+/(?<![a-z])RTX 4(?![a-z])/
+/(?<![a-z])RTX 5(?![a-z])/
+/(?<![a-z])RTX 6(?![a-z])/
+/(?<![a-z])Seagate(?![a-z])/
+/(?<![a-z])SK Hynix(?![a-z])/
+/(?<![a-z])Threadripper(?![a-z])/
+/(?<![a-z])Western Digital(?![a-z])/
+
+[机器人与自动化]
+## 机器人技术与应用
+### 实体机器人、无人机与工业自动化
+机器狗
+机器人
+机械臂
+无人机
+/(?<![a-z])Boston Dynamics(?![a-z])/
+/(?<![a-z])DJI(?![a-z])/
+/(?<![a-z])drones?(?![a-z])/
+/(?<![a-z])humanoids?(?![a-z])/
+/(?<![a-z])industrial automation(?![a-z])/
+/(?<![a-z])robots?(?![a-z])/
+/(?<![a-z])robotics?(?![a-z])/
+/(?<![a-z])Unitree(?![a-z])/
+/(?<![a-z])unmanned aerial vehicles?(?![a-z])/
+/(?<![a-z])warehouse automation(?![a-z])/
+
+[数字制造与工程设计]
+## 工程技术与设计工具
+### 制造工艺与工程设计工具
+工业设计
+/(?<![a-z])3\-D printed(?![a-z])/
+/(?<![a-z])3\-D printers?(?![a-z])/
+/(?<![a-z])3\-D printing(?![a-z])/
+/(?<![a-z])3\-D\-printed(?![a-z])/
+/(?<![a-z])3\-D\-printing(?![a-z])/
+/(?<![a-z])3D printed(?![a-z])/
+/(?<![a-z])3D printers?(?![a-z])/
+/(?<![a-z])3D printing(?![a-z])/
+/(?<![a-z])3D\-printed(?![a-z])/
+/(?<![a-z])3D\-printer(?![a-z])/
+/(?<![a-z])3D\-printing(?![a-z])/
+/(?<![a-z])3D打印/
+/(?<![a-z])additive manufacturing(?![a-z])/
+/(?<![a-z])Autodesk(?![a-z])/
+/(?<![a-z])Bambu Lab(?![a-z])/
+/(?<![a-z])CNC lathe(?![a-z])/
+/(?<![a-z])CNC machine(?![a-z])/
+/(?<![a-z])CNC machining(?![a-z])/
+/(?<![a-z])CNC milling(?![a-z])/
+/(?<![a-z])computer\-aided design(?![a-z])/
+/(?<![a-z])Desktop Metal(?![a-z])/
+/(?<![a-z])Formlabs(?![a-z])/
+/(?<![a-z])FreeCAD(?![a-z])/
+/(?<![a-z])fused deposition modelling(?![a-z])/
+/(?<![a-z])Fusion 360(?![a-z])/
+/(?<![a-z])MakerBot(?![a-z])/
+/(?<![a-z])Markforged(?![a-z])/
+/(?<![a-z])Onshape(?![a-z])/
+/(?<![a-z])selective laser sintering(?![a-z])/
+/(?<![a-z])SketchUp(?![a-z])/
+/(?<![a-z])stereolithography(?![a-z])/
+/(?<![a-z])three\-dimensional printing(?![a-z])/
+
+[电动车与自动驾驶]
+## 智能出行与新能源汽车
+### 电动出行与智能驾驶
+比亚迪
+车路协同
+电动车
+电动汽车
+辅助驾驶
+激光雷达
+极氪
+理想汽车
+特斯拉
+蔚来
+文远知行
+无人车
+无人驾驶
+小马智行
+小鹏
+新能源汽车
+智驾
+智能驾驶
+自动驾驶
+/(?<![a-z])ADAS(?![a-z])/
+/(?<![a-z])autonomous cars?(?![a-z])/
+/(?<![a-z])autonomous driving(?![a-z])/
+/(?<![a-z])autonomous mobility(?![a-z])/
+/(?<![a-z])autonomous vehicles?(?![a-z])/
+/(?<![a-z])BYD(?![a-z])/
+/(?<![a-z])driverless(?![a-z])/
+/(?<![a-z])e\-bikes?(?![a-z])/
+/(?<![a-z])ebikes?(?![a-z])/
+/(?<![a-z])electric bicycle(?![a-z])/
+/(?<![a-z])electric cars?(?![a-z])/
+/(?<![a-z])electric vehicles?(?![a-z])/
+/(?<![a-z])Li Auto(?![a-z])/
+/(?<![a-z])LiDAR(?![a-z])/
+/(?<![a-z])Lucid Air(?![a-z])/
+/(?<![a-z])Lucid Gravity(?![a-z])/
+/(?<![a-z])Lucid Motors(?![a-z])/
+/(?<![a-z])Polestar(?![a-z])/
+/(?<![a-z])Rivian(?![a-z])/
+/(?<![a-z])robotaxis?(?![a-z])/
+/(?<![a-z])self driving(?![a-z])/
+/(?<![a-z])self\-driving(?![a-z])/
+/(?<![a-z])Tesla(?![a-z])/
+/(?<![a-z])Waymo(?![a-z])/
+/(?<![a-z])WeRide(?![a-z])/
+/(?<![a-z])XPeng(?![a-z])/
+/(?<![a-z])Zoox(?![a-z])/
+### 新能源汽车品牌、电池与补能
+埃安
+阿维塔
+充电站
+充电桩
+纯电
+极狐
+极石汽车
+岚图
+领克
+零跑
+哪吒汽车
+宁德时代
+欧拉汽车
+赛力斯
+深蓝汽车
+问界
+无人卡车
+享界
+造车新势力
+增程
+智己
+智界
+智能车
+智能座舱
+尊界
+/(?<![a-z])battery swapping(?![a-z])/
+/(?<![a-z])battery\-swapping(?![a-z])/
+/(?<![a-z])Faraday Future(?![a-z])/
+/(?<![a-z])Fisker(?![a-z])/
+/(?<![a-z])Gogoro(?![a-z])/
+/(?<![a-z])VinFast(?![a-z])/
+/(?<![a-z])Zeekr(?![a-z])/
+
+[汽车产业与制造]
+## 汽车制造与产业品牌
+### 整车制造、燃油车与汽车品牌
+宝马
+保时捷
+奔驰
+本田
+长安汽车
+长城汽车
+车企
+传统汽车
+大众汽车
+东风汽车
+法拉利
+丰田
+吉利
+内燃机
+汽车厂商
+汽车产业
+汽车工业
+奇瑞
+燃油车
+燃油跑车
+日产汽车
+上汽集团
+沃尔沃
+/(?<![a-z])auto industry(?![a-z])/
+/(?<![a-z])automakers?(?![a-z])/
+/(?<![a-z])automotive(?![a-z])/
+/(?<![a-z])BMW(?![a-z])/
+/(?<![a-z])car makers?(?![a-z])/
+/(?<![a-z])car manufacturers?(?![a-z])/
+/(?<![a-z])car manufacturing(?![a-z])/
+/(?<![a-z])carmakers?(?![a-z])/
+/(?<![a-z])Ferrari(?![a-z])/
+/(?<![a-z])Ford Motor(?![a-z])/
+/(?<![a-z])Ford mustang(?![a-z])/
+/(?<![a-z])Geely(?![a-z])/
+/(?<![a-z])General Motors(?![a-z])/
+/(?<![a-z])Honda(?![a-z])/
+/(?<![a-z])Hyundai(?![a-z])/
+/(?<![a-z])internal combustion engine(?![a-z])/
+/(?<![a-z])Kia(?![a-z])/
+/(?<![a-z])Lamborghini(?![a-z])/
+/(?<![a-z])Land Rover(?![a-z])/
+/(?<![a-z])Maserati(?![a-z])/
+/(?<![a-z])Mercedes Benz(?![a-z])/
+/(?<![a-z])Mercedes\-Benz(?![a-z])/
+/(?<![a-z])Nissan Ariya(?![a-z])/
+/(?<![a-z])Nissan GT\-R(?![a-z])/
+/(?<![a-z])Nissan Leaf(?![a-z])/
+/(?<![a-z])Porsche(?![a-z])/
+/(?<![a-z])Stellantis(?![a-z])/
+/(?<![a-z])Subaru Forester(?![a-z])/
+/(?<![a-z])Subaru vehicles?(?![a-z])/
+/(?<![a-z])Toyota(?![a-z])/
+/(?<![a-z])Volkswagen(?![a-z])/
+/(?<![a-z])Volvo(?![a-z])/
+/(?<![a-z])VW ID\./
+
+[交通出行与物流]
+## 客货运输与出行服务
+### 公共交通、网约车与物流
+出租车
+滴滴
+地铁交通图
+地铁线路
+高铁
+公交卡
+轨道交通
+航空公司
+货运
+快递
+美团单车
+民航
+摩拜单车
+配送
+铁路
+网约车
+物流
+小黄车
+/(?<![a-z])airlines?(?![a-z])/
+/(?<![a-z])aviation(?![a-z])/
+/(?<![a-z])car sharing(?![a-z])/
+/(?<![a-z])car\-sharing(?![a-z])/
+/(?<![a-z])Didi(?![a-z])/
+/(?<![a-z])DoorDash(?![a-z])/
+/(?<![a-z])food delivery(?![a-z])/
+/(?<![a-z])freight(?![a-z])/
+/(?<![a-z])last mile delivery(?![a-z])/
+/(?<![a-z])last\-mile delivery(?![a-z])/
+/(?<![a-z])logistics(?![a-z])/
+/(?<![a-z])Lyft(?![a-z])/
+/(?<![a-z])parcel delivery(?![a-z])/
+/(?<![a-z])public transport(?![a-z])/
+/(?<![a-z])railways?(?![a-z])/
+/(?<![a-z])ride hailing(?![a-z])/
+/(?<![a-z])ride sharing(?![a-z])/
+/(?<![a-z])ride\-hailing(?![a-z])/
+/(?<![a-z])ride\-sharing(?![a-z])/
+/(?<![a-z])supply chains?(?![a-z])/
+/(?<![a-z])Uber(?![a-z])/
+/(?<![a-z])UberEats(?![a-z])/
+/(?<![a-z])UberPool(?![a-z])/
+/(?<![a-z])UberX(?![a-z])/
+### 航空制造、机场与航班
+波音
+国际机场
+航班
+/(?<![a-z])air traffic control(?![a-z])/
+/(?<![a-z])Airbus(?![a-z])/
+/(?<![a-z])aircraft(?![a-z])/
+/(?<![a-z])Boeing(?![a-z])/
+/(?<![a-z])Embraer(?![a-z])/
+
+[旅游与酒店服务]
+## 旅游出行与住宿
+### 旅行服务、景区与酒店
+订票
+飞猪
+机票
+酒店
+旅游
+同程旅行
+途牛
+携程
+/(?<![a-z])Booking\.com(?![a-z])/
+/(?<![a-z])Ctrip(?![a-z])/
+/(?<![a-z])Expedia(?![a-z])/
+/(?<![a-z])GetYourGuide(?![a-z])/
+/(?<![a-z])hotel bookings?(?![a-z])/
+/(?<![a-z])hotel chains?(?![a-z])/
+/(?<![a-z])hotel guests?(?![a-z])/
+/(?<![a-z])hotel reservations?(?![a-z])/
+/(?<![a-z])hotel rooms?(?![a-z])/
+/(?<![a-z])Klook(?![a-z])/
+/(?<![a-z])luxury hotels?(?![a-z])/
+/(?<![a-z])MakeMyTrip(?![a-z])/
+/(?<![a-z])online travel(?![a-z])/
+/(?<![a-z])Orbitz(?![a-z])/
+/(?<![a-z])OYO Rooms?(?![a-z])/
+/(?<![a-z])Priceline(?![a-z])/
+/(?<![a-z])Skyscanner(?![a-z])/
+/(?<![a-z])tourism(?![a-z])/
+/(?<![a-z])tourists?(?![a-z])/
+/(?<![a-z])travel agencies(?![a-z])/
+/(?<![a-z])travel agency(?![a-z])/
+/(?<![a-z])travel booking(?![a-z])/
+/(?<![a-z])travel platforms?(?![a-z])/
+/(?<![a-z])travel tech(?![a-z])/
+/(?<![a-z])Travelocity(?![a-z])/
+/(?<![a-z])Traveloka(?![a-z])/
+/(?<![a-z])Tripadvisor(?![a-z])/
+/(?<![a-z])Trivago(?![a-z])/
+
+[医学与生命科学]
+## 生物医学研究
+### 疾病、治疗与临床研究
+癌症
+白血病
+疾病
+临床
+流感
+器官移植
+手术
+细胞疗法
+药物
+医学
+肿瘤
+/(?<![a-z])antibiotic resistance(?![a-z])/
+/(?<![a-z])antimicrobial resistance(?![a-z])/
+/(?<![a-z])cancers?(?![a-z])/
+/(?<![a-z])carcinomas?(?![a-z])/
+/(?<![a-z])cirrhosis(?![a-z])/
+/(?<![a-z])clinical(?![a-z])/
+/(?<![a-z])COVID19(?![a-z])/
+/(?<![a-z])COVID 19(?![a-z])/
+/(?<![a-z])COVID\-19(?![a-z])/
+/(?<![a-z])diagnostic imaging(?![a-z])/
+/(?<![a-z])dialysis(?![a-z])/
+/(?<![a-z])differential diagnosis(?![a-z])/
+/(?<![a-z])diseases?(?![a-z])/
+/(?<![a-z])gliomas?(?![a-z])/
+/(?<![a-z])hemodialysis(?![a-z])/
+/(?<![a-z])hepatic(?![a-z])/
+/(?<![a-z])HIV(?![a-z])/
+/(?<![a-z])immunotherapy(?![a-z])/
+/(?<![a-z])influenza(?![a-z])/
+/(?<![a-z])kidneys?(?![a-z])/
+/(?<![a-z])leukaemia(?![a-z])/
+/(?<![a-z])leukemia(?![a-z])/
+/(?<![a-z])liver(?![a-z])/
+/(?<![a-z])lymphomas?(?![a-z])/
+/(?<![a-z])medical(?![a-z])/
+/(?<![a-z])melanomas?(?![a-z])/
+/(?<![a-z])pancreas(?![a-z])/
+/(?<![a-z])pancreatic(?![a-z])/
+/(?<![a-z])patients(?![a-z])/
+/(?<![a-z])pharmaceuticals?(?![a-z])/
+/(?<![a-z])pharmacological(?![a-z])/
+/(?<![a-z])pharmacology(?![a-z])/
+/(?<![a-z])psoriasis(?![a-z])/
+/(?<![a-z])renal(?![a-z])/
+/(?<![a-z])rheumatoid arthritis(?![a-z])/
+/(?<![a-z])sarcomas?(?![a-z])/
+/(?<![a-z])sickle cell anaemia(?![a-z])/
+/(?<![a-z])sickle cell anemia(?![a-z])/
+/(?<![a-z])surgeons?(?![a-z])/
+/(?<![a-z])surgery(?![a-z])/
+/(?<![a-z])surgical(?![a-z])/
+/(?<![a-z])syndromes?(?![a-z])/
+/(?<![a-z])systemic lupus erythematosus(?![a-z])/
+/(?<![a-z])therapeutic(?![a-z])/
+/(?<![a-z])therapies(?![a-z])/
+/(?<![a-z])therapy(?![a-z])/
+/(?<![a-z])tuberculosis(?![a-z])/
+/(?<![a-z])tumors?(?![a-z])/
+/(?<![a-z])tumours?(?![a-z])/
+/(?<![a-z])ulcerative colitis(?![a-z])/
+### 组学、遗传与分子机制
+氨基酸
+蛋白质
+基因编辑
+基因突变
+基因组
+染色体
+/(?<![a-z])acetylation(?![a-z])/
+/(?<![a-z])alternative splicing(?![a-z])/
+/(?<![a-z])amino acids?(?![a-z])/
+/(?<![a-z])cell signaling(?![a-z])/
+/(?<![a-z])cellular signaling(?![a-z])/
+/(?<![a-z])cellular signalling(?![a-z])/
+/(?<![a-z])chromatin(?![a-z])/
+/(?<![a-z])CRISPR(?![a-z])/
+/(?<![a-z])cytochrome P450(?![a-z])/
+/(?<![a-z])dephosphorylation(?![a-z])/
+/(?<![a-z])deubiquitination(?![a-z])/
+/(?<![a-z])DNA damage(?![a-z])/
+/(?<![a-z])DNA repair(?![a-z])/
+/(?<![a-z])DNA replication(?![a-z])/
+/(?<![a-z])DNA损伤/
+/(?<![a-z])enzymes?(?![a-z])/
+/(?<![a-z])epigenetics(?![a-z])/
+/(?<![a-z])gene editing(?![a-z])/
+/(?<![a-z])gene expression(?![a-z])/
+/(?<![a-z])gene mutations?(?![a-z])/
+/(?<![a-z])genes(?![a-z])/
+/(?<![a-z])genetic associations?(?![a-z])/
+/(?<![a-z])genetic polymorphisms?(?![a-z])/
+/(?<![a-z])genetic variants?(?![a-z])/
+/(?<![a-z])genetic variation(?![a-z])/
+/(?<![a-z])genetics(?![a-z])/
+/(?<![a-z])genomes?(?![a-z])/
+/(?<![a-z])genomic(?![a-z])/
+/(?<![a-z])genomics(?![a-z])/
+/(?<![a-z])genotypes?(?![a-z])/
+/(?<![a-z])genotyping(?![a-z])/
+/(?<![a-z])glutathione(?![a-z])/
+/(?<![a-z])glycosylation(?![a-z])/
+/(?<![a-z])GPCRs?(?![a-z])/
+/(?<![a-z])heat shock(?![a-z])/
+/(?<![a-z])heat\-shock(?![a-z])/
+/(?<![a-z])kinases?(?![a-z])/
+/(?<![a-z])ligand binding(?![a-z])/
+/(?<![a-z])ligand\-binding(?![a-z])/
+/(?<![a-z])lncRNAs?(?![a-z])/
+/(?<![a-z])metabolomics(?![a-z])/
+/(?<![a-z])methylation(?![a-z])/
+/(?<![a-z])microbiomes?(?![a-z])/
+/(?<![a-z])microRNAs?(?![a-z])/
+/(?<![a-z])miR(?![a-z])/
+/(?<![a-z])miRNAs?(?![a-z])/
+/(?<![a-z])mRNA(?![a-z])/
+/(?<![a-z])mTOR(?![a-z])/
+/(?<![a-z])mTORC1(?![a-z])/
+/(?<![a-z])mTORC2(?![a-z])/
+/(?<![a-z])non coding RNAs?(?![a-z])/
+/(?<![a-z])non\-coding RNAs?(?![a-z])/
+/(?<![a-z])noncoding RNAs?(?![a-z])/
+/(?<![a-z])nucleolar(?![a-z])/
+/(?<![a-z])nucleolus(?![a-z])/
+/(?<![a-z])nucleosomal(?![a-z])/
+/(?<![a-z])nucleosomes?(?![a-z])/
+/(?<![a-z])nucleotide polymorphisms?(?![a-z])/
+/(?<![a-z])oxidases?(?![a-z])/
+/(?<![a-z])oxidoreductases?(?![a-z])/
+/(?<![a-z])peptidases?(?![a-z])/
+/(?<![a-z])peptides?(?![a-z])/
+/(?<![a-z])phosphatases?(?![a-z])/
+/(?<![a-z])phosphorylation(?![a-z])/
+/(?<![a-z])proteases?(?![a-z])/
+/(?<![a-z])proteasomal(?![a-z])/
+/(?<![a-z])proteasomes?(?![a-z])/
+/(?<![a-z])proteins?(?![a-z])/
+/(?<![a-z])proteomes?(?![a-z])/
+/(?<![a-z])proteomics(?![a-z])/
+/(?<![a-z])reactive oxygen(?![a-z])/
+/(?<![a-z])receptors?(?![a-z])/
+/(?<![a-z])retinoic acid(?![a-z])/
+/(?<![a-z])ribosomal(?![a-z])/
+/(?<![a-z])ribosomes?(?![a-z])/
+/(?<![a-z])RNA binding(?![a-z])/
+/(?<![a-z])RNA editing(?![a-z])/
+/(?<![a-z])RNA interference(?![a-z])/
+/(?<![a-z])RNA polymerases?(?![a-z])/
+/(?<![a-z])RNA sequencing(?![a-z])/
+/(?<![a-z])RNA silencing(?![a-z])/
+/(?<![a-z])RNA splicing(?![a-z])/
+/(?<![a-z])RNA\-binding(?![a-z])/
+/(?<![a-z])RNA\-seq(?![a-z])/
+/(?<![a-z])RNA\-sequencing(?![a-z])/
+/(?<![a-z])satellite DNA(?![a-z])/
+/(?<![a-z])signal transduction(?![a-z])/
+/(?<![a-z])signaling pathways?(?![a-z])/
+/(?<![a-z])signalling pathways?(?![a-z])/
+/(?<![a-z])single cell(?![a-z])/
+/(?<![a-z])single\-cell(?![a-z])/
+/(?<![a-z])siRNAs?(?![a-z])/
+/(?<![a-z])telomerase(?![a-z])/
+/(?<![a-z])telomeres?(?![a-z])/
+/(?<![a-z])telomeric(?![a-z])/
+/(?<![a-z])transcription factors?(?![a-z])/
+/(?<![a-z])transcriptomes?(?![a-z])/
+/(?<![a-z])transcriptomics(?![a-z])/
+/(?<![a-z])ubiquitin ligases?(?![a-z])/
+/(?<![a-z])ubiquitination(?![a-z])/
+/(?<![a-z])ubiquitylation(?![a-z])/
+### 病原体与感染
+埃博拉
+肠道菌群
+肺炎
+新冠
+/(?<![a-z])Acinetobacter baumannii(?![a-z])/
+/(?<![a-z])adenoviral(?![a-z])/
+/(?<![a-z])adenovirus(?![a-z])/
+/(?<![a-z])adenoviruses(?![a-z])/
+/(?<![a-z])antiretroviral(?![a-z])/
+/(?<![a-z])Bacillus subtilis(?![a-z])/
+/(?<![a-z])bacteria(?![a-z])/
+/(?<![a-z])bacterial(?![a-z])/
+/(?<![a-z])bacterium(?![a-z])/
+/(?<![a-z])biofilms?(?![a-z])/
+/(?<![a-z])Borrelia burgdorferi(?![a-z])/
+/(?<![a-z])Campylobacter jejuni(?![a-z])/
+/(?<![a-z])Candida albicans(?![a-z])/
+/(?<![a-z])Candida auris(?![a-z])/
+/(?<![a-z])Chlamydia trachomatis(?![a-z])/
+/(?<![a-z])Clostridioides difficile(?![a-z])/
+/(?<![a-z])Clostridium difficile(?![a-z])/
+/(?<![a-z])coronavirus(?![a-z])/
+/(?<![a-z])coronaviruses(?![a-z])/
+/(?<![a-z])cytomegalovirus(?![a-z])/
+/(?<![a-z])dengue(?![a-z])/
+/(?<![a-z])dysbiosis(?![a-z])/
+/(?<![a-z])E\. coli(?![a-z])/
+/(?<![a-z])E\.coli(?![a-z])/
+/(?<![a-z])Ebola(?![a-z])/
+/(?<![a-z])Enterococcus faecalis(?![a-z])/
+/(?<![a-z])Enterococcus faecium(?![a-z])/
+/(?<![a-z])enterovirus(?![a-z])/
+/(?<![a-z])enteroviruses(?![a-z])/
+/(?<![a-z])Escherichia coli(?![a-z])/
+/(?<![a-z])HBV(?![a-z])/
+/(?<![a-z])HCV(?![a-z])/
+/(?<![a-z])Helicobacter pylori(?![a-z])/
+/(?<![a-z])hepatitis(?![a-z])/
+/(?<![a-z])herpes simplex(?![a-z])/
+/(?<![a-z])HPV(?![a-z])/
+/(?<![a-z])human immunodeficiency virus(?![a-z])/
+/(?<![a-z])human metapneumovirus(?![a-z])/
+/(?<![a-z])Klebsiella pneumoniae(?![a-z])/
+/(?<![a-z])Leishmania(?![a-z])/
+/(?<![a-z])Listeria monocytogenes(?![a-z])/
+/(?<![a-z])malaria(?![a-z])/
+/(?<![a-z])microbial(?![a-z])/
+/(?<![a-z])microbiota(?![a-z])/
+/(?<![a-z])microflora(?![a-z])/
+/(?<![a-z])norovirus(?![a-z])/
+/(?<![a-z])noroviruses(?![a-z])/
+/(?<![a-z])papillomavirus(?![a-z])/
+/(?<![a-z])papillomaviruses(?![a-z])/
+/(?<![a-z])pathogens?(?![a-z])/
+/(?<![a-z])pathogenic(?![a-z])/
+/(?<![a-z])Plasmodium falciparum(?![a-z])/
+/(?<![a-z])Plasmodium vivax(?![a-z])/
+/(?<![a-z])pneumonia(?![a-z])/
+/(?<![a-z])Pseudomonas aeruginosa(?![a-z])/
+/(?<![a-z])quorum sensing(?![a-z])/
+/(?<![a-z])rhinovirus(?![a-z])/
+/(?<![a-z])rhinoviruses(?![a-z])/
+/(?<![a-z])rotavirus(?![a-z])/
+/(?<![a-z])RSV(?![a-z])/
+/(?<![a-z])Salmonella(?![a-z])/
+/(?<![a-z])SARS CoV\-2(?![a-z])/
+/(?<![a-z])SARS\-CoV2(?![a-z])/
+/(?<![a-z])SARS\-CoV\-2(?![a-z])/
+/(?<![a-z])sepsis(?![a-z])/
+/(?<![a-z])Staphylococcus aureus(?![a-z])/
+/(?<![a-z])Streptococcus pneumoniae(?![a-z])/
+/(?<![a-z])Streptococcus pyogenes(?![a-z])/
+/(?<![a-z])Toxoplasma gondii(?![a-z])/
+/(?<![a-z])Trypanosoma(?![a-z])/
+/(?<![a-z])Vibrio cholerae(?![a-z])/
+/(?<![a-z])West Nile(?![a-z])/
+/(?<![a-z])Zika(?![a-z])/
+### 脑科学与神经精神
+阿尔茨海默
+痴呆
+癫痫
+猴脑
+渐冻症
+脑机接口
+脑细胞
+帕金森
+神经机制
+神经可塑性
+神经科学
+神经信号
+神经元
+心理健康
+/(?<![a-z])ADHD(?![a-z])/
+/(?<![a-z])Alzheimers?(?![a-z])/
+/(?<![a-z])amyotrophic lateral sclerosis(?![a-z])/
+/(?<![a-z])anxiety disorders?(?![a-z])/
+/(?<![a-z])attention deficit hyperactivity disorder(?![a-z])/
+/(?<![a-z])auditory cortex(?![a-z])/
+/(?<![a-z])autism(?![a-z])/
+/(?<![a-z])autistic(?![a-z])/
+/(?<![a-z])bipolar depression(?![a-z])/
+/(?<![a-z])bipolar disorders?(?![a-z])/
+/(?<![a-z])brains?(?![a-z])/
+/(?<![a-z])cerebellar(?![a-z])/
+/(?<![a-z])cerebellum(?![a-z])/
+/(?<![a-z])cerebral(?![a-z])/
+/(?<![a-z])cerebrospinal fluid(?![a-z])/
+/(?<![a-z])cerebrovascular(?![a-z])/
+/(?<![a-z])cognitive impairment(?![a-z])/
+/(?<![a-z])dementia(?![a-z])/
+/(?<![a-z])depressive(?![a-z])/
+/(?<![a-z])epilepsy(?![a-z])/
+/(?<![a-z])epileptic(?![a-z])/
+/(?<![a-z])gray matter(?![a-z])/
+/(?<![a-z])hippocampal(?![a-z])/
+/(?<![a-z])major depression(?![a-z])/
+/(?<![a-z])mental health(?![a-z])/
+/(?<![a-z])motor cortex(?![a-z])/
+/(?<![a-z])multiple sclerosis(?![a-z])/
+/(?<![a-z])neurodegenerative(?![a-z])/
+/(?<![a-z])neuroimaging(?![a-z])/
+/(?<![a-z])neurological(?![a-z])/
+/(?<![a-z])neurons?(?![a-z])/
+/(?<![a-z])neuronal(?![a-z])/
+/(?<![a-z])neuropathic pain(?![a-z])/
+/(?<![a-z])neuroscience(?![a-z])/
+/(?<![a-z])obsessive compulsive(?![a-z])/
+/(?<![a-z])obsessive\-compulsive(?![a-z])/
+/(?<![a-z])Parkinsons?(?![a-z])/
+/(?<![a-z])post traumatic stress(?![a-z])/
+/(?<![a-z])post\-traumatic stress(?![a-z])/
+/(?<![a-z])postpartum depression(?![a-z])/
+/(?<![a-z])prefrontal cortex(?![a-z])/
+/(?<![a-z])psychiatric(?![a-z])/
+/(?<![a-z])PTSD(?![a-z])/
+/(?<![a-z])schizophrenia(?![a-z])/
+/(?<![a-z])sleep deprivation(?![a-z])/
+/(?<![a-z])sleep disorders?(?![a-z])/
+/(?<![a-z])spinal cord(?![a-z])/
+/(?<![a-z])spinal muscular atrophy(?![a-z])/
+/(?<![a-z])stroke(?![a-z])/
+/(?<![a-z])synapses?(?![a-z])/
+/(?<![a-z])synaptic(?![a-z])/
+/(?<![a-z])thalamic(?![a-z])/
+/(?<![a-z])thalamus(?![a-z])/
+/(?<![a-z])visual cortex(?![a-z])/
+/(?<![a-z])white matter(?![a-z])/
+### 细胞、组织与免疫
+干细胞
+抗体
+免疫
+衰老
+线粒体
+疫苗
+/(?<![a-z])adaptive immunity(?![a-z])/
+/(?<![a-z])angiogenesis(?![a-z])/
+/(?<![a-z])antibodies(?![a-z])/
+/(?<![a-z])antibody(?![a-z])/
+/(?<![a-z])apoptosis(?![a-z])/
+/(?<![a-z])astrocytes?(?![a-z])/
+/(?<![a-z])autophagy(?![a-z])/
+/(?<![a-z])B cells?(?![a-z])/
+/(?<![a-z])B\-cells?(?![a-z])/
+/(?<![a-z])bone marrow(?![a-z])/
+/(?<![a-z])cell adhesion(?![a-z])/
+/(?<![a-z])cell cycles?(?![a-z])/
+/(?<![a-z])cell death(?![a-z])/
+/(?<![a-z])cell differentiation(?![a-z])/
+/(?<![a-z])cell migration(?![a-z])/
+/(?<![a-z])cell proliferation(?![a-z])/
+/(?<![a-z])cell walls?(?![a-z])/
+/(?<![a-z])cellular senescence(?![a-z])/
+/(?<![a-z])chemokines?(?![a-z])/
+/(?<![a-z])cytokines?(?![a-z])/
+/(?<![a-z])dendritic cells?(?![a-z])/
+/(?<![a-z])endocytosis(?![a-z])/
+/(?<![a-z])endoplasmic reticulum(?![a-z])/
+/(?<![a-z])endothelial cells?(?![a-z])/
+/(?<![a-z])epithelial cells?(?![a-z])/
+/(?<![a-z])epithelial tissues?(?![a-z])/
+/(?<![a-z])exocytosis(?![a-z])/
+/(?<![a-z])exosomes?(?![a-z])/
+/(?<![a-z])extracellular matrix(?![a-z])/
+/(?<![a-z])extracellular vesicles?(?![a-z])/
+/(?<![a-z])fibroblasts?(?![a-z])/
+/(?<![a-z])gap junctions?(?![a-z])/
+/(?<![a-z])glial cells?(?![a-z])/
+/(?<![a-z])Golgi(?![a-z])/
+/(?<![a-z])immune responses?(?![a-z])/
+/(?<![a-z])immune systems?(?![a-z])/
+/(?<![a-z])innate immunity(?![a-z])/
+/(?<![a-z])lymphocytes?(?![a-z])/
+/(?<![a-z])lysosomal(?![a-z])/
+/(?<![a-z])lysosomes?(?![a-z])/
+/(?<![a-z])macrophages?(?![a-z])/
+/(?<![a-z])membrane trafficking(?![a-z])/
+/(?<![a-z])mesenchymal cells?(?![a-z])/
+/(?<![a-z])mesenchymal stromal cells?(?![a-z])/
+/(?<![a-z])microglia(?![a-z])/
+/(?<![a-z])mitochondria(?![a-z])/
+/(?<![a-z])mitochondrial(?![a-z])/
+/(?<![a-z])mitochondrion(?![a-z])/
+/(?<![a-z])monocytes?(?![a-z])/
+/(?<![a-z])myofibroblasts?(?![a-z])/
+/(?<![a-z])natural killer cells?(?![a-z])/
+/(?<![a-z])neutrophils?(?![a-z])/
+/(?<![a-z])NK cells?(?![a-z])/
+/(?<![a-z])organoids?(?![a-z])/
+/(?<![a-z])oxidative stress(?![a-z])/
+/(?<![a-z])plasma membranes?(?![a-z])/
+/(?<![a-z])progenitor cells?(?![a-z])/
+/(?<![a-z])satellite cells?(?![a-z])/
+/(?<![a-z])stem cells?(?![a-z])/
+/(?<![a-z])T cells?(?![a-z])/
+/(?<![a-z])T\-cells?(?![a-z])/
+/(?<![a-z])tight junctions?(?![a-z])/
+/(?<![a-z])tissue engineering(?![a-z])/
+/(?<![a-z])tissue regeneration(?![a-z])/
+/(?<![a-z])tissue repair(?![a-z])/
+/(?<![a-z])vaccinations?(?![a-z])/
+/(?<![a-z])vaccines?(?![a-z])/
+/(?<![a-z])wound healing(?![a-z])/
+### 营养、代谢与心血管
+代谢
+高血压
+人工心脏
+糖尿病
+血糖
+猪心移植
+/(?<![a-z])adipose tissues?(?![a-z])/
+/(?<![a-z])arrhythmias?(?![a-z])/
+/(?<![a-z])arterial(?![a-z])/
+/(?<![a-z])atherosclerosis(?![a-z])/
+/(?<![a-z])atherosclerotic(?![a-z])/
+/(?<![a-z])atrial fibrillation(?![a-z])/
+/(?<![a-z])baroreflex(?![a-z])/
+/(?<![a-z])blood flow(?![a-z])/
+/(?<![a-z])blood pressure(?![a-z])/
+/(?<![a-z])body composition(?![a-z])/
+/(?<![a-z])body mass index(?![a-z])/
+/(?<![a-z])body weight(?![a-z])/
+/(?<![a-z])cardiac(?![a-z])/
+/(?<![a-z])cardiomyopathy(?![a-z])/
+/(?<![a-z])cardiovascular(?![a-z])/
+/(?<![a-z])diabetes(?![a-z])/
+/(?<![a-z])dietary(?![a-z])/
+/(?<![a-z])fatty acids?(?![a-z])/
+/(?<![a-z])heart failure(?![a-z])/
+/(?<![a-z])heart rates?(?![a-z])/
+/(?<![a-z])hypertension(?![a-z])/
+/(?<![a-z])insulin(?![a-z])/
+/(?<![a-z])lipids?(?![a-z])/
+/(?<![a-z])malnutrition(?![a-z])/
+/(?<![a-z])metabolic(?![a-z])/
+/(?<![a-z])metabolism(?![a-z])/
+/(?<![a-z])myocardial infarction(?![a-z])/
+/(?<![a-z])myocarditis(?![a-z])/
+/(?<![a-z])NAFLD(?![a-z])/
+/(?<![a-z])non alcoholic steatohepatitis(?![a-z])/
+/(?<![a-z])non\-alcoholic steatohepatitis(?![a-z])/
+/(?<![a-z])nutrition(?![a-z])/
+/(?<![a-z])nutritional(?![a-z])/
+/(?<![a-z])obese(?![a-z])/
+/(?<![a-z])obesity(?![a-z])/
+/(?<![a-z])smooth muscle(?![a-z])/
+/(?<![a-z])vascular function(?![a-z])/
+### 实验、检测与模式生物
+磁共振
+/(?<![a-z])agarose gel(?![a-z])/
+/(?<![a-z])amplicon sequencing(?![a-z])/
+/(?<![a-z])animal models of(?![a-z])/
+/(?<![a-z])Bombyx mori(?![a-z])/
+/(?<![a-z])budding yeast(?![a-z])/
+/(?<![a-z])C\. elegans(?![a-z])/
+/(?<![a-z])Caenorhabditis(?![a-z])/
+/(?<![a-z])capillary electrophoresis(?![a-z])/
+/(?<![a-z])computed tomography(?![a-z])/
+/(?<![a-z])CT imaging(?![a-z])/
+/(?<![a-z])CT scans?(?![a-z])/
+/(?<![a-z])CT scanner(?![a-z])/
+/(?<![a-z])CT 扫描/
+/(?<![a-z])Danio rerio(?![a-z])/
+/(?<![a-z])Drosophila(?![a-z])/
+/(?<![a-z])EEG(?![a-z])/
+/(?<![a-z])electroencephalography(?![a-z])/
+/(?<![a-z])ex vivo(?![a-z])/
+/(?<![a-z])exome sequencing(?![a-z])/
+/(?<![a-z])fission yeast(?![a-z])/
+/(?<![a-z])flow cytometric(?![a-z])/
+/(?<![a-z])flow cytometry(?![a-z])/
+/(?<![a-z])fMRI(?![a-z])/
+/(?<![a-z])fruit flies(?![a-z])/
+/(?<![a-z])Galleria mellonella(?![a-z])/
+/(?<![a-z])gel electrophoresis(?![a-z])/
+/(?<![a-z])Gryllus bimaculatus(?![a-z])/
+/(?<![a-z])high throughput sequencing(?![a-z])/
+/(?<![a-z])high\-throughput sequencing(?![a-z])/
+/(?<![a-z])immunoassays?(?![a-z])/
+/(?<![a-z])immunoblots?(?![a-z])/
+/(?<![a-z])immunoblotting(?![a-z])/
+/(?<![a-z])immunofluorescence(?![a-z])/
+/(?<![a-z])immunohistochemical(?![a-z])/
+/(?<![a-z])immunohistochemistry(?![a-z])/
+/(?<![a-z])in vitro(?![a-z])/
+/(?<![a-z])in vivo(?![a-z])/
+/(?<![a-z])laboratory animals?(?![a-z])/
+/(?<![a-z])lateral flow assays?(?![a-z])/
+/(?<![a-z])magnetic resonance imaging(?![a-z])/
+/(?<![a-z])molecular diagnostics(?![a-z])/
+/(?<![a-z])mouse model(?![a-z])/
+/(?<![a-z])MRI(?![a-z])/
+/(?<![a-z])murine models?(?![a-z])/
+/(?<![a-z])nanopore sequencing(?![a-z])/
+/(?<![a-z])next generation sequencing(?![a-z])/
+/(?<![a-z])next\-generation sequencing(?![a-z])/
+/(?<![a-z])optical coherence tomography(?![a-z])/
+/(?<![a-z])PCR(?![a-z])/
+/(?<![a-z])polymerase chain reaction(?![a-z])/
+/(?<![a-z])qPCR(?![a-z])/
+/(?<![a-z])Saccharomyces cerevisiae(?![a-z])/
+/(?<![a-z])Schizosaccharomyces pombe(?![a-z])/
+/(?<![a-z])tardigrades?(?![a-z])/
+/(?<![a-z])targeted sequencing(?![a-z])/
+/(?<![a-z])Tribolium castaneum(?![a-z])/
+/(?<![a-z])western blots?(?![a-z])/
+/(?<![a-z])western blotting(?![a-z])/
+/(?<![a-z])Xenopus(?![a-z])/
+/(?<![a-z])zebrafish(?![a-z])/
+### 呼吸系统与肺功能
+/(?<![a-z])asthma(?![a-z])/
+/(?<![a-z])bronchiectasis(?![a-z])/
+/(?<![a-z])COPD(?![a-z])/
+/(?<![a-z])cystic fibrosis(?![a-z])/
+/(?<![a-z])emphysema(?![a-z])/
+/(?<![a-z])lungs?(?![a-z])/
+/(?<![a-z])pneumothorax(?![a-z])/
+/(?<![a-z])pulmonary(?![a-z])/
+/(?<![a-z])respiratory(?![a-z])/
+/(?<![a-z])sleep apnea(?![a-z])/
+/(?<![a-z])sleep apnoea(?![a-z])/
+/(?<![a-z])spirometry(?![a-z])/
+## 医疗服务与专科健康
+### 医疗服务与卫生管理
+急诊科
+医疗
+/(?<![a-z])elderly care(?![a-z])/
+/(?<![a-z])electronic health records?(?![a-z])/
+/(?<![a-z])emergency departments?(?![a-z])/
+/(?<![a-z])emergency medicine(?![a-z])/
+/(?<![a-z])epidemiological(?![a-z])/
+/(?<![a-z])epidemiology(?![a-z])/
+/(?<![a-z])health care(?![a-z])/
+/(?<![a-z])health services?(?![a-z])/
+/(?<![a-z])healthcare(?![a-z])/
+/(?<![a-z])hospice(?![a-z])/
+/(?<![a-z])hospital admissions?(?![a-z])/
+/(?<![a-z])hospital care(?![a-z])/
+/(?<![a-z])hospital discharge(?![a-z])/
+/(?<![a-z])hospital readmissions?(?![a-z])/
+/(?<![a-z])hospital stays?(?![a-z])/
+/(?<![a-z])hospitalisations?(?![a-z])/
+/(?<![a-z])hospitalised(?![a-z])/
+/(?<![a-z])hospitalizations?(?![a-z])/
+/(?<![a-z])hospitalized(?![a-z])/
+/(?<![a-z])hospitals(?![a-z])/
+/(?<![a-z])intensive care(?![a-z])/
+/(?<![a-z])long term care(?![a-z])/
+/(?<![a-z])long\-term care(?![a-z])/
+/(?<![a-z])nurses?(?![a-z])/
+/(?<![a-z])nursing(?![a-z])/
+/(?<![a-z])palliative care(?![a-z])/
+/(?<![a-z])patient safety(?![a-z])/
+/(?<![a-z])primary care(?![a-z])/
+/(?<![a-z])public health(?![a-z])/
+/(?<![a-z])telehealth(?![a-z])/
+### 眼科、口腔与耳科
+耳鸣
+听力障碍
+/(?<![a-z])amblyopia(?![a-z])/
+/(?<![a-z])cataracts?(?![a-z])/
+/(?<![a-z])cochlear implants?(?![a-z])/
+/(?<![a-z])corneal transplantation(?![a-z])/
+/(?<![a-z])deafness(?![a-z])/
+/(?<![a-z])dental caries(?![a-z])/
+/(?<![a-z])dental implants?(?![a-z])/
+/(?<![a-z])dentistry(?![a-z])/
+/(?<![a-z])dry eye(?![a-z])/
+/(?<![a-z])gingivitis(?![a-z])/
+/(?<![a-z])glaucoma(?![a-z])/
+/(?<![a-z])hearing impairment(?![a-z])/
+/(?<![a-z])hearing loss(?![a-z])/
+/(?<![a-z])intraocular lenses?(?![a-z])/
+/(?<![a-z])keratoconus(?![a-z])/
+/(?<![a-z])macular degeneration(?![a-z])/
+/(?<![a-z])ophthalmic(?![a-z])/
+/(?<![a-z])ophthalmology(?![a-z])/
+/(?<![a-z])optometry(?![a-z])/
+/(?<![a-z])oral health(?![a-z])/
+/(?<![a-z])oral hygiene(?![a-z])/
+/(?<![a-z])orthodontics(?![a-z])/
+/(?<![a-z])orthokeratology(?![a-z])/
+/(?<![a-z])otitis media(?![a-z])/
+/(?<![a-z])periodontal(?![a-z])/
+/(?<![a-z])periodontitis(?![a-z])/
+/(?<![a-z])refractive errors?(?![a-z])/
+/(?<![a-z])retinal(?![a-z])/
+/(?<![a-z])retinitis(?![a-z])/
+/(?<![a-z])retinopathy(?![a-z])/
+/(?<![a-z])tinnitus(?![a-z])/
+### 妇幼与生殖健康
+绝经
+胚胎
+/(?<![a-z])antenatal(?![a-z])/
+/(?<![a-z])assisted reproduction(?![a-z])/
+/(?<![a-z])breast feeding(?![a-z])/
+/(?<![a-z])breast milk(?![a-z])/
+/(?<![a-z])breast\-feeding(?![a-z])/
+/(?<![a-z])breastfeeding(?![a-z])/
+/(?<![a-z])developmental programming(?![a-z])/
+/(?<![a-z])endometriosis(?![a-z])/
+/(?<![a-z])fetal programming(?![a-z])/
+/(?<![a-z])infertility(?![a-z])/
+/(?<![a-z])maternal health(?![a-z])/
+/(?<![a-z])maternal mortality(?![a-z])/
+/(?<![a-z])menopausal(?![a-z])/
+/(?<![a-z])menopause(?![a-z])/
+/(?<![a-z])neonatal(?![a-z])/
+/(?<![a-z])neonates?(?![a-z])/
+/(?<![a-z])obstetrics?(?![a-z])/
+/(?<![a-z])pre\-eclampsia(?![a-z])/
+/(?<![a-z])preeclampsia(?![a-z])/
+/(?<![a-z])pregnancies(?![a-z])/
+/(?<![a-z])pregnancy(?![a-z])/
+/(?<![a-z])pregnant women(?![a-z])/
+/(?<![a-z])prenatal(?![a-z])/
+/(?<![a-z])preterm births?(?![a-z])/
+/(?<![a-z])preterm infants?(?![a-z])/
+### 运动、骨骼与康复
+身体活动
+腰痛
+/(?<![a-z])aerobic exercise(?![a-z])/
+/(?<![a-z])anterior cruciate ligament(?![a-z])/
+/(?<![a-z])bone fractures?(?![a-z])/
+/(?<![a-z])cartilage(?![a-z])/
+/(?<![a-z])Duchenne(?![a-z])/
+/(?<![a-z])exercise training(?![a-z])/
+/(?<![a-z])frailty in older(?![a-z])/
+/(?<![a-z])hip fractures?(?![a-z])/
+/(?<![a-z])intervertebral discs?(?![a-z])/
+/(?<![a-z])low back pain(?![a-z])/
+/(?<![a-z])low\-back pain(?![a-z])/
+/(?<![a-z])lower back pain(?![a-z])/
+/(?<![a-z])muscular dystrophy(?![a-z])/
+/(?<![a-z])musculoskeletal(?![a-z])/
+/(?<![a-z])orthopaedic(?![a-z])/
+/(?<![a-z])orthopedic(?![a-z])/
+/(?<![a-z])osteoarthritis(?![a-z])/
+/(?<![a-z])osteoporosis(?![a-z])/
+/(?<![a-z])physical activities(?![a-z])/
+/(?<![a-z])physical activity(?![a-z])/
+/(?<![a-z])physical therapists?(?![a-z])/
+/(?<![a-z])physiotherapy(?![a-z])/
+/(?<![a-z])rehabilitation(?![a-z])/
+/(?<![a-z])resistance training(?![a-z])/
+/(?<![a-z])sarcopenia(?![a-z])/
+/(?<![a-z])skeletal muscle(?![a-z])/
+/(?<![a-z])strength training(?![a-z])/
+/(?<![a-z])tendinopathy(?![a-z])/
+
+[心理学与社会行为]
+## 心理过程与社会互动
+### 认知、行为与社会心理
+工作记忆
+人机交互
+认知偏差
+社会认知
+心理学
+/(?<![a-z])attentional bias(?![a-z])/
+/(?<![a-z])behavioral economics(?![a-z])/
+/(?<![a-z])behavioural economics(?![a-z])/
+/(?<![a-z])cognitive abilities(?![a-z])/
+/(?<![a-z])cognitive ability(?![a-z])/
+/(?<![a-z])cognitive biases(?![a-z])/
+/(?<![a-z])cognitive control(?![a-z])/
+/(?<![a-z])cognitive decline(?![a-z])/
+/(?<![a-z])cognitive development(?![a-z])/
+/(?<![a-z])cognitive flexibility(?![a-z])/
+/(?<![a-z])cognitive functions?(?![a-z])/
+/(?<![a-z])cognitive load(?![a-z])/
+/(?<![a-z])cognitive performance(?![a-z])/
+/(?<![a-z])cognitive science(?![a-z])/
+/(?<![a-z])emotion regulation(?![a-z])/
+/(?<![a-z])emotional regulation(?![a-z])/
+/(?<![a-z])executive functions?(?![a-z])/
+/(?<![a-z])human computer interaction(?![a-z])/
+/(?<![a-z])human factors(?![a-z])/
+/(?<![a-z])human\-computer interaction(?![a-z])/
+/(?<![a-z])implicit bias(?![a-z])/
+/(?<![a-z])mental rotation(?![a-z])/
+/(?<![a-z])personality traits?(?![a-z])/
+/(?<![a-z])prosocial behavior(?![a-z])/
+/(?<![a-z])prosocial behaviour(?![a-z])/
+/(?<![a-z])psychological(?![a-z])/
+/(?<![a-z])psychology(?![a-z])/
+/(?<![a-z])psychometrics?(?![a-z])/
+/(?<![a-z])psychotherapy(?![a-z])/
+/(?<![a-z])risk perception(?![a-z])/
+/(?<![a-z])self\-efficacy(?![a-z])/
+/(?<![a-z])self\-esteem(?![a-z])/
+/(?<![a-z])social cognition(?![a-z])/
+/(?<![a-z])social norms?(?![a-z])/
+/(?<![a-z])social support(?![a-z])/
+/(?<![a-z])social trust(?![a-z])/
+/(?<![a-z])subjective well\-being(?![a-z])/
+/(?<![a-z])theory of mind(?![a-z])/
+/(?<![a-z])visual attention(?![a-z])/
+/(?<![a-z])working memory(?![a-z])/
+
+[卫星导航与地理信息]
+## 空间定位与地理数据
+### 导航、遥感与地理信息
+北斗导航
+车道级导航
+高德地图
+卫星导航
+/(?<![a-z])ArcGIS(?![a-z])/
+/(?<![a-z])BeiDou(?![a-z])/
+/(?<![a-z])CartoDB(?![a-z])/
+/(?<![a-z])digital mapping(?![a-z])/
+/(?<![a-z])geofencing(?![a-z])/
+/(?<![a-z])geographic information systems?(?![a-z])/
+/(?<![a-z])geolocation(?![a-z])/
+/(?<![a-z])geospatial(?![a-z])/
+/(?<![a-z])GIS(?![a-z])/
+/(?<![a-z])GNSS(?![a-z])/
+/(?<![a-z])GPS(?![a-z])/
+/(?<![a-z])Mapbox(?![a-z])/
+/(?<![a-z])OpenLayers(?![a-z])/
+/(?<![a-z])OpenStreetMap(?![a-z])/
+/(?<![a-z])QGIS(?![a-z])/
+/(?<![a-z])satellite imagery(?![a-z])/
+/(?<![a-z])satellite navigation(?![a-z])/
+/(?<![a-z])satnav(?![a-z])/
+
+[航天与天文]
+## 空间探索与天文研究
+### 航天任务、天体与空间机构
+暗物质
+嫦娥
+地磁暴
+航天
+黑洞
+彗星
+火箭发射
+火箭回收
+火星
+金星探测
+空间望远镜
+空间站
+流星雨
+美国宇航局
+欧空局
+甚大望远镜
+水星探测
+太空
+太阳系
+天宫
+天文
+韦布望远镜
+卫星
+小行星
+星舰
+星链
+引力波
+月球
+月掩木星
+宇航员
+运载火箭
+宇宙
+载人飞船
+中国天眼
+/(?<![a-z])Artemis(?![a-z])/
+/(?<![a-z])asteroids?(?![a-z])/
+/(?<![a-z])astronauts?(?![a-z])/
+/(?<![a-z])astronomy(?![a-z])/
+/(?<![a-z])BepiColombo(?![a-z])/
+/(?<![a-z])black holes?(?![a-z])/
+/(?<![a-z])Blue Origin(?![a-z])/
+/(?<![a-z])Cassini(?![a-z])/
+/(?<![a-z])comet 67P(?![a-z])/
+/(?<![a-z])comet orbit(?![a-z])/
+/(?<![a-z])comet tail(?![a-z])/
+/(?<![a-z])cosmology(?![a-z])/
+/(?<![a-z])cosmonauts?(?![a-z])/
+/(?<![a-z])crewed missions?(?![a-z])/
+/(?<![a-z])dark energy(?![a-z])/
+/(?<![a-z])dark matter(?![a-z])/
+/(?<![a-z])Enceladus(?![a-z])/
+/(?<![a-z])Europa Clipper(?![a-z])/
+/(?<![a-z])European Space Agency(?![a-z])/
+/(?<![a-z])exoplanets?(?![a-z])/
+/(?<![a-z])galactic(?![a-z])/
+/(?<![a-z])gravitational waves?(?![a-z])/
+/(?<![a-z])Hayabusa 2(?![a-z])/
+/(?<![a-z])Hubble(?![a-z])/
+/(?<![a-z])human spaceflight(?![a-z])/
+/(?<![a-z])ISRO(?![a-z])/
+/(?<![a-z])James Webb(?![a-z])/
+/(?<![a-z])JAXA(?![a-z])/
+/(?<![a-z])Jupiter's moon(?![a-z])/
+/(?<![a-z])Jupiter’s atmosphere(?![a-z])/
+/(?<![a-z])Jupiter’s moons?(?![a-z])/
+/(?<![a-z])JWST(?![a-z])/
+/(?<![a-z])launch vehicles?(?![a-z])/
+/(?<![a-z])lunar(?![a-z])/
+/(?<![a-z])Mars(?![a-z])/
+/(?<![a-z])Martian(?![a-z])/
+/(?<![a-z])Milky Way(?![a-z])/
+/(?<![a-z])NASA(?![a-z])/
+/(?<![a-z])orbital launch(?![a-z])/
+/(?<![a-z])planetary science(?![a-z])/
+/(?<![a-z])reusable rockets?(?![a-z])/
+/(?<![a-z])rocket engines?(?![a-z])/
+/(?<![a-z])Rocket Lab(?![a-z])/
+/(?<![a-z])rocket launch(?![a-z])/
+/(?<![a-z])rocket launches(?![a-z])/
+/(?<![a-z])satellite communication(?![a-z])/
+/(?<![a-z])satellite constellation(?![a-z])/
+/(?<![a-z])satellite internet(?![a-z])/
+/(?<![a-z])satellite launch(?![a-z])/
+/(?<![a-z])Shenzhou(?![a-z])/
+/(?<![a-z])solar system(?![a-z])/
+/(?<![a-z])space shuttles?(?![a-z])/
+/(?<![a-z])space stations?(?![a-z])/
+/(?<![a-z])space suits?(?![a-z])/
+/(?<![a-z])spacecraft(?![a-z])/
+/(?<![a-z])spacesuits?(?![a-z])/
+/(?<![a-z])spacewalks?(?![a-z])/
+/(?<![a-z])SpaceX(?![a-z])/
+/(?<![a-z])Starlink(?![a-z])/
+/(?<![a-z])Starship flight(?![a-z])/
+/(?<![a-z])Starship launch(?![a-z])/
+/(?<![a-z])Titan lakes?(?![a-z])/
+/(?<![a-z])Venus missions?(?![a-z])/
+### 恒星、太阳活动与天文观测
+白矮星
+超新星
+日冕
+日全食
+太阳风
+星系
+星云
+/(?<![a-z])astrophysical(?![a-z])/
+/(?<![a-z])astrophysics(?![a-z])/
+/(?<![a-z])Betelgeuse(?![a-z])/
+/(?<![a-z])brown dwarfs?(?![a-z])/
+/(?<![a-z])coronal mass ejection(?![a-z])/
+/(?<![a-z])cosmic rays?(?![a-z])/
+/(?<![a-z])cosmological(?![a-z])/
+/(?<![a-z])Crab Nebula(?![a-z])/
+/(?<![a-z])dwarf galaxy(?![a-z])/
+/(?<![a-z])galaxies(?![a-z])/
+/(?<![a-z])galaxy clusters?(?![a-z])/
+/(?<![a-z])gravitational lensing(?![a-z])/
+/(?<![a-z])interstellar comet(?![a-z])/
+/(?<![a-z])interstellar dust(?![a-z])/
+/(?<![a-z])interstellar space(?![a-z])/
+/(?<![a-z])neutron stars?(?![a-z])/
+/(?<![a-z])Orion Nebula(?![a-z])/
+/(?<![a-z])Oumuamua(?![a-z])/
+/(?<![a-z])Proxima Centauri(?![a-z])/
+/(?<![a-z])radio telescopes?(?![a-z])/
+/(?<![a-z])solar flares?(?![a-z])/
+/(?<![a-z])solar storms?(?![a-z])/
+/(?<![a-z])solar wind(?![a-z])/
+/(?<![a-z])spiral galaxy(?![a-z])/
+/(?<![a-z])TRAPPIST\-1(?![a-z])/
+/(?<![a-z])white dwarfs?(?![a-z])/
+
+[光学与光子技术]
+## 光学原理与工程应用
+### 成像、激光与光子器件
+光电传感
+激光电视
+激光镊子
+/(?<![a-z])fluorescence(?![a-z])/
+/(?<![a-z])fluorescent(?![a-z])/
+/(?<![a-z])interferometric(?![a-z])/
+/(?<![a-z])interferometry(?![a-z])/
+/(?<![a-z])lasers?(?![a-z])/
+/(?<![a-z])optical fibers?(?![a-z])/
+/(?<![a-z])optical imaging(?![a-z])/
+/(?<![a-z])photodetectors?(?![a-z])/
+/(?<![a-z])photoluminescence(?![a-z])/
+/(?<![a-z])photonic(?![a-z])/
+/(?<![a-z])photonics(?![a-z])/
+
+[量子计算与基础物理]
+## 物理理论与量子技术
+### 量子技术、相对论与粒子物理
+超导
+广义相对论
+量子比特
+量子计算
+量子纠缠
+量子力学
+量子通信
+量子优越性
+粒子物理
+麦克斯韦方程
+凝聚态物理
+/(?<![a-z])Bose\-Einstein(?![a-z])/
+/(?<![a-z])CERN(?![a-z])/
+/(?<![a-z])Higgs(?![a-z])/
+/(?<![a-z])Large Hadron Collider(?![a-z])/
+/(?<![a-z])particle physics(?![a-z])/
+/(?<![a-z])quantum(?![a-z])/
+/(?<![a-z])qubits?(?![a-z])/
+/(?<![a-z])spintronics(?![a-z])/
+/(?<![a-z])superconducting(?![a-z])/
+/(?<![a-z])superconductivity(?![a-z])/
+/(?<![a-z])topological insulator(?![a-z])/
+μ子
+
+[材料科学与化学]
+## 材料与化学研究
+### 分析方法、材料模拟与微纳结构
+超疏水
+柔性电子
+/(?<![a-z])aerogels?(?![a-z])/
+/(?<![a-z])atomic force microscopy(?![a-z])/
+/(?<![a-z])chromatographic(?![a-z])/
+/(?<![a-z])chromatography(?![a-z])/
+/(?<![a-z])colloids?(?![a-z])/
+/(?<![a-z])colloidal(?![a-z])/
+/(?<![a-z])conductive polymer(?![a-z])/
+/(?<![a-z])cryo\-electron tomography(?![a-z])/
+/(?<![a-z])cryo\-EM(?![a-z])/
+/(?<![a-z])cryoEM(?![a-z])/
+/(?<![a-z])crystal structures?(?![a-z])/
+/(?<![a-z])crystallographic(?![a-z])/
+/(?<![a-z])crystallography(?![a-z])/
+/(?<![a-z])cyclic voltammetry(?![a-z])/
+/(?<![a-z])differential scanning calorimetry(?![a-z])/
+/(?<![a-z])electrochemical analysis(?![a-z])/
+/(?<![a-z])electron microscopy(?![a-z])/
+/(?<![a-z])electrospinning(?![a-z])/
+/(?<![a-z])electrospun(?![a-z])/
+/(?<![a-z])flexible electronics(?![a-z])/
+/(?<![a-z])Fourier transform infrared(?![a-z])/
+/(?<![a-z])FT\-IR(?![a-z])/
+/(?<![a-z])FTIR(?![a-z])/
+/(?<![a-z])HPLC(?![a-z])/
+/(?<![a-z])isothermal titration calorimetry(?![a-z])/
+/(?<![a-z])mass spectrometric(?![a-z])/
+/(?<![a-z])mass spectrometry(?![a-z])/
+/(?<![a-z])mechanical properties(?![a-z])/
+/(?<![a-z])microfluidics?(?![a-z])/
+/(?<![a-z])molecular docking(?![a-z])/
+/(?<![a-z])molecular dynamics(?![a-z])/
+/(?<![a-z])molecular simulations?(?![a-z])/
+/(?<![a-z])nanofibers?(?![a-z])/
+/(?<![a-z])nanofibres?(?![a-z])/
+/(?<![a-z])NMR analysis(?![a-z])/
+/(?<![a-z])NMR spectra(?![a-z])/
+/(?<![a-z])nuclear magnetic resonance(?![a-z])/
+/(?<![a-z])Raman scattering(?![a-z])/
+/(?<![a-z])scanning electron(?![a-z])/
+/(?<![a-z])self assembly(?![a-z])/
+/(?<![a-z])self\-assembled(?![a-z])/
+/(?<![a-z])self\-assembly(?![a-z])/
+/(?<![a-z])spectroscopic(?![a-z])/
+/(?<![a-z])spectroscopy(?![a-z])/
+/(?<![a-z])superhydrophobic(?![a-z])/
+/(?<![a-z])surface plasmon resonance(?![a-z])/
+/(?<![a-z])transmission electron(?![a-z])/
+/(?<![a-z])X\-ray diffraction(?![a-z])/
+### 材料、化学与催化
+钙钛矿
+光催化
+纳米材料
+石墨烯
+/(?<![a-z])biodegradable polymers?(?![a-z])/
+/(?<![a-z])carbon nanotubes?(?![a-z])/
+/(?<![a-z])electrocatalytic(?![a-z])/
+/(?<![a-z])graphene(?![a-z])/
+/(?<![a-z])hydrogels?(?![a-z])/
+/(?<![a-z])materials science(?![a-z])/
+/(?<![a-z])metal organic frameworks?(?![a-z])/
+/(?<![a-z])nanomaterials?(?![a-z])/
+/(?<![a-z])nanoparticles?(?![a-z])/
+/(?<![a-z])perovskites?(?![a-z])/
+/(?<![a-z])photocatalysis(?![a-z])/
+/(?<![a-z])photocatalytic(?![a-z])/
+/(?<![a-z])polymer composites?(?![a-z])/
+/(?<![a-z])shape memory alloy(?![a-z])/
+/(?<![a-z])shape\-memory alloy(?![a-z])/
+
+[气候与能源]
+## 气候变化与能源系统
+### 气候事件、碳排放与储能
+固态电池
+核电
+核聚变
+锂电池
+全球变暖
+燃料电池
+山火
+碳排放
+/(?<![a-z])battery storage(?![a-z])/
+/(?<![a-z])carbon emissions?(?![a-z])/
+/(?<![a-z])clean energy(?![a-z])/
+/(?<![a-z])climate change(?![a-z])/
+/(?<![a-z])climate crisis(?![a-z])/
+/(?<![a-z])droughts?(?![a-z])/
+/(?<![a-z])energy storage(?![a-z])/
+/(?<![a-z])fuel cells?(?![a-z])/
+/(?<![a-z])global warming(?![a-z])/
+/(?<![a-z])greenhouse gas(?![a-z])/
+/(?<![a-z])greenhouse gases(?![a-z])/
+/(?<![a-z])heatwaves?(?![a-z])/
+/(?<![a-z])lithium ion(?![a-z])/
+/(?<![a-z])lithium\-ion(?![a-z])/
+/(?<![a-z])nuclear fusion(?![a-z])/
+/(?<![a-z])nuclear power(?![a-z])/
+/(?<![a-z])nuclear reactors?(?![a-z])/
+/(?<![a-z])renewable energy(?![a-z])/
+/(?<![a-z])sodium\-ion batteries(?![a-z])/
+/(?<![a-z])solar energy(?![a-z])/
+/(?<![a-z])solar power(?![a-z])/
+/(?<![a-z])solid state batteries(?![a-z])/
+/(?<![a-z])solid state battery(?![a-z])/
+/(?<![a-z])solid\-state batteries(?![a-z])/
+/(?<![a-z])solid\-state battery(?![a-z])/
+/(?<![a-z])wildfires?(?![a-z])/
+/(?<![a-z])wind power(?![a-z])/
+### 能源供应、电网与发电技术
+电池材料
+电网
+动力电池
+发电实验
+发电站
+风电场
+风电设施
+硅基电池
+输电
+太阳能电池
+太阳能发电
+天然气
+/(?<![a-z])carbon capture(?![a-z])/
+/(?<![a-z])carbon markets?(?![a-z])/
+/(?<![a-z])carbon sequestration(?![a-z])/
+/(?<![a-z])carbon trading(?![a-z])/
+/(?<![a-z])crude oil(?![a-z])/
+/(?<![a-z])electric grids?(?![a-z])/
+/(?<![a-z])electrical grids?(?![a-z])/
+/(?<![a-z])electricity generation(?![a-z])/
+/(?<![a-z])electricity grids?(?![a-z])/
+/(?<![a-z])emissions trading(?![a-z])/
+/(?<![a-z])geothermal(?![a-z])/
+/(?<![a-z])green hydrogen(?![a-z])/
+/(?<![a-z])grid stability(?![a-z])/
+/(?<![a-z])hydroelectric(?![a-z])/
+/(?<![a-z])hydrogen fuel(?![a-z])/
+/(?<![a-z])hydropower(?![a-z])/
+/(?<![a-z])natural gas(?![a-z])/
+/(?<![a-z])OPEC(?![a-z])/
+/(?<![a-z])photovoltaics?(?![a-z])/
+/(?<![a-z])power generation(?![a-z])/
+/(?<![a-z])power grids?(?![a-z])/
+/(?<![a-z])smart grids?(?![a-z])/
+/(?<![a-z])smart meters?(?![a-z])/
+/(?<![a-z])solar cells?(?![a-z])/
+/(?<![a-z])solar panels?(?![a-z])/
+/(?<![a-z])wind farms?(?![a-z])/
+/(?<![a-z])wind turbines?(?![a-z])/
+
+[生态与地球科学]
+## 生态系统与环境研究
+### 物种、生态系统与群落
+地震
+生物多样性
+微塑料
+/(?<![a-z])Acer negundo(?![a-z])/
+/(?<![a-z])Acer palmatum(?![a-z])/
+/(?<![a-z])Acer rubrum(?![a-z])/
+/(?<![a-z])Acer saccharum(?![a-z])/
+/(?<![a-z])adaptive evolution(?![a-z])/
+/(?<![a-z])Aedes aegypti(?![a-z])/
+/(?<![a-z])Aedes albopictus(?![a-z])/
+/(?<![a-z])afforestation(?![a-z])/
+/(?<![a-z])air pollution(?![a-z])/
+/(?<![a-z])animal foraging(?![a-z])/
+/(?<![a-z])Anopheles gambiae(?![a-z])/
+/(?<![a-z])Apis cerana(?![a-z])/
+/(?<![a-z])Apis mellifera(?![a-z])/
+/(?<![a-z])aquatic ecosystems?(?![a-z])/
+/(?<![a-z])biodiversity(?![a-z])/
+/(?<![a-z])coastal ecosystems?(?![a-z])/
+/(?<![a-z])community composition(?![a-z])/
+/(?<![a-z])coral bleaching(?![a-z])/
+/(?<![a-z])coral ecosystems?(?![a-z])/
+/(?<![a-z])coral reefs?(?![a-z])/
+/(?<![a-z])deforestation(?![a-z])/
+/(?<![a-z])earthquakes?(?![a-z])/
+/(?<![a-z])ecological(?![a-z])/
+/(?<![a-z])ecology(?![a-z])/
+/(?<![a-z])ecosystem functioning(?![a-z])/
+/(?<![a-z])ecosystem health(?![a-z])/
+/(?<![a-z])ecosystem services?(?![a-z])/
+/(?<![a-z])ecosystem\-based management(?![a-z])/
+/(?<![a-z])endangered species(?![a-z])/
+/(?<![a-z])environmental pollution(?![a-z])/
+/(?<![a-z])evolutionary biology(?![a-z])/
+/(?<![a-z])food webs?(?![a-z])/
+/(?<![a-z])foraging behavior(?![a-z])/
+/(?<![a-z])foraging behaviour(?![a-z])/
+/(?<![a-z])foraging habitat(?![a-z])/
+/(?<![a-z])forest conservation(?![a-z])/
+/(?<![a-z])forest ecosystems?(?![a-z])/
+/(?<![a-z])forestry(?![a-z])/
+/(?<![a-z])freshwater ecosystems?(?![a-z])/
+/(?<![a-z])fungal(?![a-z])/
+/(?<![a-z])fungi(?![a-z])/
+/(?<![a-z])genus(?![a-z])/
+/(?<![a-z])habitat conservation(?![a-z])/
+/(?<![a-z])habitat fragmentation(?![a-z])/
+/(?<![a-z])habitat loss(?![a-z])/
+/(?<![a-z])habitat restoration(?![a-z])/
+/(?<![a-z])habitat suitability(?![a-z])/
+/(?<![a-z])honey bees?(?![a-z])/
+/(?<![a-z])honey\-bees?(?![a-z])/
+/(?<![a-z])honeybees?(?![a-z])/
+/(?<![a-z])insecticides?(?![a-z])/
+/(?<![a-z])invasive species(?![a-z])/
+/(?<![a-z])marine ecosystems?(?![a-z])/
+/(?<![a-z])meta\-ecosystem(?![a-z])/
+/(?<![a-z])meta\-population(?![a-z])/
+/(?<![a-z])metapopulation(?![a-z])/
+/(?<![a-z])microplastics?(?![a-z])/
+/(?<![a-z])molecular evolution(?![a-z])/
+/(?<![a-z])mosquito(?![a-z])/
+/(?<![a-z])mosquitoes(?![a-z])/
+/(?<![a-z])natural selection(?![a-z])/
+/(?<![a-z])niche partitioning(?![a-z])/
+/(?<![a-z])paleontology(?![a-z])/
+/(?<![a-z])phylogenetics?(?![a-z])/
+/(?<![a-z])phylogenies(?![a-z])/
+/(?<![a-z])phylogenomics?(?![a-z])/
+/(?<![a-z])phylogeny(?![a-z])/
+/(?<![a-z])phylogeographic(?![a-z])/
+/(?<![a-z])phylogeography(?![a-z])/
+/(?<![a-z])pollination(?![a-z])/
+/(?<![a-z])pollinators?(?![a-z])/
+/(?<![a-z])population genetics?(?![a-z])/
+/(?<![a-z])predator species(?![a-z])/
+/(?<![a-z])predator\-prey(?![a-z])/
+/(?<![a-z])prey species(?![a-z])/
+/(?<![a-z])reforestation(?![a-z])/
+/(?<![a-z])seed dispersal(?![a-z])/
+/(?<![a-z])sexual selection(?![a-z])/
+/(?<![a-z])speciation(?![a-z])/
+/(?<![a-z])species conservation(?![a-z])/
+/(?<![a-z])species distributions?(?![a-z])/
+/(?<![a-z])species diversity(?![a-z])/
+/(?<![a-z])species richness(?![a-z])/
+/(?<![a-z])terrestrial ecosystems?(?![a-z])/
+/(?<![a-z])trophic(?![a-z])/
+/(?<![a-z])tropical ecosystems?(?![a-z])/
+/(?<![a-z])volcanic(?![a-z])/
+/(?<![a-z])volcano(?![a-z])/
+/(?<![a-z])volcanoes(?![a-z])/
+/(?<![a-z])water pollution(?![a-z])/
+### 水土环境、污染与地球科学
+饮用水
+/(?<![a-z])activated sludge(?![a-z])/
+/(?<![a-z])bioremediation(?![a-z])/
+/(?<![a-z])desalination(?![a-z])/
+/(?<![a-z])DNA barcodes?(?![a-z])/
+/(?<![a-z])DNA barcoding(?![a-z])/
+/(?<![a-z])drinking water(?![a-z])/
+/(?<![a-z])environmental DNA(?![a-z])/
+/(?<![a-z])environmental remediation(?![a-z])/
+/(?<![a-z])gene flow(?![a-z])/
+/(?<![a-z])genetic diversity(?![a-z])/
+/(?<![a-z])groundwater(?![a-z])/
+/(?<![a-z])habitat use(?![a-z])/
+/(?<![a-z])heavy metal contamination(?![a-z])/
+/(?<![a-z])heavy metal pollution(?![a-z])/
+/(?<![a-z])hydrologic(?![a-z])/
+/(?<![a-z])hydrological(?![a-z])/
+/(?<![a-z])hydrology(?![a-z])/
+/(?<![a-z])land cover(?![a-z])/
+/(?<![a-z])land use(?![a-z])/
+/(?<![a-z])land\-cover(?![a-z])/
+/(?<![a-z])land\-use(?![a-z])/
+/(?<![a-z])national parks?(?![a-z])/
+/(?<![a-z])ocean acidification(?![a-z])/
+/(?<![a-z])oceanography(?![a-z])/
+/(?<![a-z])perfluoroalkyl(?![a-z])/
+/(?<![a-z])perfluorooctane sulfonate(?![a-z])/
+/(?<![a-z])permafrost(?![a-z])/
+/(?<![a-z])persistent organic pollutants?(?![a-z])/
+/(?<![a-z])phytoremediation(?![a-z])/
+/(?<![a-z])polyfluoroalkyl(?![a-z])/
+/(?<![a-z])rainfall(?![a-z])/
+/(?<![a-z])remote sensing(?![a-z])/
+/(?<![a-z])river basins?(?![a-z])/
+/(?<![a-z])sediment transport(?![a-z])/
+/(?<![a-z])sewage(?![a-z])/
+/(?<![a-z])soil(?![a-z])/
+/(?<![a-z])stormwater(?![a-z])/
+/(?<![a-z])streamflow(?![a-z])/
+/(?<![a-z])wastewater(?![a-z])/
+/(?<![a-z])water cycle(?![a-z])/
+/(?<![a-z])water purification(?![a-z])/
+/(?<![a-z])water quality(?![a-z])/
+/(?<![a-z])water treatment(?![a-z])/
+
+[农业与食品科学]
+## 农业生产与食品研究
+### 农业生产、植物与食品研究
+光合作用
+农业
+食品安全
+畜牧
+养殖
+/(?<![a-z])abscisic acid(?![a-z])/
+/(?<![a-z])agricultural(?![a-z])/
+/(?<![a-z])agriculture(?![a-z])/
+/(?<![a-z])agronomy(?![a-z])/
+/(?<![a-z])aquaculture(?![a-z])/
+/(?<![a-z])Arabidopsis(?![a-z])/
+/(?<![a-z])auxin(?![a-z])/
+/(?<![a-z])chloroplasts?(?![a-z])/
+/(?<![a-z])crop improvement(?![a-z])/
+/(?<![a-z])crop production(?![a-z])/
+/(?<![a-z])crop protection(?![a-z])/
+/(?<![a-z])crop yields?(?![a-z])/
+/(?<![a-z])farming(?![a-z])/
+/(?<![a-z])fisheries(?![a-z])/
+/(?<![a-z])food borne(?![a-z])/
+/(?<![a-z])food safety(?![a-z])/
+/(?<![a-z])food security(?![a-z])/
+/(?<![a-z])food\-borne(?![a-z])/
+/(?<![a-z])foodborne(?![a-z])/
+/(?<![a-z])gibberellins?(?![a-z])/
+/(?<![a-z])herbicide resistance(?![a-z])/
+/(?<![a-z])jasmonic acid(?![a-z])/
+/(?<![a-z])livestock(?![a-z])/
+/(?<![a-z])pesticide residues?(?![a-z])/
+/(?<![a-z])photosynthesis(?![a-z])/
+/(?<![a-z])photosynthetic(?![a-z])/
+/(?<![a-z])phytohormones?(?![a-z])/
+/(?<![a-z])plant breeding(?![a-z])/
+/(?<![a-z])plant development(?![a-z])/
+/(?<![a-z])plant growth(?![a-z])/
+/(?<![a-z])plant hormones?(?![a-z])/
+/(?<![a-z])plant immunity(?![a-z])/
+/(?<![a-z])root architecture(?![a-z])/
+/(?<![a-z])root development(?![a-z])/
+/(?<![a-z])seed germination(?![a-z])/
+/(?<![a-z])seedling growth(?![a-z])/
+/(?<![a-z])stomatal(?![a-z])/
+
+[统计建模与证据综合]
+## 统计研究与证据评价
+### 研究设计、统计方法与证据评价
+贝叶斯
+时间序列
+因果推断
+/(?<![a-z])Bayesian(?![a-z])/
+/(?<![a-z])case control study(?![a-z])/
+/(?<![a-z])case\-control studies(?![a-z])/
+/(?<![a-z])case\-control study(?![a-z])/
+/(?<![a-z])causal discovery(?![a-z])/
+/(?<![a-z])causal effects?(?![a-z])/
+/(?<![a-z])causal inference(?![a-z])/
+/(?<![a-z])causal models?(?![a-z])/
+/(?<![a-z])cluster analysis(?![a-z])/
+/(?<![a-z])cohort studies(?![a-z])/
+/(?<![a-z])cohort study(?![a-z])/
+/(?<![a-z])confidence intervals?(?![a-z])/
+/(?<![a-z])cost benefit analysis(?![a-z])/
+/(?<![a-z])cost effectiveness(?![a-z])/
+/(?<![a-z])cost\-benefit analysis(?![a-z])/
+/(?<![a-z])cost\-effectiveness(?![a-z])/
+/(?<![a-z])Cox regression(?![a-z])/
+/(?<![a-z])cross sectional(?![a-z])/
+/(?<![a-z])cross\-sectional(?![a-z])/
+/(?<![a-z])difference\-in\-differences(?![a-z])/
+/(?<![a-z])dimensionality reduction(?![a-z])/
+/(?<![a-z])double blind(?![a-z])/
+/(?<![a-z])double\-blind(?![a-z])/
+/(?<![a-z])feature selection(?![a-z])/
+/(?<![a-z])Gaussian mixture models?(?![a-z])/
+/(?<![a-z])Gaussian processes?(?![a-z])/
+/(?<![a-z])hierarchical clustering(?![a-z])/
+/(?<![a-z])independent component analysis(?![a-z])/
+/(?<![a-z])instrumental variables?(?![a-z])/
+/(?<![a-z])k\-means(?![a-z])/
+/(?<![a-z])kmeans(?![a-z])/
+/(?<![a-z])latent class analyses(?![a-z])/
+/(?<![a-z])latent class analysis(?![a-z])/
+/(?<![a-z])linear regression(?![a-z])/
+/(?<![a-z])logistic regression(?![a-z])/
+/(?<![a-z])longitudinal studies(?![a-z])/
+/(?<![a-z])longitudinal study(?![a-z])/
+/(?<![a-z])Markov chains?(?![a-z])/
+/(?<![a-z])Markov decision(?![a-z])/
+/(?<![a-z])Markov models?(?![a-z])/
+/(?<![a-z])Markov network(?![a-z])/
+/(?<![a-z])Markov processes(?![a-z])/
+/(?<![a-z])MCMC(?![a-z])/
+/(?<![a-z])Mendelian randomisation(?![a-z])/
+/(?<![a-z])Mendelian randomization(?![a-z])/
+/(?<![a-z])meta analysis(?![a-z])/
+/(?<![a-z])meta\-analyses(?![a-z])/
+/(?<![a-z])meta\-analysis(?![a-z])/
+/(?<![a-z])meta\-frontier(?![a-z])/
+/(?<![a-z])mixed methods?(?![a-z])/
+/(?<![a-z])mixed\-methods?(?![a-z])/
+/(?<![a-z])Monte Carlo algorithms?(?![a-z])/
+/(?<![a-z])Monte Carlo analysis(?![a-z])/
+/(?<![a-z])Monte Carlo methods?(?![a-z])/
+/(?<![a-z])Monte Carlo model(?![a-z])/
+/(?<![a-z])Monte Carlo simulations?(?![a-z])/
+/(?<![a-z])Monte\-Carlo algorithm(?![a-z])/
+/(?<![a-z])Monte\-Carlo simulation(?![a-z])/
+/(?<![a-z])observational studies(?![a-z])/
+/(?<![a-z])observational study(?![a-z])/
+/(?<![a-z])odds ratios?(?![a-z])/
+/(?<![a-z])placebo controlled(?![a-z])/
+/(?<![a-z])placebo\-controlled(?![a-z])/
+/(?<![a-z])principal component analysis(?![a-z])/
+/(?<![a-z])propensity scores?(?![a-z])/
+/(?<![a-z])prospective cohorts?(?![a-z])/
+/(?<![a-z])qualitative research(?![a-z])/
+/(?<![a-z])qualitative studies(?![a-z])/
+/(?<![a-z])qualitative study(?![a-z])/
+/(?<![a-z])randomised controlled trials?(?![a-z])/
+/(?<![a-z])randomised trials?(?![a-z])/
+/(?<![a-z])randomized controlled trials?(?![a-z])/
+/(?<![a-z])randomized trials?(?![a-z])/
+/(?<![a-z])realist review(?![a-z])/
+/(?<![a-z])retrospective cohort(?![a-z])/
+/(?<![a-z])sample sizes?(?![a-z])/
+/(?<![a-z])scoping reviews?(?![a-z])/
+/(?<![a-z])stochastic differential equations?(?![a-z])/
+/(?<![a-z])structural equation models?(?![a-z])/
+/(?<![a-z])structural equation modeling(?![a-z])/
+/(?<![a-z])structural equation modelling(?![a-z])/
+/(?<![a-z])survival analysis(?![a-z])/
+/(?<![a-z])systematic reviews?(?![a-z])/
+/(?<![a-z])time series(?![a-z])/
+/(?<![a-z])time\-series(?![a-z])/
+/(?<![a-z])umbrella reviews?(?![a-z])/
+
+[数学与数值计算]
+## 数学理论与计算方法
+### 数学理论、优化与数值方法
+等概率随机数
+几何朗兰兹
+几何难题
+几何题
+矩阵乘法
+黎曼猜想
+欧几里得距离
+偏微分方程
+数论
+数学
+数值模拟
+算法
+微积分
+伪随机性
+线性代数
+/(?<![a-z])algebraic geometry(?![a-z])/
+/(?<![a-z])algebraic topology(?![a-z])/
+/(?<![a-z])algorithms?(?![a-z])/
+/(?<![a-z])ant colony optimization(?![a-z])/
+/(?<![a-z])combinatorics(?![a-z])/
+/(?<![a-z])computational fluid dynamics(?![a-z])/
+/(?<![a-z])conjugate gradient(?![a-z])/
+/(?<![a-z])convex optimization(?![a-z])/
+/(?<![a-z])differential equations?(?![a-z])/
+/(?<![a-z])finite difference method(?![a-z])/
+/(?<![a-z])finite element analysis(?![a-z])/
+/(?<![a-z])finite element method(?![a-z])/
+/(?<![a-z])finite element models?(?![a-z])/
+/(?<![a-z])finite element simulations?(?![a-z])/
+/(?<![a-z])finite\-difference schemes?(?![a-z])/
+/(?<![a-z])finite\-element analysis(?![a-z])/
+/(?<![a-z])finite\-element model(?![a-z])/
+/(?<![a-z])fluid structure interaction(?![a-z])/
+/(?<![a-z])fluid\-structure interaction(?![a-z])/
+/(?<![a-z])genetic programming(?![a-z])/
+/(?<![a-z])gradient descent(?![a-z])/
+/(?<![a-z])graph theory(?![a-z])/
+/(?<![a-z])integer programming(?![a-z])/
+/(?<![a-z])linear algebra(?![a-z])/
+/(?<![a-z])linear programming(?![a-z])/
+/(?<![a-z])mathematicians?(?![a-z])/
+/(?<![a-z])mathematics(?![a-z])/
+/(?<![a-z])multi\-objective decision(?![a-z])/
+/(?<![a-z])multi\-objective evolutionary(?![a-z])/
+/(?<![a-z])multi\-objective optimisation(?![a-z])/
+/(?<![a-z])multi\-objective optimization(?![a-z])/
+/(?<![a-z])nonlinear programming(?![a-z])/
+/(?<![a-z])number theory(?![a-z])/
+/(?<![a-z])numerical analysis(?![a-z])/
+/(?<![a-z])numerical methods?(?![a-z])/
+/(?<![a-z])numerical simulations?(?![a-z])/
+/(?<![a-z])particle swarm optimisation(?![a-z])/
+/(?<![a-z])particle swarm optimization(?![a-z])/
+/(?<![a-z])prime numbers?(?![a-z])/
+/(?<![a-z])quadratic programming(?![a-z])/
+/(?<![a-z])Riemann hypothesis(?![a-z])/
+/(?<![a-z])simulated annealing(?![a-z])/
+/(?<![a-z])stochastic programming(?![a-z])/
+
+[数据分析与可视化]
+## 数据处理与分析应用
+### 数据分析、可视化与商业智能
+大数据
+可视化工具
+数据分析
+数据可视化
+/(?<![a-z])Apache Superset(?![a-z])/
+/(?<![a-z])big data(?![a-z])/
+/(?<![a-z])business analytics(?![a-z])/
+/(?<![a-z])business intelligence(?![a-z])/
+/(?<![a-z])D3\.js(?![a-z])/
+/(?<![a-z])data analysis(?![a-z])/
+/(?<![a-z])data analytics(?![a-z])/
+/(?<![a-z])data dashboard(?![a-z])/
+/(?<![a-z])data mining(?![a-z])/
+/(?<![a-z])data visualisation(?![a-z])/
+/(?<![a-z])data visualization(?![a-z])/
+/(?<![a-z])ggplot2(?![a-z])/
+/(?<![a-z])interactive visualization(?![a-z])/
+/(?<![a-z])Matplotlib(?![a-z])/
+/(?<![a-z])Metabase(?![a-z])/
+/(?<![a-z])Power BI(?![a-z])/
+/(?<![a-z])Qlik(?![a-z])/
+/(?<![a-z])QlikView(?![a-z])/
+/(?<![a-z])visual analytics(?![a-z])/
+
+[创业与投融资]
+## 企业成长与资本运作
+### 创业、融资、估值与并购
+并购
+创业
+初创公司
+初创企业
+风险投资
+红杉资本
+融资
+收购
+天使轮
+战略投资
+种子轮
+/(?<![a-z])a16z(?![a-z])/
+/(?<![a-z])acqui\-hires?(?![a-z])/
+/(?<![a-z])acqui\-hired(?![a-z])/
+/(?<![a-z])acquihires?(?![a-z])/
+/(?<![a-z])acquires?(?![a-z])/
+/(?<![a-z])acquisition deal(?![a-z])/
+/(?<![a-z])all\-stock deal(?![a-z])/
+/(?<![a-z])Andreessen Horowitz(?![a-z])/
+/(?<![a-z])bags \$/
+/(?<![a-z])bags another \$/
+/(?<![a-z])bags another €/
+/(?<![a-z])bags nearly \$/
+/(?<![a-z])bags €/
+/(?<![a-z])Benchmark Capital(?![a-z])/
+/(?<![a-z])buyouts?(?![a-z])/
+/(?<![a-z])close \$/
+/(?<![a-z])close a \$/
+/(?<![a-z])close up to \$/
+/(?<![a-z])closed \$/
+/(?<![a-z])closed a \$/
+/(?<![a-z])closed an \$/
+/(?<![a-z])closes \$/
+/(?<![a-z])closes a \$/
+/(?<![a-z])closes additional €/
+/(?<![a-z])closes an \$/
+/(?<![a-z])closes another \$/
+/(?<![a-z])closes nearly \$/
+/(?<![a-z])closes over \$/
+/(?<![a-z])closes £/
+/(?<![a-z])closes €/
+/(?<![a-z])Founders Fund(?![a-z])/
+/(?<![a-z])funding(?![a-z])/
+/(?<![a-z])fundraises?(?![a-z])/
+/(?<![a-z])fundraising(?![a-z])/
+/(?<![a-z])General Catalyst(?![a-z])/
+/(?<![a-z])get a £/
+/(?<![a-z])gets around \$/
+/(?<![a-z])gets over \$/
+/(?<![a-z])got €/
+/(?<![a-z])grab \$/
+/(?<![a-z])grab a \$/
+/(?<![a-z])grab £/
+/(?<![a-z])grabs \$/
+/(?<![a-z])grabs a \$/
+/(?<![a-z])grabs another \$/
+/(?<![a-z])grabs another €/
+/(?<![a-z])grabs €/
+/(?<![a-z])Index Ventures(?![a-z])/
+/(?<![a-z])IPOs?(?![a-z])/
+/(?<![a-z])Kleiner Perkins(?![a-z])/
+/(?<![a-z])land \$/
+/(?<![a-z])landed \$/
+/(?<![a-z])lands \$/
+/(?<![a-z])lands a \$/
+/(?<![a-z])lands another \$/
+/(?<![a-z])lands £/
+/(?<![a-z])Lightspeed Venture(?![a-z])/
+/(?<![a-z])mergers?(?![a-z])/
+/(?<![a-z])nab \$/
+/(?<![a-z])nabbed \$/
+/(?<![a-z])nabbed another \$/
+/(?<![a-z])nabs \$/
+/(?<![a-z])nabs another \$/
+/(?<![a-z])nabs £/
+/(?<![a-z])nabs €/
+/(?<![a-z])pitch decks?(?![a-z])/
+/(?<![a-z])private equity(?![a-z])/
+/(?<![a-z])raise \$/
+/(?<![a-z])raise a \$/
+/(?<![a-z])raise another \$/
+/(?<![a-z])raise more than \$/
+/(?<![a-z])raise over \$/
+/(?<![a-z])raise up to \$/
+/(?<![a-z])raise €/
+/(?<![a-z])raised \$/
+/(?<![a-z])raised a \$/
+/(?<![a-z])raised about \$/
+/(?<![a-z])raised an additional \$/
+/(?<![a-z])raised another \$/
+/(?<![a-z])raised around \$/
+/(?<![a-z])raised nearly \$/
+/(?<![a-z])raised over €/
+/(?<![a-z])raised £/
+/(?<![a-z])raised €/
+/(?<![a-z])raises \$/
+/(?<![a-z])raises a \$/
+/(?<![a-z])raises a further \$/
+/(?<![a-z])raises about \$/
+/(?<![a-z])raises additional \$/
+/(?<![a-z])raises additional £/
+/(?<![a-z])raises an \$/
+/(?<![a-z])raises an additional \$/
+/(?<![a-z])raises an additional €/
+/(?<![a-z])raises another \$/
+/(?<![a-z])raises another £/
+/(?<![a-z])raises another €/
+/(?<![a-z])raises more than \$/
+/(?<![a-z])raises nearly \$/
+/(?<![a-z])raises over \$/
+/(?<![a-z])raises over £/
+/(?<![a-z])raises up to \$/
+/(?<![a-z])raises up to another €/
+/(?<![a-z])raises £/
+/(?<![a-z])raises €/
+/(?<![a-z])raising \$/
+/(?<![a-z])raising a \$/
+/(?<![a-z])raising about \$/
+/(?<![a-z])raising an additional \$/
+/(?<![a-z])raising another \$/
+/(?<![a-z])raising another £/
+/(?<![a-z])raising around \$/
+/(?<![a-z])raising more than \$/
+/(?<![a-z])raising over \$/
+/(?<![a-z])raising up to \$/
+/(?<![a-z])raising €/
+/(?<![a-z])scores an additional \$/
+/(?<![a-z])scores another €/
+/(?<![a-z])secure \$/
+/(?<![a-z])secured \$/
+/(?<![a-z])secures \$/
+/(?<![a-z])secures a \$/
+/(?<![a-z])secures another \$/
+/(?<![a-z])secures another £/
+/(?<![a-z])secures over \$/
+/(?<![a-z])secures up to \$/
+/(?<![a-z])secures £/
+/(?<![a-z])secures €/
+/(?<![a-z])seed round(?![a-z])/
+/(?<![a-z])Sequoia Capital(?![a-z])/
+/(?<![a-z])series A(?![a-z])/
+/(?<![a-z])series B(?![a-z])/
+/(?<![a-z])series C(?![a-z])/
+/(?<![a-z])series D(?![a-z])/
+/(?<![a-z])series E(?![a-z])/
+/(?<![a-z])series F(?![a-z])/
+/(?<![a-z])startups?(?![a-z])/
+/(?<![a-z])takeovers?(?![a-z])/
+/(?<![a-z])Techstars(?![a-z])/
+/(?<![a-z])venture capital(?![a-z])/
+/(?<![a-z])venture funds?(?![a-z])/
+/(?<![a-z])Y Combinator(?![a-z])/
+/(?<![a-z])YC backed(?![a-z])/
+/(?<![a-z])YC\-backed(?![a-z])/
+
+[职业就业与劳动]
+## 就业与劳动关系
+### 招聘、工作环境与劳动保障
+裁员
+就业
+居家办公
+劳动法
+劳动合同
+劳动力
+人力资源
+失业
+薪酬
+休假权
+延迟退休
+远程办公
+招聘
+职场
+996工作
+/(?<![a-z])employee benefits(?![a-z])/
+/(?<![a-z])employee recruitment(?![a-z])/
+/(?<![a-z])hiring(?![a-z])/
+/(?<![a-z])job cuts?(?![a-z])/
+/(?<![a-z])job hunting(?![a-z])/
+/(?<![a-z])job seekers?(?![a-z])/
+/(?<![a-z])labor rights(?![a-z])/
+/(?<![a-z])labor unions?(?![a-z])/
+/(?<![a-z])layoffs?(?![a-z])/
+/(?<![a-z])minimum wage(?![a-z])/
+/(?<![a-z])recruitment platform(?![a-z])/
+/(?<![a-z])remote work(?![a-z])/
+/(?<![a-z])salaries(?![a-z])/
+/(?<![a-z])salary(?![a-z])/
+/(?<![a-z])talent acquisition(?![a-z])/
+/(?<![a-z])unemployment(?![a-z])/
+/(?<![a-z])work from home(?![a-z])/
+/(?<![a-z])workforce(?![a-z])/
+/(?<![a-z])workplace(?![a-z])/
+
+[金融与加密资产]
+## 经济与传统金融
+### 宏观经济、证券与市场行情
+财报
+港股
+股价暴跌
+股价暴涨
+股价大涨
+股价累涨
+股价下跌
+股价腰斩
+国债
+降息
+加息
+利润
+美股
+人民币的汇率
+市值缩水
+市值突破
+市值蒸发
+通货膨胀
+通胀
+外汇
+央行
+养老金
+盈利
+债券
+证券
+/(?<![a-z])central banks?(?![a-z])/
+/(?<![a-z])corporate bonds?(?![a-z])/
+/(?<![a-z])earnings(?![a-z])/
+/(?<![a-z])exchange rates?(?![a-z])/
+/(?<![a-z])Federal Reserve(?![a-z])/
+/(?<![a-z])financial results(?![a-z])/
+/(?<![a-z])fiscal deficit(?![a-z])/
+/(?<![a-z])fiscal policies(?![a-z])/
+/(?<![a-z])fiscal policy(?![a-z])/
+/(?<![a-z])foreign exchange(?![a-z])/
+/(?<![a-z])forex(?![a-z])/
+/(?<![a-z])GDP(?![a-z])/
+/(?<![a-z])government bonds?(?![a-z])/
+/(?<![a-z])gross domestic product(?![a-z])/
+/(?<![a-z])inflation(?![a-z])/
+/(?<![a-z])interest rates?(?![a-z])/
+/(?<![a-z])Nasdaq(?![a-z])/
+/(?<![a-z])NYSE(?![a-z])/
+/(?<![a-z])revenues?(?![a-z])/
+/(?<![a-z])S\&P 500(?![a-z])/
+/(?<![a-z])stock exchanges?(?![a-z])/
+/(?<![a-z])stock markets?(?![a-z])/
+/(?<![a-z])stock prices?(?![a-z])/
+/(?<![a-z])treasury bond(?![a-z])/
+### 银行、支付与金融服务
+保险
+财付通
+房贷
+花呗
+汇款
+借记卡
+蚂蚁集团
+人民币汇率
+数字人民币
+校园贷
+信用卡
+移动支付
+银行
+银联
+余额宝
+支付宝
+/(?<![a-z])Alipay(?![a-z])/
+/(?<![a-z])bank accounts?(?![a-z])/
+/(?<![a-z])banking(?![a-z])/
+/(?<![a-z])contactless payments?(?![a-z])/
+/(?<![a-z])credit cards?(?![a-z])/
+/(?<![a-z])debit cards?(?![a-z])/
+/(?<![a-z])digital payments?(?![a-z])/
+/(?<![a-z])digital yuan(?![a-z])/
+/(?<![a-z])fintech(?![a-z])/
+/(?<![a-z])insurance(?![a-z])/
+/(?<![a-z])insurtech(?![a-z])/
+/(?<![a-z])lending platforms?(?![a-z])/
+/(?<![a-z])Mastercard(?![a-z])/
+/(?<![a-z])mobile payments?(?![a-z])/
+/(?<![a-z])Monzo(?![a-z])/
+/(?<![a-z])mortgages?(?![a-z])/
+/(?<![a-z])N26(?![a-z])/
+/(?<![a-z])neobanks?(?![a-z])/
+/(?<![a-z])Nubank(?![a-z])/
+/(?<![a-z])PayPal(?![a-z])/
+/(?<![a-z])pensions?(?![a-z])/
+/(?<![a-z])reinsurance(?![a-z])/
+/(?<![a-z])remittances?(?![a-z])/
+/(?<![a-z])Revolut(?![a-z])/
+/(?<![a-z])Starling Bank(?![a-z])/
+/(?<![a-z])Stripe(?![a-z])/
+/(?<![a-z])TransferWise(?![a-z])/
+/(?<![a-z])Visa cards?(?![a-z])/
+/(?<![a-z])Visa Checkout(?![a-z])/
+/(?<![a-z])Visa payments?(?![a-z])/
+### 证券交易与投资工具
+产业基金
+投资理财
+投资者
+/(?<![a-z])brokerage accounts?(?![a-z])/
+/(?<![a-z])brokerage firms?(?![a-z])/
+/(?<![a-z])Charles Schwab(?![a-z])/
+/(?<![a-z])E\-Trade(?![a-z])/
+/(?<![a-z])eToro(?![a-z])/
+/(?<![a-z])event contracts?(?![a-z])/
+/(?<![a-z])funds?(?![a-z])/
+/(?<![a-z])futures trading(?![a-z])/
+/(?<![a-z])high frequency trading(?![a-z])/
+/(?<![a-z])high\-frequency trading(?![a-z])/
+/(?<![a-z])investments?(?![a-z])/
+/(?<![a-z])investors?(?![a-z])/
+/(?<![a-z])Kalshi(?![a-z])/
+/(?<![a-z])Polymarket(?![a-z])/
+/(?<![a-z])prediction markets?(?![a-z])/
+/(?<![a-z])Public\.com(?![a-z])/
+/(?<![a-z])Robinhood(?![a-z])/
+/(?<![a-z])robo advisors?(?![a-z])/
+/(?<![a-z])robo\-advisors?(?![a-z])/
+/(?<![a-z])stock trading(?![a-z])/
+/(?<![a-z])stock valuation(?![a-z])/
+/(?<![a-z])stockbrokers?(?![a-z])/
+/(?<![a-z])Stocktwits(?![a-z])/
+/(?<![a-z])Wealthfront(?![a-z])/
+/(?<![a-z])Webull(?![a-z])/
+## 数字资产与投资分析
+### 数字资产、区块链与钱包
+币安
+比特币
+狗狗币
+加密货币
+区块链
+稳定币
+虚拟货币
+以太坊
+/(?<![a-z])Binance(?![a-z])/
+/(?<![a-z])Bitcoin(?![a-z])/
+/(?<![a-z])blockchain(?![a-z])/
+/(?<![a-z])Coinbase(?![a-z])/
+/(?<![a-z])crypto(?![a-z])/
+/(?<![a-z])cryptocurrencies(?![a-z])/
+/(?<![a-z])cryptocurrency(?![a-z])/
+/(?<![a-z])decentralized finance(?![a-z])/
+/(?<![a-z])Ethereum(?![a-z])/
+/(?<![a-z])FTX(?![a-z])/
+/(?<![a-z])NFTs?(?![a-z])/
+/(?<![a-z])non\-fungible tokens?(?![a-z])/
+/(?<![a-z])OpenSea(?![a-z])/
+/(?<![a-z])Solana(?![a-z])/
+/(?<![a-z])stablecoins?(?![a-z])/
+/(?<![a-z])Uniswap(?![a-z])/
+/(?<![a-z])USDC(?![a-z])/
+/(?<![a-z])USDT(?![a-z])/
+/(?<![a-z])Web3(?![a-z])/
+
+[政策法规与知识产权]
+## 法律制度与权利保护
+### 监管、知识产权与司法程序
+版权
+反垄断
+工信部
+关税
+互联网审查
+监管
+判决书
+起诉书
+数字服务法
+数字市场法
+网信办
+网站备案
+维修权
+知识产权案件
+专利
+著作权
+/(?<![a-z])age verification laws?(?![a-z])/
+/(?<![a-z])antitrust(?![a-z])/
+/(?<![a-z])content moderation(?![a-z])/
+/(?<![a-z])COPPA(?![a-z])/
+/(?<![a-z])copyright(?![a-z])/
+/(?<![a-z])cross\-border data(?![a-z])/
+/(?<![a-z])data localization(?![a-z])/
+/(?<![a-z])Digital Markets Act(?![a-z])/
+/(?<![a-z])Digital Services Act(?![a-z])/
+/(?<![a-z])digital sovereignty(?![a-z])/
+/(?<![a-z])export controls?(?![a-z])/
+/(?<![a-z])FCC approves(?![a-z])/
+/(?<![a-z])FCC bans?(?![a-z])/
+/(?<![a-z])FCC chair(?![a-z])/
+/(?<![a-z])FCC rules?(?![a-z])/
+/(?<![a-z])FCC votes?(?![a-z])/
+/(?<![a-z])Federal Communications Commission(?![a-z])/
+/(?<![a-z])Federal Trade Commission(?![a-z])/
+/(?<![a-z])Food and Drug Administration(?![a-z])/
+/(?<![a-z])FTC approves(?![a-z])/
+/(?<![a-z])FTC chair(?![a-z])/
+/(?<![a-z])FTC charges(?![a-z])/
+/(?<![a-z])FTC investigates(?![a-z])/
+/(?<![a-z])FTC rules?(?![a-z])/
+/(?<![a-z])FTC sues(?![a-z])/
+/(?<![a-z])ICP 备案/
+/(?<![a-z])ICP备案/
+/(?<![a-z])intellectual property(?![a-z])/
+/(?<![a-z])internet censorship(?![a-z])/
+/(?<![a-z])lawsuits?(?![a-z])/
+/(?<![a-z])net neutrality(?![a-z])/
+/(?<![a-z])online censorship(?![a-z])/
+/(?<![a-z])Online Safety Act(?![a-z])/
+/(?<![a-z])patents?(?![a-z])/
+/(?<![a-z])right to be forgotten(?![a-z])/
+/(?<![a-z])right to repair(?![a-z])/
+/(?<![a-z])SEC approves(?![a-z])/
+/(?<![a-z])SEC charges(?![a-z])/
+/(?<![a-z])SEC filings?(?![a-z])/
+/(?<![a-z])SEC rules?(?![a-z])/
+/(?<![a-z])SEC sues(?![a-z])/
+/(?<![a-z])Section 230(?![a-z])/
+/(?<![a-z])tariffs?(?![a-z])/
+
+[电商与零售]
+## 消费交易与商业服务
+### 电商平台、零售与购物服务
+电商
+京东
+零售
+拼多多
+淘宝
+天猫
+网购
+/(?<![a-z])checkout(?![a-z])/
+/(?<![a-z])e\-commerce(?![a-z])/
+/(?<![a-z])eBay(?![a-z])/
+/(?<![a-z])ecommerce(?![a-z])/
+/(?<![a-z])Etsy(?![a-z])/
+/(?<![a-z])JD\.com(?![a-z])/
+/(?<![a-z])marketplaces?(?![a-z])/
+/(?<![a-z])online shopping(?![a-z])/
+/(?<![a-z])Pinduoduo(?![a-z])/
+/(?<![a-z])retail(?![a-z])/
+/(?<![a-z])retailers?(?![a-z])/
+/(?<![a-z])retailing(?![a-z])/
+/(?<![a-z])Shein(?![a-z])/
+/(?<![a-z])Shopify(?![a-z])/
+/(?<![a-z])shopping carts?(?![a-z])/
+/(?<![a-z])Temu(?![a-z])/
+/(?<![a-z])Walmart(?![a-z])/
+
+[数字广告与营销]
+## 市场推广与广告服务
+### 广告投放、营销与相关工具
+广告
+营销
+/(?<![a-z])ad blockers?(?![a-z])/
+/(?<![a-z])ad blocking(?![a-z])/
+/(?<![a-z])ad fraud(?![a-z])/
+/(?<![a-z])ad tech(?![a-z])/
+/(?<![a-z])ad\-tech(?![a-z])/
+/(?<![a-z])Adblock Plus(?![a-z])/
+/(?<![a-z])AdMob(?![a-z])/
+/(?<![a-z])AdSense(?![a-z])/
+/(?<![a-z])adtech(?![a-z])/
+/(?<![a-z])advertisements?(?![a-z])/
+/(?<![a-z])advertisers?(?![a-z])/
+/(?<![a-z])advertising(?![a-z])/
+/(?<![a-z])AdWords(?![a-z])/
+/(?<![a-z])affiliate marketing(?![a-z])/
+/(?<![a-z])AppLovin(?![a-z])/
+/(?<![a-z])content marketing(?![a-z])/
+/(?<![a-z])Criteo(?![a-z])/
+/(?<![a-z])digital ads(?![a-z])/
+/(?<![a-z])digital marketing(?![a-z])/
+/(?<![a-z])email marketing(?![a-z])/
+/(?<![a-z])marketing automation(?![a-z])/
+/(?<![a-z])martech(?![a-z])/
+/(?<![a-z])online ads(?![a-z])/
+/(?<![a-z])online marketing(?![a-z])/
+/(?<![a-z])Outbrain(?![a-z])/
+/(?<![a-z])search engine optimization(?![a-z])/
+/(?<![a-z])Taboola(?![a-z])/
+/(?<![a-z])The Trade Desk(?![a-z])/
+/(?<![a-z])uBlock Origin(?![a-z])/
+/(?<![a-z])video ads(?![a-z])/
+
+[社交平台与社会网络]
+## 在线社交与人际连接
+### 社交、社区与即时通信
+抖音
+快手
+推特
+微博
+微信
+小红书
+知乎
+/(?<![a-z])Bluesky(?![a-z])/
+/(?<![a-z])Discord(?![a-z])/
+/(?<![a-z])Facebook(?![a-z])/
+/(?<![a-z])Instagram(?![a-z])/
+/(?<![a-z])KakaoTalk(?![a-z])/
+/(?<![a-z])LinkedIn(?![a-z])/
+/(?<![a-z])Mastodon(?![a-z])/
+/(?<![a-z])Pinterest(?![a-z])/
+/(?<![a-z])Quora(?![a-z])/
+/(?<![a-z])Reddit(?![a-z])/
+/(?<![a-z])Renren(?![a-z])/
+/(?<![a-z])Snapchat(?![a-z])/
+/(?<![a-z])Telegram(?![a-z])/
+/(?<![a-z])TikTok(?![a-z])/
+/(?<![a-z])Tumblr(?![a-z])/
+/(?<![a-z])Twitter(?![a-z])/
+/(?<![a-z])Viber(?![a-z])/
+/(?<![a-z])WeChat(?![a-z])/
+/(?<![a-z])Weibo(?![a-z])/
+/(?<![a-z])WhatsApp(?![a-z])/
+### 社交、婚恋与社会网络
+社交产品
+社交平台
+社交软件
+社交网络
+社交网站
+社交应用
+约会软件
+/(?<![a-z])dating apps?(?![a-z])/
+/(?<![a-z])dating platform(?![a-z])/
+/(?<![a-z])Match Group(?![a-z])/
+/(?<![a-z])Meetup\.com(?![a-z])/
+/(?<![a-z])Nextdoor(?![a-z])/
+/(?<![a-z])OkCupid(?![a-z])/
+/(?<![a-z])online communities(?![a-z])/
+/(?<![a-z])online dating(?![a-z])/
+/(?<![a-z])Plenty of Fish(?![a-z])/
+/(?<![a-z])social networks?(?![a-z])/
+/(?<![a-z])social networking(?![a-z])/
+
+[房产与居住服务]
+## 住房市场与居住需求
+### 住房、租赁与居住服务
+房地产
+房价
+楼市
+住房
+租房
+/(?<![a-z])Airbnb(?![a-z])/
+/(?<![a-z])apartment rentals?(?![a-z])/
+/(?<![a-z])home prices?(?![a-z])/
+/(?<![a-z])home rentals?(?![a-z])/
+/(?<![a-z])HomeAway(?![a-z])/
+/(?<![a-z])house prices?(?![a-z])/
+/(?<![a-z])housing markets?(?![a-z])/
+/(?<![a-z])proptech(?![a-z])/
+/(?<![a-z])real estate(?![a-z])/
+/(?<![a-z])Redfin(?![a-z])/
+/(?<![a-z])residential properties(?![a-z])/
+/(?<![a-z])residential property(?![a-z])/
+/(?<![a-z])short\-term rentals?(?![a-z])/
+/(?<![a-z])Trulia(?![a-z])/
+/(?<![a-z])vacation rentals?(?![a-z])/
+/(?<![a-z])WeWork(?![a-z])/
+/(?<![a-z])Zillow(?![a-z])/
+/(?<![a-z])Zumper(?![a-z])/
+
+[教育与学习]
+## 教学与学习支持
+### 教育资源、考试与升学
+博士学位
+大学
+读博
+读研
+高考
+高校
+奖学金
+教师
+教育
+考研
+免费课程
+慕课
+硕士学位
+学历证书
+学生
+在线课程
+专升本
+/(?<![a-z])colleges?(?![a-z])/
+/(?<![a-z])Coursera(?![a-z])/
+/(?<![a-z])Duolingo(?![a-z])/
+/(?<![a-z])e\-learning(?![a-z])/
+/(?<![a-z])edtech(?![a-z])/
+/(?<![a-z])education(?![a-z])/
+/(?<![a-z])educational(?![a-z])/
+/(?<![a-z])elementary schools?(?![a-z])/
+/(?<![a-z])high schools?(?![a-z])/
+/(?<![a-z])Khan Academy(?![a-z])/
+/(?<![a-z])MOOCs?(?![a-z])/
+/(?<![a-z])online courses?(?![a-z])/
+/(?<![a-z])online learning company(?![a-z])/
+/(?<![a-z])online learning initiative(?![a-z])/
+/(?<![a-z])online learning platform(?![a-z])/
+/(?<![a-z])online learning portal(?![a-z])/
+/(?<![a-z])online learning services?(?![a-z])/
+/(?<![a-z])primary schools?(?![a-z])/
+/(?<![a-z])scholarships?(?![a-z])/
+/(?<![a-z])schools(?![a-z])/
+/(?<![a-z])secondary schools?(?![a-z])/
+/(?<![a-z])students?(?![a-z])/
+/(?<![a-z])teachers?(?![a-z])/
+/(?<![a-z])Udemy(?![a-z])/
+/(?<![a-z])universities(?![a-z])/
+/(?<![a-z])university(?![a-z])/
+
+[科研出版与学术交流]
+## 学术成果与评价体系
+### 论文、期刊、奖项与学术评价
+博士论文
+菲尔兹奖
+高引论文
+高引学者
+科学突破奖
+柳叶刀子刊
+论文入选
+论文审稿
+论文引用
+诺贝尔
+诺奖
+陶哲轩
+同行评审
+图灵奖
+学术不端
+中国计算机学会
+最佳论文
+/(?<![a-z])Abel Prize(?![a-z])/
+/(?<![a-z])academic publishing(?![a-z])/
+/(?<![a-z])arXiv(?![a-z])/
+/(?<![a-z])bibliometrics?(?![a-z])/
+/(?<![a-z])Breakthrough Prizes?(?![a-z])/
+/(?<![a-z])Cell子刊/
+/(?<![a-z])citation analysis(?![a-z])/
+/(?<![a-z])citation counts?(?![a-z])/
+/(?<![a-z])Fields Medal(?![a-z])/
+/(?<![a-z])journal impact factors?(?![a-z])/
+/(?<![a-z])Nature子刊/
+/(?<![a-z])Nature报道/
+/(?<![a-z])Nature论文/
+/(?<![a-z])Nobel laureates?(?![a-z])/
+/(?<![a-z])Nobel Prizes?(?![a-z])/
+/(?<![a-z])open access journals?(?![a-z])/
+/(?<![a-z])open access publishing(?![a-z])/
+/(?<![a-z])open\-access journal(?![a-z])/
+/(?<![a-z])peer review(?![a-z])/
+/(?<![a-z])peer\-review(?![a-z])/
+/(?<![a-z])preprints?(?![a-z])/
+/(?<![a-z])replication crisis(?![a-z])/
+/(?<![a-z])reproducibility crisis(?![a-z])/
+/(?<![a-z])research integrity(?![a-z])/
+/(?<![a-z])research misconduct(?![a-z])/
+/(?<![a-z])retracted articles?(?![a-z])/
+/(?<![a-z])retracted papers?(?![a-z])/
+/(?<![a-z])Retraction:/
+/(?<![a-z])scholarly publishing(?![a-z])/
+/(?<![a-z])Science子刊/
+/(?<![a-z])scientific misconduct(?![a-z])/
+/(?<![a-z])scientific publishing(?![a-z])/
+/(?<![a-z])scientometric(?![a-z])/
+/(?<![a-z])SCI期刊/
+/(?<![a-z])Turing Awards?(?![a-z])/
+《细胞》
+
+[新闻传媒与出版]
+## 新闻传播与出版行业
+### 新闻机构、传媒与出版服务
+华尔街日报
+路透社
+纽约时报
+彭博社
+人民日报
+数字出版
+新华社
+新闻出版
+央视网
+央视新闻
+/(?<![a-z])Associated Press(?![a-z])/
+/(?<![a-z])BBC(?![a-z])/
+/(?<![a-z])Bloomberg Media(?![a-z])/
+/(?<![a-z])Bloomberg News(?![a-z])/
+/(?<![a-z])Bloomberg Terminal(?![a-z])/
+/(?<![a-z])Bloomberg TV(?![a-z])/
+/(?<![a-z])CNN Money(?![a-z])/
+/(?<![a-z])digital publishing(?![a-z])/
+/(?<![a-z])Financial Times(?![a-z])/
+/(?<![a-z])journalism(?![a-z])/
+/(?<![a-z])New Scientist(?![a-z])/
+/(?<![a-z])New York Times(?![a-z])/
+/(?<![a-z])newspapers?(?![a-z])/
+/(?<![a-z])Quanta Magazine(?![a-z])/
+/(?<![a-z])ReadWriteWeb(?![a-z])/
+/(?<![a-z])Reuters(?![a-z])/
+/(?<![a-z])Substack(?![a-z])/
+/(?<![a-z])TechCrunch(?![a-z])/
+/(?<![a-z])TED Talks?(?![a-z])/
+/(?<![a-z])TEDx(?![a-z])/
+/(?<![a-z])The Guardian(?![a-z])/
+/(?<![a-z])The Verge(?![a-z])/
+/(?<![a-z])Wall Street Journal(?![a-z])/
+/(?<![a-z])Washington Post(?![a-z])/
+
+[游戏与数字优惠]
+## 游戏生态与消费服务
+### 游戏平台与数字优惠
+免费获取
+免费领取
+任天堂
+限免
+游戏
+/(?<![a-z])Epic Games(?![a-z])/
+/(?<![a-z])free games?(?![a-z])/
+/(?<![a-z])gaming(?![a-z])/
+/(?<![a-z])Humble Bundle(?![a-z])/
+/(?<![a-z])Nintendo(?![a-z])/
+/(?<![a-z])PlayStation(?![a-z])/
+/(?<![a-z])Steam(?![a-z])/
+/(?<![a-z])Xbox(?![a-z])/
+### 游戏主机、引擎、厂商与作品
+宝可梦
+刺客信条
+动视暴雪
+愤怒的小鸟
+黑神话悟空
+绝地求生
+炉石传说
+魔兽世界
+赛博朋克2077
+塞尔达传说
+生化危机
+使命召唤
+水果忍者
+泰拉瑞亚
+糖豆人
+王者荣耀
+虚幻引擎
+英雄联盟
+原神
+育碧
+战网
+植物大战僵尸
+最终幻想
+/(?<![a-z])Activision(?![a-z])/
+/(?<![a-z])Angry Birds(?![a-z])/
+/(?<![a-z])Animal Crossing(?![a-z])/
+/(?<![a-z])Apex Legends(?![a-z])/
+/(?<![a-z])Assassin's Creed(?![a-z])/
+/(?<![a-z])Assassin’s Creed(?![a-z])/
+/(?<![a-z])Atari(?![a-z])/
+/(?<![a-z])Baldur's Gate(?![a-z])/
+/(?<![a-z])Baldur’s Gate(?![a-z])/
+/(?<![a-z])Bandai Namco(?![a-z])/
+/(?<![a-z])Battle\.net(?![a-z])/
+/(?<![a-z])Bethesda Game Studios(?![a-z])/
+/(?<![a-z])Bethesda Softworks(?![a-z])/
+/(?<![a-z])Black Myth(?![a-z])/
+/(?<![a-z])Blizzard Entertainment(?![a-z])/
+/(?<![a-z])Call of Duty(?![a-z])/
+/(?<![a-z])Candy Crush(?![a-z])/
+/(?<![a-z])Capcom(?![a-z])/
+/(?<![a-z])Clash of Clans(?![a-z])/
+/(?<![a-z])Clash Royale(?![a-z])/
+/(?<![a-z])Counter Strike(?![a-z])/
+/(?<![a-z])Counter\-Strike(?![a-z])/
+/(?<![a-z])Destiny 2(?![a-z])/
+/(?<![a-z])Diablo 3(?![a-z])/
+/(?<![a-z])Diablo 4(?![a-z])/
+/(?<![a-z])Diablo III(?![a-z])/
+/(?<![a-z])Diablo IV(?![a-z])/
+/(?<![a-z])Don’t Starve(?![a-z])/
+/(?<![a-z])Dota 2(?![a-z])/
+/(?<![a-z])Dragon Quest(?![a-z])/
+/(?<![a-z])e\-sports?(?![a-z])/
+/(?<![a-z])EA Games(?![a-z])/
+/(?<![a-z])EA Play(?![a-z])/
+/(?<![a-z])EA Sports(?![a-z])/
+/(?<![a-z])Elden Ring(?![a-z])/
+/(?<![a-z])Electronic Arts(?![a-z])/
+/(?<![a-z])esports?(?![a-z])/
+/(?<![a-z])Final Fantasy(?![a-z])/
+/(?<![a-z])Fortnite(?![a-z])/
+/(?<![a-z])Fruit Ninja(?![a-z])/
+/(?<![a-z])Game Boy(?![a-z])/
+/(?<![a-z])GameCube(?![a-z])/
+/(?<![a-z])Gameloft(?![a-z])/
+/(?<![a-z])gameplay(?![a-z])/
+/(?<![a-z])gamers?(?![a-z])/
+/(?<![a-z])GameStop(?![a-z])/
+/(?<![a-z])Genshin(?![a-z])/
+/(?<![a-z])GOG(?![a-z])/
+/(?<![a-z])Grand Theft Auto(?![a-z])/
+/(?<![a-z])GTA3(?![a-z])/
+/(?<![a-z])GTA4(?![a-z])/
+/(?<![a-z])GTA6(?![a-z])/
+/(?<![a-z])GTA 6(?![a-z])/
+/(?<![a-z])GTA IV(?![a-z])/
+/(?<![a-z])GTA Online(?![a-z])/
+/(?<![a-z])GTA V(?![a-z])/
+/(?<![a-z])GTA VI(?![a-z])/
+/(?<![a-z])GTAIV(?![a-z])/
+/(?<![a-z])Guitar Hero(?![a-z])/
+/(?<![a-z])Halo 2(?![a-z])/
+/(?<![a-z])Halo 3(?![a-z])/
+/(?<![a-z])Halo 4(?![a-z])/
+/(?<![a-z])Halo 5(?![a-z])/
+/(?<![a-z])Halo Infinite(?![a-z])/
+/(?<![a-z])Halo Wars(?![a-z])/
+/(?<![a-z])Hearthstone(?![a-z])/
+/(?<![a-z])Honkai(?![a-z])/
+/(?<![a-z])Kerbal Space Program(?![a-z])/
+/(?<![a-z])King\.com(?![a-z])/
+/(?<![a-z])Konami(?![a-z])/
+/(?<![a-z])League of Legends(?![a-z])/
+/(?<![a-z])Legend of Zelda(?![a-z])/
+/(?<![a-z])Mario Kart(?![a-z])/
+/(?<![a-z])Minecraft(?![a-z])/
+/(?<![a-z])Monster Hunter(?![a-z])/
+/(?<![a-z])Mortal Kombat(?![a-z])/
+/(?<![a-z])Niantic(?![a-z])/
+/(?<![a-z])No Man’s Sky(?![a-z])/
+/(?<![a-z])Overwatch(?![a-z])/
+/(?<![a-z])Plants vs Zombies(?![a-z])/
+/(?<![a-z])Plants vs\. Zombies(?![a-z])/
+/(?<![a-z])Pokemon(?![a-z])/
+/(?<![a-z])Pokémon(?![a-z])/
+/(?<![a-z])PS3(?![a-z])/
+/(?<![a-z])PS4(?![a-z])/
+/(?<![a-z])PS5(?![a-z])/
+/(?<![a-z])PSN network(?![a-z])/
+/(?<![a-z])PSN store(?![a-z])/
+/(?<![a-z])PSN账号/
+/(?<![a-z])PSP Go(?![a-z])/
+/(?<![a-z])PSPGo(?![a-z])/
+/(?<![a-z])PUBG(?![a-z])/
+/(?<![a-z])Red Dead Redemption(?![a-z])/
+/(?<![a-z])Resident Evil(?![a-z])/
+/(?<![a-z])Roblox(?![a-z])/
+/(?<![a-z])Rockstar Games(?![a-z])/
+/(?<![a-z])Rovio(?![a-z])/
+/(?<![a-z])SEGA(?![a-z])/
+/(?<![a-z])Square Enix(?![a-z])/
+/(?<![a-z])StarCraft(?![a-z])/
+/(?<![a-z])Stardew Valley(?![a-z])/
+/(?<![a-z])Street Fighter(?![a-z])/
+/(?<![a-z])Super Mario(?![a-z])/
+/(?<![a-z])Super Smash Bros(?![a-z])/
+/(?<![a-z])Take Two(?![a-z])/
+/(?<![a-z])Take\-Two(?![a-z])/
+/(?<![a-z])Telltale Games(?![a-z])/
+/(?<![a-z])Tetris(?![a-z])/
+/(?<![a-z])The Sims(?![a-z])/
+/(?<![a-z])Ubisoft(?![a-z])/
+/(?<![a-z])Unity3D(?![a-z])/
+/(?<![a-z])Unity Engine(?![a-z])/
+/(?<![a-z])Unreal Engine(?![a-z])/
+/(?<![a-z])Valorant(?![a-z])/
+/(?<![a-z])video games?(?![a-z])/
+/(?<![a-z])Warcraft 3(?![a-z])/
+/(?<![a-z])Wii(?![a-z])/
+/(?<![a-z])World of Warcraft(?![a-z])/
+/(?<![a-z])Zynga(?![a-z])/
+
+[影视音乐与数字内容]
+## 视听内容与传播平台
+### 影音平台与流媒体服务
+爱奇艺
+斗鱼直播
+腾讯视频
+网易云音乐
+优酷
+/(?<![a-z])Bilibili(?![a-z])/
+/(?<![a-z])Dailymotion(?![a-z])/
+/(?<![a-z])Deezer(?![a-z])/
+/(?<![a-z])Hulu(?![a-z])/
+/(?<![a-z])Netflix(?![a-z])/
+/(?<![a-z])SoundCloud(?![a-z])/
+/(?<![a-z])Spotify(?![a-z])/
+/(?<![a-z])Twitch(?![a-z])/
+/(?<![a-z])Vimeo(?![a-z])/
+/(?<![a-z])YouTube(?![a-z])/
+### 影音平台、制作与数字内容
+哔哩哔哩
+电影
+迪士尼
+华纳兄弟
+奈飞
+视频点播
+星际迷航
+星球大战
+演唱会
+音乐流媒体
+/(?<![a-z])Bandcamp(?![a-z])/
+/(?<![a-z])Disney(?![a-z])/
+/(?<![a-z])HBO GO(?![a-z])/
+/(?<![a-z])HBO Max(?![a-z])/
+/(?<![a-z])HBO NOW(?![a-z])/
+/(?<![a-z])Last\.fm(?![a-z])/
+/(?<![a-z])music festivals?(?![a-z])/
+/(?<![a-z])music industry(?![a-z])/
+/(?<![a-z])music streaming(?![a-z])/
+/(?<![a-z])musicians?(?![a-z])/
+/(?<![a-z])original series(?![a-z])/
+/(?<![a-z])Pandora Radio(?![a-z])/
+/(?<![a-z])Paramount\+/
+/(?<![a-z])Pixar(?![a-z])/
+/(?<![a-z])Star Trek(?![a-z])/
+/(?<![a-z])Star Wars(?![a-z])/
+/(?<![a-z])streaming services?(?![a-z])/
+/(?<![a-z])television programming(?![a-z])/
+/(?<![a-z])TV programming(?![a-z])/
+/(?<![a-z])Universal Music(?![a-z])/
+/(?<![a-z])video on demand(?![a-z])/
+/(?<![a-z])video on\-demand(?![a-z])/
+/(?<![a-z])video streaming(?![a-z])/
+/(?<![a-z])video\-on\-demand(?![a-z])/
+/(?<![a-z])Warner Bros(?![a-z])/
+
+[空间计算与物联网]
+## 沉浸交互与智能互联
+### 空间计算、互联设备与智慧应用
+混合现实
+空间计算
+物联网
+虚拟现实
+增强现实
+智慧城市
+智能家居
+智能门铃
+智能门锁
+/(?<![a-z])Apple Vision(?![a-z])/
+/(?<![a-z])AR glasses(?![a-z])/
+/(?<![a-z])AR headsets?(?![a-z])/
+/(?<![a-z])AR眼镜/
+/(?<![a-z])augmented reality(?![a-z])/
+/(?<![a-z])BLE(?![a-z])/
+/(?<![a-z])Bluetooth Low Energy(?![a-z])/
+/(?<![a-z])home automation(?![a-z])/
+/(?<![a-z])internet of things(?![a-z])/
+/(?<![a-z])IoT(?![a-z])/
+/(?<![a-z])Meta Quest(?![a-z])/
+/(?<![a-z])mixed reality(?![a-z])/
+/(?<![a-z])NFC(?![a-z])/
+/(?<![a-z])Oculus(?![a-z])/
+/(?<![a-z])RFID(?![a-z])/
+/(?<![a-z])Sigfox(?![a-z])/
+/(?<![a-z])smart buildings?(?![a-z])/
+/(?<![a-z])smart cities(?![a-z])/
+/(?<![a-z])smart city(?![a-z])/
+/(?<![a-z])smart homes?(?![a-z])/
+/(?<![a-z])spatial computing(?![a-z])/
+/(?<![a-z])UWB(?![a-z])/
+/(?<![a-z])virtual reality(?![a-z])/
+/(?<![a-z])Vision Pro(?![a-z])/
+/(?<![a-z])VR headsets?(?![a-z])/
+/(?<![a-z])VR头显/
+/(?<![a-z])VR眼镜/
+/(?<![a-z])wireless sensor networks?(?![a-z])/
+/(?<![a-z])XR headsets?(?![a-z])/
+/(?<![a-z])Zigbee(?![a-z])/
+
+[媒体与效率工具]
+## 内容创作与办公
+### 图像处理、设计与素材
+壁纸软件
+重复图片清理
+重复照片查找
+重复照片清理
+动画制作软件
+动态壁纸
+多张图片生成一张照片
+贺卡制作
+剪映
+截屏
+截图
+马赛克风格图片
+去水印
+矢量绘图
+矢量图
+输入法
+添加水印
+图标生成
+图标制作
+图片编辑
+图片变手绘
+图片查看器
+图片查看软件
+图片处理
+图片管理工具
+图片管理软件
+图片浏览
+图片滤镜
+图片拼接
+图片拼图
+图片水印
+图片缩放
+图片特效
+图片压缩
+图片转换
+图像编辑器
+图像查看器
+图像处理
+图像浏览
+图像特效
+文件图标替换
+文件修复
+文字识别
+相册制作
+照片编辑软件
+照片查看工具
+照片查看器
+照片处理软件
+照片管理
+照片红眼
+照片滤镜
+照片皮肤修补
+照片拼图
+照片特效
+照片增强
+照片整理工具
+照片转换为素描
+桌面壁纸
+/(?<![a-z])ACDSee(?![a-z])/
+/(?<![a-z])Adobe(?![a-z])/
+/(?<![a-z])Affinity Photo(?![a-z])/
+/(?<![a-z])animated wallpapers?(?![a-z])/
+/(?<![a-z])Ashampoo(?![a-z])/
+/(?<![a-z])AVIF(?![a-z])/
+/(?<![a-z])Axure(?![a-z])/
+/(?<![a-z])Balsamiq(?![a-z])/
+/(?<![a-z])Canva(?![a-z])/
+/(?<![a-z])COLOR projects(?![a-z])/
+/(?<![a-z])CorelDRAW(?![a-z])/
+/(?<![a-z])CutOut(?![a-z])/
+/(?<![a-z])EXIF(?![a-z])/
+/(?<![a-z])Figma(?![a-z])/
+/(?<![a-z])Franzis(?![a-z])/
+/(?<![a-z])GIF(?![a-z])/
+/(?<![a-z])GiliSoft(?![a-z])/
+/(?<![a-z])HEIC(?![a-z])/
+/(?<![a-z])icon design(?![a-z])/
+/(?<![a-z])image converter(?![a-z])/
+/(?<![a-z])image processing(?![a-z])/
+/(?<![a-z])image resizer(?![a-z])/
+/(?<![a-z])Inkscape(?![a-z])/
+/(?<![a-z])JPEG XL(?![a-z])/
+/(?<![a-z])JPEG\-XL(?![a-z])/
+/(?<![a-z])Lightroom(?![a-z])/
+/(?<![a-z])live wallpapers?(?![a-z])/
+/(?<![a-z])Mockplus(?![a-z])/
+/(?<![a-z])PearlMountain(?![a-z])/
+/(?<![a-z])photo albums?(?![a-z])/
+/(?<![a-z])photo enhancement(?![a-z])/
+/(?<![a-z])Photoshop(?![a-z])/
+/(?<![a-z])RoboImport(?![a-z])/
+/(?<![a-z])RonyaSoft(?![a-z])/
+/(?<![a-z])SoftOrbits(?![a-z])/
+/(?<![a-z])watermarking(?![a-z])/
+/(?<![a-z])WebP(?![a-z])/
+### 办公文档、写作与阅读
+办公软件
+办公套件
+电子书
+流程图
+扫描识别
+文本编辑
+文档编辑
+文档删除恢复
+文档压缩
+文档转换
+文字处理软件
+写作工具
+写作软件
+原型设计
+桌面排版
+字库
+字体
+/(?<![a-z])ABBYY(?![a-z])/
+/(?<![a-z])Calibre 书库/
+/(?<![a-z])CHM(?![a-z])/
+/(?<![a-z])e\-books?(?![a-z])/
+/(?<![a-z])ebooks?(?![a-z])/
+/(?<![a-z])EPUB(?![a-z])/
+/(?<![a-z])Excel(?![a-z])/
+/(?<![a-z])font design(?![a-z])/
+/(?<![a-z])font manager(?![a-z])/
+/(?<![a-z])Foxit(?![a-z])/
+/(?<![a-z])LibreOffice(?![a-z])/
+/(?<![a-z])Mac Office(?![a-z])/
+/(?<![a-z])Markdown(?![a-z])/
+/(?<![a-z])Microsoft Office(?![a-z])/
+/(?<![a-z])OCR(?![a-z])/
+/(?<![a-z])Office20(?![a-z])/
+/(?<![a-z])Office365(?![a-z])/
+/(?<![a-z])Office 20(?![a-z])/
+/(?<![a-z])Office 365(?![a-z])/
+/(?<![a-z])Office for Mac(?![a-z])/
+/(?<![a-z])Office Online(?![a-z])/
+/(?<![a-z])Office Suite(?![a-z])/
+/(?<![a-z])Office 文档/
+/(?<![a-z])Office 软件/
+/(?<![a-z])Office套件/
+/(?<![a-z])Office安装/
+/(?<![a-z])Office插件/
+/(?<![a-z])Office文档/
+/(?<![a-z])Office激活/
+/(?<![a-z])Office软件/
+/(?<![a-z])OpenOffice(?![a-z])/
+/(?<![a-z])optical character recognition(?![a-z])/
+/(?<![a-z])PaddleOCR(?![a-z])/
+/(?<![a-z])PDF(?![a-z])/
+/(?<![a-z])PowerPoint(?![a-z])/
+/(?<![a-z])PPT 模板/
+/(?<![a-z])PPT 演示/
+/(?<![a-z])QuarkXPress(?![a-z])/
+/(?<![a-z])typefaces?(?![a-z])/
+/(?<![a-z])typography(?![a-z])/
+/(?<![a-z])Typora(?![a-z])/
+/(?<![a-z])Visio(?![a-z])/
+/(?<![a-z])Word documents?(?![a-z])/
+/(?<![a-z])Word 文档/
+/(?<![a-z])Word文档/
+/(?<![a-z])WPS(?![a-z])/
+/(?<![a-z])Wwrite(?![a-z])/
+/(?<![a-z])Wwritev(?![a-z])/
+/(?<![a-z])Zotero(?![a-z])/
+### 视频编辑、录屏与播放
+蓝光播放器
+蓝光光盘
+录屏
+屏幕录像
+屏幕录制
+视频编辑
+视频编解码
+视频播放器
+视频裁剪
+视频合并
+视频剪辑
+视频水印
+视频转换
+图片制作成影片
+/(?<![a-z])4Videosoft(?![a-z])/
+/(?<![a-z])After Effects(?![a-z])/
+/(?<![a-z])Aimersoft(?![a-z])/
+/(?<![a-z])Aiseesoft(?![a-z])/
+/(?<![a-z])AnyMP4(?![a-z])/
+/(?<![a-z])Apowersoft(?![a-z])/
+/(?<![a-z])AV1(?![a-z])/
+/(?<![a-z])AVIToolbox(?![a-z])/
+/(?<![a-z])Blender 3D(?![a-z])/
+/(?<![a-z])Blu ray(?![a-z])/
+/(?<![a-z])Blu\-ray(?![a-z])/
+/(?<![a-z])Camtasia(?![a-z])/
+/(?<![a-z])CapCut(?![a-z])/
+/(?<![a-z])CyberLink(?![a-z])/
+/(?<![a-z])DLNA(?![a-z])/
+/(?<![a-z])DVD burners?(?![a-z])/
+/(?<![a-z])DVD burning(?![a-z])/
+/(?<![a-z])DVD ripper(?![a-z])/
+/(?<![a-z])FFmpeg(?![a-z])/
+/(?<![a-z])Final Cut Pro(?![a-z])/
+/(?<![a-z])H\.264(?![a-z])/
+/(?<![a-z])H\.265(?![a-z])/
+/(?<![a-z])HD DVD(?![a-z])/
+/(?<![a-z])HD\-DVD(?![a-z])/
+/(?<![a-z])iSkysoft(?![a-z])/
+/(?<![a-z])Kodi(?![a-z])/
+/(?<![a-z])Leawo(?![a-z])/
+/(?<![a-z])MAGIX(?![a-z])/
+/(?<![a-z])media players?(?![a-z])/
+/(?<![a-z])Movavi(?![a-z])/
+/(?<![a-z])PotPlayer(?![a-z])/
+/(?<![a-z])screen recording(?![a-z])/
+/(?<![a-z])Tipard(?![a-z])/
+/(?<![a-z])video converter(?![a-z])/
+/(?<![a-z])video players?(?![a-z])/
+/(?<![a-z])VLC(?![a-z])/
+/(?<![a-z])WebM(?![a-z])/
+/(?<![a-z])WinX DVD(?![a-z])/
+/(?<![a-z])WonderFox(?![a-z])/
+/(?<![a-z])Wondershare(?![a-z])/
+### 音频、播客与音乐工具
+播客
+混音
+录音软件
+数字音频工作站
+无损音频
+无损音乐
+音频编辑
+音频剪辑
+音频录制
+音频提取
+音频文件编辑
+音频转换
+音序器
+音乐播放器
+/(?<![a-z])Ableton Live(?![a-z])/
+/(?<![a-z])Audio converter(?![a-z])/
+/(?<![a-z])Audio editor(?![a-z])/
+/(?<![a-z])audio recorders?(?![a-z])/
+/(?<![a-z])audio recording(?![a-z])/
+/(?<![a-z])FLAC(?![a-z])/
+/(?<![a-z])foobar2000(?![a-z])/
+/(?<![a-z])KB Piano(?![a-z])/
+/(?<![a-z])Logic Pro(?![a-z])/
+/(?<![a-z])MIDI(?![a-z])/
+/(?<![a-z])MP3(?![a-z])/
+/(?<![a-z])music production(?![a-z])/
+/(?<![a-z])podcasts?(?![a-z])/
+/(?<![a-z])podcasting(?![a-z])/
+/(?<![a-z])Universal Audio(?![a-z])/
+## 数据管理与个人效率
+### 文件、压缩、备份与磁盘工具
+备份还原
+备份软件
+重复文件
+磁盘分区
+磁盘管理
+磁盘镜像
+磁盘清理
+磁盘碎片
+格式转换
+光盘工具
+解压
+刻录软件
+批量重命名
+数据备份
+数据擦除
+数据恢复
+文件备份
+文件查找工具
+文件分割
+文件管理
+文件合并
+文件恢复
+文件夹备份
+文件夹比较
+文件夹大小
+文件夹同步
+文件名修改
+文件清理
+文件搜索
+文件同步
+文件压缩
+文件重命名
+文件自动备份
+相片整理
+系统备份
+系统还原
+压缩包管理
+压缩软件
+压缩文件
+/(?<![a-z])7\-Zip(?![a-z])/
+/(?<![a-z])Abelssoft(?![a-z])/
+/(?<![a-z])Acronis(?![a-z])/
+/(?<![a-z])AOMEI(?![a-z])/
+/(?<![a-z])backup software(?![a-z])/
+/(?<![a-z])backup utilities(?![a-z])/
+/(?<![a-z])Bandizip(?![a-z])/
+/(?<![a-z])data recovery(?![a-z])/
+/(?<![a-z])disk images?(?![a-z])/
+/(?<![a-z])DiskGenius(?![a-z])/
+/(?<![a-z])DoYourData(?![a-z])/
+/(?<![a-z])duplicate file finder(?![a-z])/
+/(?<![a-z])EaseUS(?![a-z])/
+/(?<![a-z])Everything Search(?![a-z])/
+/(?<![a-z])file manager(?![a-z])/
+/(?<![a-z])file recovery(?![a-z])/
+/(?<![a-z])file splitter(?![a-z])/
+/(?<![a-z])file synchronization(?![a-z])/
+/(?<![a-z])IObit(?![a-z])/
+/(?<![a-z])MiniTool ShadowMaker(?![a-z])/
+/(?<![a-z])Paragon Partition(?![a-z])/
+/(?<![a-z])photo recovery(?![a-z])/
+/(?<![a-z])Tenorshare(?![a-z])/
+/(?<![a-z])WinISO(?![a-z])/
+/(?<![a-z])WinRAR(?![a-z])/
+/(?<![a-z])WinZip(?![a-z])/
+/(?<![a-z])WizTree(?![a-z])/
+/(?<![a-z])ZIP文件/
+### 邮件、订阅与下载
+磁力链接
+电子邮件
+管理邮件
+还原你的邮件
+离线下载
+批量下载
+视频下载
+书签导出
+书签导入
+书签管理
+书签同步
+网页下载
+下载工具
+下载管理器
+迅雷
+音乐下载
+邮件订阅
+邮件恢复
+邮件客户端
+自动发送生日祝贺邮件
+/(?<![a-z])aria2(?![a-z])/
+/(?<![a-z])BitTorrent(?![a-z])/
+/(?<![a-z])download managers?(?![a-z])/
+/(?<![a-z])e\-mail service(?![a-z])/
+/(?<![a-z])email clients?(?![a-z])/
+/(?<![a-z])email services?(?![a-z])/
+/(?<![a-z])EML(?![a-z])/
+/(?<![a-z])Fastmail(?![a-z])/
+/(?<![a-z])feed readers?(?![a-z])/
+/(?<![a-z])FeedBurner(?![a-z])/
+/(?<![a-z])Feedly(?![a-z])/
+/(?<![a-z])Gmail(?![a-z])/
+/(?<![a-z])IDM(?![a-z])/
+/(?<![a-z])Instapaper(?![a-z])/
+/(?<![a-z])magnet links?(?![a-z])/
+/(?<![a-z])Mailchimp(?![a-z])/
+/(?<![a-z])Mailgun(?![a-z])/
+/(?<![a-z])Microsoft Outlook(?![a-z])/
+/(?<![a-z])NetNewsWire(?![a-z])/
+/(?<![a-z])news aggregators?(?![a-z])/
+/(?<![a-z])NewsBlur(?![a-z])/
+/(?<![a-z])Notion Mail(?![a-z])/
+/(?<![a-z])Outlook 邮件/
+/(?<![a-z])Outlook\.com(?![a-z])/
+/(?<![a-z])Outlook客户端/
+/(?<![a-z])Outlook邮件/
+/(?<![a-z])Outlook邮箱/
+/(?<![a-z])Proton Mail(?![a-z])/
+/(?<![a-z])ProtonMail(?![a-z])/
+/(?<![a-z])PST(?![a-z])/
+/(?<![a-z])RSS(?![a-z])/
+/(?<![a-z])RSSCloud(?![a-z])/
+/(?<![a-z])RSSHub(?![a-z])/
+/(?<![a-z])SendGrid(?![a-z])/
+/(?<![a-z])Thunderbird(?![a-z])/
+/(?<![a-z])Tutanota(?![a-z])/
+/(?<![a-z])uTorrent(?![a-z])/
+/(?<![a-z])video downloader(?![a-z])/
+/(?<![a-z])You\-Get(?![a-z])/
+/µTorrent(?![a-z])/
+### 笔记、待办与桌面效率
+笔记软件
+待办清单
+滴答清单
+剪贴板
+记录粘贴板
+记事本软件
+任务管理
+日历工具
+日历软件
+日历设计软件
+事件提醒软件
+鼠标手势
+思维导图
+提醒工具
+系统时钟
+休息提醒软件
+印象笔记
+语雀
+粘贴板管理
+粘贴板历史
+知识管理
+桌面日历
+桌面提醒软件
+/(?<![a-z])clipboard history(?![a-z])/
+/(?<![a-z])clipboard manager(?![a-z])/
+/(?<![a-z])Evernote(?![a-z])/
+/(?<![a-z])GTD Timer(?![a-z])/
+/(?<![a-z])Logseq(?![a-z])/
+/(?<![a-z])mind mapping(?![a-z])/
+/(?<![a-z])Notion 模板/
+/(?<![a-z])Notion模板/
+/(?<![a-z])Notion笔记/
+/(?<![a-z])Obsidian使用/
+/(?<![a-z])Obsidian插件/
+/(?<![a-z])OmniFocus(?![a-z])/
+/(?<![a-z])OneNote(?![a-z])/
+/(?<![a-z])Readwise(?![a-z])/
+/(?<![a-z])task management(?![a-z])/
+/(?<![a-z])to do lists?(?![a-z])/
+/(?<![a-z])to\-do lists?(?![a-z])/
+/(?<![a-z])Todoist(?![a-z])/
+/(?<![a-z])Wunderlist(?![a-z])/
+/(?<![a-z])XMind(?![a-z])/
+### 远程连接、会议与协作
+即时通讯
+视频会议
+在线会议
+/(?<![a-z])AnyDesk(?![a-z])/
+/(?<![a-z])DingTalk(?![a-z])/
+/(?<![a-z])instant messaging(?![a-z])/
+/(?<![a-z])Microsoft Teams(?![a-z])/
+/(?<![a-z])project management software(?![a-z])/
+/(?<![a-z])remote desktop(?![a-z])/
+/(?<![a-z])RustDesk(?![a-z])/
+/(?<![a-z])Skype(?![a-z])/
+/(?<![a-z])Splashtop(?![a-z])/
+/(?<![a-z])TeamViewer(?![a-z])/
+/(?<![a-z])ToDesk(?![a-z])/
+/(?<![a-z])Trello(?![a-z])/
+/(?<![a-z])video conferencing(?![a-z])/
+/(?<![a-z])Webex(?![a-z])/
+/(?<![a-z])Zoom Meetings(?![a-z])/
+/(?<![a-z])Zoom Video Communications(?![a-z])/
+
+[科技人物与产业动态]
+## 科技行业与公共活动
+### 科技会议与产业活动
+甲子引力
+计算机大会
+开发者大会
+科技大会
+全球开发者先锋大会
+世界互联网大会
+消费电子展
+云栖大会
+智能未来大会
+中国投资年会
+/(?<![a-z])Black Hat 20(?![a-z])/
+/(?<![a-z])Black Hat Conference(?![a-z])/
+/(?<![a-z])CES(?![a-z])/
+/(?<![a-z])Computex(?![a-z])/
+/(?<![a-z])Disrupt 20(?![a-z])/
+/(?<![a-z])Disrupt Beijing(?![a-z])/
+/(?<![a-z])Disrupt Berlin(?![a-z])/
+/(?<![a-z])Disrupt London(?![a-z])/
+/(?<![a-z])Disrupt New York(?![a-z])/
+/(?<![a-z])Disrupt NY(?![a-z])/
+/(?<![a-z])Disrupt NYC(?![a-z])/
+/(?<![a-z])Disrupt San Francisco(?![a-z])/
+/(?<![a-z])Disrupt SF(?![a-z])/
+/(?<![a-z])F8 keynote(?![a-z])/
+/(?<![a-z])Game Developers Conference(?![a-z])/
+/(?<![a-z])GDC20(?![a-z])/
+/(?<![a-z])GDC 20(?![a-z])/
+/(?<![a-z])GDPS(?![a-z])/
+/(?<![a-z])Google I/O(?![a-z])/
+/(?<![a-z])Microsoft Build(?![a-z])/
+/(?<![a-z])MWC(?![a-z])/
+/(?<![a-z])QCon(?![a-z])/
+/(?<![a-z])RSA Conference(?![a-z])/
+/(?<![a-z])SXSW(?![a-z])/
+/(?<![a-z])TC Sessions(?![a-z])/
+/(?<![a-z])WAIC(?![a-z])/
+/(?<![a-z])WAVE SUMMIT(?![a-z])/
+/(?<![a-z])Web Summit(?![a-z])/
+/(?<![a-z])WWDC(?![a-z])/
+### 科技人物
+奥尔特曼
+陈天桥
+丁磊
+哈萨比斯
+何恺明
+黄仁勋
+贾跃亭
+卡帕西
+雷军
+李飞飞
+李彦宏
+罗永浩
+陆奇
+马斯克
+乔布斯
+任正非
+沈向洋
+斯托曼
+苏姿丰
+王小川
+吴恩达
+杨立昆
+杨元庆
+姚期智
+余承东
+张一鸣
+张朝阳
+周鸿祎
+/(?<![a-z])Andrew Ng(?![a-z])/
+/(?<![a-z])Andy Jassy(?![a-z])/
+/(?<![a-z])Bengio(?![a-z])/
+/(?<![a-z])Bill Gates(?![a-z])/
+/(?<![a-z])Bing Gordon(?![a-z])/
+/(?<![a-z])Elon Musk(?![a-z])/
+/(?<![a-z])Fei Fei Li(?![a-z])/
+/(?<![a-z])Geoffrey Hinton(?![a-z])/
+/(?<![a-z])Ilya Sutskever(?![a-z])/
+/(?<![a-z])Jeff Bezos(?![a-z])/
+/(?<![a-z])Jeff Dean(?![a-z])/
+/(?<![a-z])Jensen Huang(?![a-z])/
+/(?<![a-z])Joel谈软件/
+/(?<![a-z])Jony Ive(?![a-z])/
+/(?<![a-z])Larry Page(?![a-z])/
+/(?<![a-z])Lisa Su(?![a-z])/
+/(?<![a-z])Mark Zuckerberg(?![a-z])/
+/(?<![a-z])Ren Zhengfei(?![a-z])/
+/(?<![a-z])Sam Altman(?![a-z])/
+/(?<![a-z])Satya Nadella(?![a-z])/
+/(?<![a-z])Sergey Brin(?![a-z])/
+/(?<![a-z])Steve Ballmer(?![a-z])/
+/(?<![a-z])Steve Jobs(?![a-z])/
+/(?<![a-z])Sundar Pichai(?![a-z])/
+/(?<![a-z])Tim Cook(?![a-z])/
+/(?<![a-z])Yann LeCun(?![a-z])/
+
+[消费数码]
+## 数码产品与硬件生态
+### 数码品牌、设备与产品型号
+爱普生
+笔记本电脑
+锤子科技
+戴尔
+单板计算机
+耳机
+富士康
+固态盘
+宏碁
+华硕
+华为
+惠普
+佳能
+/坚果 R(?![a-z])/
+/坚果Pro(?![a-z])/
+/坚果TNT(?![a-z])/
+可穿戴
+联想
+理光
+罗技
+绿联
+魅族
+摩托罗拉
+诺基亚
+平板电脑
+苹果
+三星
+手机
+树莓派
+索尼
+小米
+一加
+智能电视
+智能戒指
+智能手表
+/(?<![a-z])Acer(?![a-z])/
+/(?<![a-z])Alienware(?![a-z])/
+/(?<![a-z])Amazfit(?![a-z])/
+/(?<![a-z])Apple(?![a-z])/
+/(?<![a-z])Arduino(?![a-z])/
+/(?<![a-z])ASUS(?![a-z])/
+/(?<![a-z])BlackBerry(?![a-z])/
+/(?<![a-z])Canon(?![a-z])/
+/(?<![a-z])cell phones?(?![a-z])/
+/(?<![a-z])Dell(?![a-z])/
+/(?<![a-z])earbuds?(?![a-z])/
+/(?<![a-z])ESP32(?![a-z])/
+/(?<![a-z])Fairphone(?![a-z])/
+/(?<![a-z])Fitbit(?![a-z])/
+/(?<![a-z])Fujifilm(?![a-z])/
+/(?<![a-z])Galaxy Buds(?![a-z])/
+/(?<![a-z])Garmin(?![a-z])/
+/(?<![a-z])GoPro(?![a-z])/
+/(?<![a-z])handsets?(?![a-z])/
+/(?<![a-z])headphones?(?![a-z])/
+/(?<![a-z])Hewlett Packard(?![a-z])/
+/(?<![a-z])Hewlett\-Packard(?![a-z])/
+/(?<![a-z])HP DeskJet(?![a-z])/
+/(?<![a-z])HP Envy(?![a-z])/
+/(?<![a-z])HP Pavilion(?![a-z])/
+/(?<![a-z])HP PCs?(?![a-z])/
+/(?<![a-z])HP printers?(?![a-z])/
+/(?<![a-z])HP ProBook(?![a-z])/
+/(?<![a-z])HP Slate(?![a-z])/
+/(?<![a-z])HP Spectre(?![a-z])/
+/(?<![a-z])HP TouchPad(?![a-z])/
+/(?<![a-z])HTC(?![a-z])/
+/(?<![a-z])Huawei(?![a-z])/
+/(?<![a-z])iPad(?![a-z])/
+/(?<![a-z])iPhones?(?![a-z])/
+/(?<![a-z])iQOO(?![a-z])/
+/(?<![a-z])Kindle(?![a-z])/
+/(?<![a-z])Kobo Aura(?![a-z])/
+/(?<![a-z])Kobo Clara(?![a-z])/
+/(?<![a-z])Kobo Elipsa(?![a-z])/
+/(?<![a-z])Kobo eReader(?![a-z])/
+/(?<![a-z])Lenovo(?![a-z])/
+/(?<![a-z])LG Display(?![a-z])/
+/(?<![a-z])LG Electronics(?![a-z])/
+/(?<![a-z])MacBook(?![a-z])/
+/(?<![a-z])Meizu(?![a-z])/
+/(?<![a-z])micro:bit(?![a-z])/
+/(?<![a-z])mobile phones?(?![a-z])/
+/(?<![a-z])Moto X Pro(?![a-z])/
+/(?<![a-z])Motorola(?![a-z])/
+/(?<![a-z])Nikon(?![a-z])/
+/(?<![a-z])Nokia(?![a-z])/
+/(?<![a-z])Nook Color(?![a-z])/
+/(?<![a-z])Nook e\-reader(?![a-z])/
+/(?<![a-z])Nook GlowLight(?![a-z])/
+/(?<![a-z])Nook Simple Touch(?![a-z])/
+/(?<![a-z])Nook Tablet(?![a-z])/
+/(?<![a-z])Nothing Ear(?![a-z])/
+/(?<![a-z])Nothing Phone(?![a-z])/
+/(?<![a-z])OnePlus(?![a-z])/
+/(?<![a-z])OPPO(?![a-z])/
+/(?<![a-z])Oura Ring(?![a-z])/
+/(?<![a-z])Palm Centro(?![a-z])/
+/(?<![a-z])Palm Pixi(?![a-z])/
+/(?<![a-z])Palm Pre(?![a-z])/
+/(?<![a-z])Palm Treo(?![a-z])/
+/(?<![a-z])Raspberry Pi(?![a-z])/
+/(?<![a-z])realme(?![a-z])/
+/(?<![a-z])realmeGT(?![a-z])/
+/(?<![a-z])Redmi(?![a-z])/
+/(?<![a-z])Samsung(?![a-z])/
+/(?<![a-z])single board computer(?![a-z])/
+/(?<![a-z])single\-board computer(?![a-z])/
+/(?<![a-z])smartwatch(?![a-z])/
+/(?<![a-z])smartwatches(?![a-z])/
+/(?<![a-z])Sony(?![a-z])/
+/(?<![a-z])TCL(?![a-z])/
+/(?<![a-z])U盘/
+/(?<![a-z])vivo(?![a-z])/
+/(?<![a-z])wearables?(?![a-z])/
+/(?<![a-z])Withings(?![a-z])/
+/(?<![a-z])Xiaomi(?![a-z])/
+### 影像、音频、显示与数码配件
+充电宝
+充电器
+存储卡
+机械键盘
+快充
+蓝牙
+墨水屏
+群晖
+摄像头
+数码相机
+无线充电
+显示器
+移动电源
+硬盘
+智能音箱
+/(?<![a-z])AirPods(?![a-z])/
+/(?<![a-z])AirTag(?![a-z])/
+/(?<![a-z])AMOLED(?![a-z])/
+/(?<![a-z])Bluetooth(?![a-z])/
+/(?<![a-z])bone conduction(?![a-z])/
+/(?<![a-z])bone\-conduction(?![a-z])/
+/(?<![a-z])Bose(?![a-z])/
+/(?<![a-z])camera lenses?(?![a-z])/
+/(?<![a-z])card readers?(?![a-z])/
+/(?<![a-z])Chromecast(?![a-z])/
+/(?<![a-z])digital cameras?(?![a-z])/
+/(?<![a-z])DisplayPort(?![a-z])/
+/(?<![a-z])DSLRs?(?![a-z])/
+/(?<![a-z])E Ink(?![a-z])/
+/(?<![a-z])E\-Ink(?![a-z])/
+/(?<![a-z])e\-paper(?![a-z])/
+/(?<![a-z])Face ID(?![a-z])/
+/(?<![a-z])FaceID(?![a-z])/
+/(?<![a-z])fast charging(?![a-z])/
+/(?<![a-z])flash drives?(?![a-z])/
+/(?<![a-z])Galaxy Fold(?![a-z])/
+/(?<![a-z])Galaxy Nexus(?![a-z])/
+/(?<![a-z])Galaxy Note(?![a-z])/
+/(?<![a-z])Galaxy S(?![a-z])/
+/(?<![a-z])Galaxy Tab(?![a-z])/
+/(?<![a-z])Galaxy Watch(?![a-z])/
+/(?<![a-z])Galaxy Z Fold(?![a-z])/
+/(?<![a-z])hard drives?(?![a-z])/
+/(?<![a-z])hard\-drive(?![a-z])/
+/(?<![a-z])Hasselblad(?![a-z])/
+/(?<![a-z])HDMI(?![a-z])/
+/(?<![a-z])HomePod(?![a-z])/
+/(?<![a-z])iMac(?![a-z])/
+/(?<![a-z])iPod(?![a-z])/
+/(?<![a-z])laptops?(?![a-z])/
+/(?<![a-z])Leica(?![a-z])/
+/(?<![a-z])Logitech(?![a-z])/
+/(?<![a-z])Lumia(?![a-z])/
+/(?<![a-z])Lumix(?![a-z])/
+/(?<![a-z])Mac Mini(?![a-z])/
+/(?<![a-z])Mac Pro(?![a-z])/
+/(?<![a-z])mechanical keyboards?(?![a-z])/
+/(?<![a-z])MicroLED(?![a-z])/
+/(?<![a-z])microSD(?![a-z])/
+/(?<![a-z])microSDHC(?![a-z])/
+/(?<![a-z])microSDXC(?![a-z])/
+/(?<![a-z])Mini LED(?![a-z])/
+/(?<![a-z])Mini\-LED(?![a-z])/
+/(?<![a-z])MiniLED(?![a-z])/
+/(?<![a-z])mirrorless(?![a-z])/
+/(?<![a-z])OLED(?![a-z])/
+/(?<![a-z])Panasonic cameras?(?![a-z])/
+/(?<![a-z])Pentax(?![a-z])/
+/(?<![a-z])Pixel Buds(?![a-z])/
+/(?<![a-z])Pixel Watch(?![a-z])/
+/(?<![a-z])portable charger(?![a-z])/
+/(?<![a-z])power banks?(?![a-z])/
+/(?<![a-z])QNAP(?![a-z])/
+/(?<![a-z])retina display(?![a-z])/
+/(?<![a-z])Roku(?![a-z])/
+/(?<![a-z])SD cards?(?![a-z])/
+/(?<![a-z])SD memory(?![a-z])/
+/(?<![a-z])Sennheiser(?![a-z])/
+/(?<![a-z])smartphones?(?![a-z])/
+/(?<![a-z])solid state drives?(?![a-z])/
+/(?<![a-z])solid\-state drives?(?![a-z])/
+/(?<![a-z])Sonos(?![a-z])/
+/(?<![a-z])SSD drives?(?![a-z])/
+/(?<![a-z])SSD storage(?![a-z])/
+/(?<![a-z])Surface Book(?![a-z])/
+/(?<![a-z])Surface Duo(?![a-z])/
+/(?<![a-z])Surface Go(?![a-z])/
+/(?<![a-z])Surface Pro(?![a-z])/
+/(?<![a-z])Surface Studio(?![a-z])/
+/(?<![a-z])Synology(?![a-z])/
+/(?<![a-z])tablet computers?(?![a-z])/
+/(?<![a-z])ThinkPad(?![a-z])/
+/(?<![a-z])thumb drives?(?![a-z])/
+/(?<![a-z])Thunderbolt(?![a-z])/
+/(?<![a-z])Touch ID(?![a-z])/
+/(?<![a-z])TouchID(?![a-z])/
+/(?<![a-z])USB(?![a-z])/
+/(?<![a-z])webcams?(?![a-z])/
+/(?<![a-z])wireless charging(?![a-z])/
+/(?<![a-z])wireless microphone(?![a-z])/
+
+[操作系统与浏览器]
+## 系统平台与软件生态
+### 操作系统、浏览器与系统版本
+操作系统
+鸿蒙
+火狐
+蓝屏
+浏览器
+统信
+银河麒麟
+/(?<![a-z])AlmaLinux(?![a-z])/
+/(?<![a-z])Android(?![a-z])/
+/(?<![a-z])Brave Browser(?![a-z])/
+/(?<![a-z])Chrome(?![a-z])/
+/(?<![a-z])Chromium browser(?![a-z])/
+/(?<![a-z])Chromium\-based browsers?(?![a-z])/
+/(?<![a-z])Chromium项目/
+/(?<![a-z])Debian(?![a-z])/
+/(?<![a-z])Deepin(?![a-z])/
+/(?<![a-z])Edge browser(?![a-z])/
+/(?<![a-z])Fedora 4(?![a-z])/
+/(?<![a-z])Firefox(?![a-z])/
+/(?<![a-z])FreeBSD(?![a-z])/
+/(?<![a-z])HarmonyOS(?![a-z])/
+/(?<![a-z])IE11(?![a-z])/
+/(?<![a-z])IE12(?![a-z])/
+/(?<![a-z])IE 11(?![a-z])/
+/(?<![a-z])iOS(?![a-z])/
+/(?<![a-z])iPadOS(?![a-z])/
+/(?<![a-z])KaiOS(?![a-z])/
+/(?<![a-z])LineageOS(?![a-z])/
+/(?<![a-z])Linux(?![a-z])/
+/(?<![a-z])macOS(?![a-z])/
+/(?<![a-z])Maxthon(?![a-z])/
+/(?<![a-z])Microsoft Edge(?![a-z])/
+/(?<![a-z])MIUI(?![a-z])/
+/(?<![a-z])Mozilla(?![a-z])/
+/(?<![a-z])NixOS(?![a-z])/
+/(?<![a-z])OpenBSD(?![a-z])/
+/(?<![a-z])openSUSE(?![a-z])/
+/(?<![a-z])Opera browser(?![a-z])/
+/(?<![a-z])Opera Mini(?![a-z])/
+/(?<![a-z])Opera One(?![a-z])/
+/(?<![a-z])OS X(?![a-z])/
+/(?<![a-z])OSX(?![a-z])/
+/(?<![a-z])Palm OS(?![a-z])/
+/(?<![a-z])PowerToys(?![a-z])/
+/(?<![a-z])Safari browser(?![a-z])/
+/(?<![a-z])Sailfish OS(?![a-z])/
+/(?<![a-z])Symbian(?![a-z])/
+/(?<![a-z])Termux(?![a-z])/
+/(?<![a-z])Tizen(?![a-z])/
+/(?<![a-z])Tor browser(?![a-z])/
+/(?<![a-z])Tor network(?![a-z])/
+/(?<![a-z])tvOS(?![a-z])/
+/(?<![a-z])Ubuntu(?![a-z])/
+/(?<![a-z])Vivaldi browser(?![a-z])/
+/(?<![a-z])watchOS(?![a-z])/
+/(?<![a-z])webOS(?![a-z])/
+/(?<![a-z])Win7(?![a-z])/
+/(?<![a-z])Win8(?![a-z])/
+/(?<![a-z])Win10(?![a-z])/
+/(?<![a-z])Win11(?![a-z])/
+/(?<![a-z])Windows(?![a-z])/
+/(?<![a-z])WinXP(?![a-z])/
+/(?<![a-z])WP7(?![a-z])/
+/(?<![a-z])WP8(?![a-z])/
+/(?<![a-z])WSL2(?![a-z])/
+/(?<![a-z])WSL 2(?![a-z])/
+### 系统组件、维护与应用分发
+安卓
+磁盘空间
+磁盘整理
+电脑休眠
+电脑优化软件
+开始菜单
+拷贝软件
+屏幕保护程序
+屏幕保护动画
+启动项管理
+驱动安装
+驱动更新
+驱动管理
+软件卸载
+刷机包
+刷机教程
+双系统
+文件夹图标
+文件系统
+卸载残留
+系统镜像
+系统清理
+系统维护
+系统优化
+系统整理
+系统状态监控
+应用安装包
+注册表清理
+注册表优化
+/(?<![a-z])ADB shell(?![a-z])/
+/(?<![a-z])Advanced System Care(?![a-z])/
+/(?<![a-z])APK下载/
+/(?<![a-z])APK安装/
+/(?<![a-z])App Store(?![a-z])/
+/(?<![a-z])bootloaders?(?![a-z])/
+/(?<![a-z])BusyBox(?![a-z])/
+/(?<![a-z])CCleaner(?![a-z])/
+/(?<![a-z])Ext4(?![a-z])/
+/(?<![a-z])fastboot(?![a-z])/
+/(?<![a-z])file systems?(?![a-z])/
+/(?<![a-z])filesystem(?![a-z])/
+/(?<![a-z])Glary Utilities(?![a-z])/
+/(?<![a-z])Mac OS(?![a-z])/
+/(?<![a-z])Magisk(?![a-z])/
+/(?<![a-z])MSIX(?![a-z])/
+/(?<![a-z])NTFS(?![a-z])/
+/(?<![a-z])Play Store(?![a-z])/
+/(?<![a-z])sideloaded(?![a-z])/
+/(?<![a-z])sideloading(?![a-z])/
+/(?<![a-z])uninstaller(?![a-z])/
+/(?<![a-z])WindowsPhone(?![a-z])/
+/(?<![a-z])Wise Care(?![a-z])/
+
+[互联网平台]
+## 综合互联网服务
+### 互联网企业、搜索与综合服务
+阿里巴巴
+阿里旺旺
+百度
+必应
+豆瓣
+飞信
+谷歌
+社交媒体
+搜狗
+搜狐
+搜索引擎
+腾讯
+贴吧
+网易
+微软
+小程序推荐
+新浪
+雅虎
+亚马逊
+字节跳动
+/(?<![a-z])Alibaba(?![a-z])/
+/(?<![a-z])Amazon(?![a-z])/
+/(?<![a-z])AOL(?![a-z])/
+/(?<![a-z])Ask\.com(?![a-z])/
+/(?<![a-z])Baidu(?![a-z])/
+/(?<![a-z])Bing(?![a-z])/
+/(?<![a-z])Blogger\.com(?![a-z])/
+/(?<![a-z])Brave Search(?![a-z])/
+/(?<![a-z])ByteDance(?![a-z])/
+/(?<![a-z])Digg(?![a-z])/
+/(?<![a-z])DuckDuckGo(?![a-z])/
+/(?<![a-z])Flickr(?![a-z])/
+/(?<![a-z])Foursquare(?![a-z])/
+/(?<![a-z])Google(?![a-z])/
+/(?<![a-z])Hotmail(?![a-z])/
+/(?<![a-z])LINE Messenger(?![a-z])/
+/(?<![a-z])Meta(?![a-z])/
+/(?<![a-z])microblogs?(?![a-z])/
+/(?<![a-z])microblogging(?![a-z])/
+/(?<![a-z])Microsoft(?![a-z])/
+/(?<![a-z])MSN Messenger(?![a-z])/
+/(?<![a-z])Patreon(?![a-z])/
+/(?<![a-z])Picasa(?![a-z])/
+/(?<![a-z])Qihoo(?![a-z])/
+/(?<![a-z])Signal app(?![a-z])/
+/(?<![a-z])Signal Desktop(?![a-z])/
+/(?<![a-z])Signal Messenger(?![a-z])/
+/(?<![a-z])social media(?![a-z])/
+/(?<![a-z])social platforms?(?![a-z])/
+/(?<![a-z])Sogou(?![a-z])/
+/(?<![a-z])Tencent(?![a-z])/
+/(?<![a-z])Threads app(?![a-z])/
+/(?<![a-z])Wikipedia(?![a-z])/
+/(?<![a-z])Wolfram Alpha(?![a-z])/
+/(?<![a-z])WolframAlpha(?![a-z])/
+/(?<![a-z])X\.com(?![a-z])/
+/(?<![a-z])Yahoo(?![a-z])/
+/(?<![a-z])Yandex(?![a-z])/
