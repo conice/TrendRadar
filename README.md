@@ -1,6 +1,6 @@
 # TrendRadar 定制版
 
-本仓库基于上游项目 [sansan0/TrendRadar](https://github.com/sansan0/TrendRadar) v6.10.0。
+本仓库基于上游项目 [sansan0/TrendRadar](https://github.com/sansan0/TrendRadar)。
 
 除下列内容外，项目功能、配置和使用方式均以上游文档为准：
 
@@ -24,10 +24,16 @@
 
 同步脚本：`scripts/sync_databases.py`。工作流需要 `contents: write` 权限，且 `data` 分支须已创建。网页报告仍由原有 Cloudflare Pages 步骤部署。
 
-验证数据库恢复、回存和冲突处理：
+验证数据库恢复、回存和冲突处理（仅需标准库）：
 
 ```sh
-python -m unittest discover -s tests -v
+python -m unittest tests.test_sync_databases -v
+```
+
+运行包含上游测试的完整套件需要项目依赖和 `pytest`：
+
+```sh
+uv run --with pytest python -m pytest tests -q
 ```
 
 ## 上游文档

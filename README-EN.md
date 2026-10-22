@@ -6,15 +6,15 @@
 
 Deploy in <strong>30 seconds</strong> — Say goodbye to endless scrolling, only see the news you truly care about
 
-<a href="https://trendradar.sandev.cc/en/" title="TrendRadar Official Website"><strong>🌐 Official Website</strong></a> · <a href="https://trendradar.sandev.cc/en/docs/quick-start/" title="TrendRadar Docs"><strong>📖 Documentation</strong></a>
+<a href="https://trendradar.sandev.cc/en/" title="TrendRadar Official Website"><strong>🌐 Official Website</strong></a> · <a href="https://trendradar.sandev.cc/en/docs/quick-start/" title="TrendRadar Docs"><strong>📖 Documentation</strong></a> · <a href="https://trendradar.sandev.cc/en/docs/self-hosted-sources/" title="Self-hosted news sources with AI"><strong>AI Self-Hosted Sources</strong></a>
 
 <a href="https://trendshift.io/repositories/14726" target="_blank"><img src="https://trendshift.io/api/badge/repositories/14726" alt="sansan0%2FTrendRadar | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
 [![GitHub Stars](https://img.shields.io/github/stars/sansan0/TrendRadar?style=flat-square&logo=github&color=yellow)](https://github.com/sansan0/TrendRadar/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/sansan0/TrendRadar?style=flat-square&logo=github&color=blue)](https://github.com/sansan0/TrendRadar/network/members)
 [![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v6.10.0-blue.svg)](https://github.com/sansan0/TrendRadar)
-[![MCP](https://img.shields.io/badge/MCP-v4.1.0-green.svg)](https://github.com/sansan0/TrendRadar)
+[![Version](https://img.shields.io/badge/version-v6.11.0-blue.svg)](https://github.com/sansan0/TrendRadar)
+[![MCP](https://img.shields.io/badge/MCP-v4.1.1-green.svg)](https://github.com/sansan0/TrendRadar)
 [![Docker Pulls](https://img.shields.io/docker/pulls/wantcat/trendradar?style=flat-square&logo=docker&logoColor=white&label=TrendRadar%20Pulls&color=2496ED)](https://hub.docker.com/r/wantcat/trendradar)
 [![Docker Pulls](https://img.shields.io/docker/pulls/wantcat/trendradar-mcp?style=flat-square&logo=docker&logoColor=white&label=MCP%20Pulls&color=2496ED)](https://hub.docker.com/r/wantcat/trendradar-mcp)
 [![RSS](https://img.shields.io/badge/RSS-Feed_Support-orange.svg?style=flat-square&logo=rss&logoColor=white)](#rss-feed-support-v450-new)
@@ -63,7 +63,7 @@ Deploy in <strong>30 seconds</strong> — Say goodbye to endless scrolling, only
 |:---:|:---:|:---:|
 | [🚀 **Quick Start**](#-quick-start) | [AI Analysis](#-ai-analysis) | [⚙️ **Configuration Guide**](#configuration-guide) |
 | [Docker Deployment](#6-docker-deployment) / [Local Deploy](#local-deploy) | [MCP Clients](#-mcp-clients) | [📝 **Changelog**](#-changelog) |
-| [🎯 **Core Features**](#-core-features) | [☕ **Support Project**](#-support-project) | [📚 **Related Projects**](#-related-projects) |
+| [🎯 **Core Features**](#-core-features) | [💬 **Community**](#community) | [📚 **Related Projects**](#-related-projects) |
 
 </div>
 
@@ -142,32 +142,30 @@ After communication, the author indicated no concerns about server pressure, but
 
 ## 🪄 Sponsors
 
-<div align="center">
+> **[RapidProxy](https://www.rapidproxy.io/?ref=TrendRadar)** provides a global residential proxy network for multi-platform data collection, AI analysis, and automated monitoring. Smart rotation and sticky sessions support access across regions and continuous data gathering. Rotating residential proxies start at **\$0.55/GB**, and static residential proxies start at **\$5/IP/month**.
+>
+> Use code **`RAPID10`** for **10% off**. [Start a free trial](https://www.rapidproxy.io/?ref=TrendRadar).
 
-> Access **ByteDance's in-house Doubao models** alongside **full-strength versions** of leading open-source SOTA models, with comprehensive support for text, visual understanding (VLM), image generation, and other **multimodal capabilities**. Seed-2.1, Seedream 5.0, GLM-5.2, DeepSeek, and more are all available in one place—not only for **efficient coding**, but also for **complex, long-horizon Agent tasks**.
-
-<a href="https://www.volcengine.com/activity/ai618?utm_campaign=hw&amp;utm_content=hw&amp;utm_medium=devrel_tool_web&amp;utm_source=OWO&amp;utm_term=TrendRadar"><img src="_image/banner-volcengine-doubao-ai618.webp" alt="Volcengine Doubao AI Special Offer" width="100%"></a>
-
-</div>
+<a href="https://www.rapidproxy.io/?ref=TrendRadar"><img src="_image/banner-rapidproxy.webp" alt="RapidProxy high-quality overseas proxy IP services with 90M+ real residential IPs, non-expiring traffic, HTTP(S)/SOCKS5, smart IP rotation, and free testing" width="100%"></a>
 
 <br>
 
-<a name="-support-project"></a>
+> **[ApiSmart](https://www.apismart.ai/)** provides a unified AI model API with intelligent routing, automatic failover, and pay-as-you-go billing. Access multiple models through compatible interfaces for trend analysis, content generation, and automated workflows, simplifying AI integration.
 
-### ❤️ Find it useful? Support TrendRadar
+<a href="https://www.apismart.ai/"><img src="_image/banner-apismart.webp" alt="ApiSmart unified AI model API for text, images, and video, with intelligent routing and pay-as-you-go billing" width="100%"></a>
 
-> If TrendRadar has captured value for you, give it some fuel to keep evolving
+<br>
+
+> **[Swiftproxy](https://www.swiftproxy.net/?ref=sansan0)** provides high-quality rotating and static residential proxies with flexible IP rotation and sticky sessions, offering reliable network access for projects involving trend tracking, web scraping, and automated data collection.
 >
-> Any amount is welcome; even 1 RMB is a gesture of encouragement for open source. Feel free to leave a note with your donation (´▽`ʃ♡ƪ)
+> Use code **`PROXY90`** to get **10% off**.
 
-<div align="center">
+<!-- Sponsor banner: 1400 × 300 px (14:3), displayed at 100% width; references: 302.AI at 992 × 250 px and Volcengine at 1400 × 400 px. The new banner retains the 1400 px width with a reduced height. -->
+<a href="https://www.swiftproxy.net/?ref=sansan0"><img src="_image/banner-swiftproxy.webp" alt="Swiftproxy global residential proxies" width="100%"></a>
 
-| WeChat Pay | Alipay |
-| --- | --- |
-| <img src="https://cdn-1258574687.cos.ap-shanghai.myqcloud.com/img/%2F2025%2F07%2F17%2F2ae0a88d98079f7e876c2b4dc85233c6-9e8025.JPG" width="240" alt="WeChat Pay"> | <img src="https://cdn-1258574687.cos.ap-shanghai.myqcloud.com/img/%2F2025%2F07%2F17%2F1ed4f20ab8e35be51f8e84c94e6e239b4-fe4947.JPG" width="240" alt="Alipay"> |
+[Interested in sponsoring? View sponsorship and partnership details](https://trendradar.sandev.cc/en/sponsors/)
 
-</div>
-
+<br>
 
 ### 🤝 Attribution & Secondary Development
 
@@ -176,22 +174,44 @@ If you utilize the core code or draw inspiration from the logic of this project,
 This contributes to the sustainable maintenance of the project and the growth of the community. Thank you for your respect and support! ❤️
 
 
-### 💬 Feedback & Community
+<a name="community"></a>
+
+### 💬 Community
 
 * **GitHub Issues**: Best for specific technical issues. Please provide complete information (screenshots, error logs, etc.) to help locate the problem quickly.
 * **WeChat Official Account**: It is recommended to leave comments under relevant articles. If you need to ask questions in the background, **liking/recommending** the article first is the best "icebreaker," and I can feel your appreciation (´▽`ʃ♡ƪ).
-* **QQ Group**: Follow the WeChat Official Account and reply "**交流群**" to join. Whether you're an AI beginner or a seasoned developer, looking for help or sharing ideas, you're welcome here. The group is all about mutual help and brainstorming — please read the group announcement first; describe your issue clearly with screenshots, and fellow members will help when available. Community wisdom is often faster and more comprehensive than any single person 🤝
+* **QQ Group**: Whether you're an AI beginner or a seasoned developer, looking for help or sharing ideas, you're welcome here. The group is all about mutual help and brainstorming — please read the group announcement first; describe your issue clearly with screenshots, and fellow members will help when available. Community wisdom is often faster and more comprehensive than any single person 🤝
 
 > **Friendly Reminder**:
 > This project is for open-source sharing, not a commercial product. Treat the author as a friend, not customer service, for better communication efficiency!
 
 <div align="center">
 
-| Follow on WeChat |
-| --- |
-| <img src="_image/weixin.png" width="500" title="Silicon-based Tea Room"/> |
+| Follow on WeChat | QQ Group |
+| :---: | :---: |
+| <img src="_image/weixin.png" width="500" title="Silicon-based Tea Room"/> | <img src="_image/qq-group.png" alt="TrendRadar QQ group QR code, group number 1007671021" width="150"/> |
 
 </div>
+
+<br>
+
+<a name="-support-project"></a>
+
+### 🧩 Another tool by the author: SanFrame
+
+<table role="presentation">
+<tr>
+<td width="96" align="center">
+<a href="https://ocr.sandev.cc/en/"><img src="_image/sanframe-icon.webp" alt="SanFrame" width="72" height="72"></a>
+</td>
+<td align="left">
+<strong>Multi-device content and clipboard management</strong><br>
+Organize text, images, files, and clipboard content, and transfer them over your local network between Windows, macOS, and the Android companion app. The desktop app offers on-demand sync, offline OCR, screenshot annotation, and PDF tools; no account required, local-first.
+<br><br>
+<a href="https://ocr.sandev.cc/en/"><strong>Explore SanFrame →</strong></a>
+</td>
+</tr>
+</table>
 
 <br>
 
@@ -201,11 +221,11 @@ This contributes to the sustainable maintenance of the project and the growth of
 - **Tip**: Check [Changelog] to understand specific [Features]
 
 
-### 2026/06/19 - v6.10.0
+### 2026/10/13 - v6.11.0
 
-- **AI Translation Batch Processing**: Automatically splits large translation requests into batches, preventing single-request overflow failures
-- **Module Refactoring**: Split context.py and \_\_main\_\_.py, extracted AI filter pipeline into a standalone module for clearer responsibilities and easier maintenance
-- **Fixed Feishu Source Label Display**: Fixed source labels and AI standalone source overview being swallowed by CommonMark rendering in Feishu cards
+- **Chinese and English Configuration Editing**: Switch the visual editor between Chinese and English and use English configuration templates to set application options, keywords, and schedules in your preferred language
+- **More Deployment Options**: Optionally deploy web reports to Cloudflare Pages automatically after crawling; added local deployment instructions using `uv` for running on your own computer
+- **Crawling and Configuration Reliability**: Retry temporary RSS request failures just once, immediately; fix fractional seconds and timezone offsets in timestamp parsing, regex matching in global filters, and custom AI parameter forwarding; avoid creating an empty database when a remote storage existence check fails
 
 ### 2026/02/09 - mcp-v4.0.0
 
@@ -218,6 +238,12 @@ This contributes to the sustainable maintenance of the project and the growth of
 
 <details>
 <summary>👉 Click to expand: <strong>Historical Updates</strong></summary>
+
+### 2026/06/19 - v6.10.0
+
+- **AI Translation Batch Processing**: Automatically splits large translation requests into batches, preventing single-request overflow failures
+- **Module Refactoring**: Split context.py and \_\_main\_\_.py, extracted AI filter pipeline into a standalone module for clearer responsibilities and easier maintenance
+- **Fixed Feishu Source Label Display**: Fixed source labels and AI standalone source overview being swallowed by CommonMark rendering in Feishu cards
 
 ### 2026/06/02 - v6.9.0
 
@@ -968,6 +994,8 @@ Supports RSS/Atom feed crawling, keyword-based grouping and statistics (consiste
 ### **Visual Configuration Editor**
 
 A web-based graphical configuration interface — no need to manually edit YAML files. Complete all configuration changes and exports through simple forms.
+
+Switch between Chinese and English and use English configuration templates to set application options, keywords, and schedules in your preferred language.
 
 👉 **Try it online**: [https://sansan0.github.io/TrendRadar/](https://sansan0.github.io/TrendRadar/)
 
@@ -3879,7 +3907,9 @@ Any client supporting Model Context Protocol can connect to TrendRadar:
 - https://github.com/sansan0/bilibili-comment-analyzer
 
 
-[![Star History Chart](https://api.star-history.com/svg?repos=sansan0/TrendRadar&type=Date)](https://www.star-history.com/#sansan0/TrendRadar&Date)
+## Star History
+
+[![Star History Chart](https://star-history.dera.page/svg?repos=sansan0/TrendRadar)](https://star-history.dera.page/#sansan0/TrendRadar)
 
 <br>
 

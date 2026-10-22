@@ -187,22 +187,26 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
             r2_key: 远程对象键
 
         Returns:
-            是否存在
+            是否存在；仅在服务端明确返回不存在时为 False
+
+        Raises:
+            权限、限流和网络等异常继续抛出，避免误判后创建空库
         """
         try:
             self.s3_client.head_object(Bucket=self.bucket_name, Key=r2_key)
             return True
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "")
+            error_code = str(e.response.get("Error", {}).get("Code", ""))
+            http_status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode")
             # S3 兼容存储可能返回 404, NoSuchKey, 或其他变体
-            if error_code in ("404", "NoSuchKey", "Not Found"):
+            if error_code in ("404", "NoSuchKey", "Not Found", "NotFound") or http_status == 404:
                 return False
-            # 其他错误（如权限问题）也视为不存在，但打印警告
+            # 检查失败不能当作对象不存在，否则可能覆盖远程历史数据。
             print(f"[远程存储] 检查对象存在性失败 ({r2_key}): {e}")
-            return False
+            raise
         except Exception as e:
             print(f"[远程存储] 检查对象存在性异常 ({r2_key}): {e}")
-            return False
+            raise
 
     def _download_sqlite(self, date: Optional[str] = None, db_type: str = "news") -> Optional[Path]:
         """

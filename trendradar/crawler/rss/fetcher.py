@@ -95,8 +95,28 @@ class RSSFetcher:
             (条目列表, 错误信息) 元组
         """
         try:
-            response = self.session.get(feed.url, timeout=self.timeout)
-            response.raise_for_status()
+            # 瞬时请求故障只额外尝试一次，不增加等待。
+            for attempt in range(2):
+                try:
+                    response = self.session.get(feed.url, timeout=self.timeout)
+                    response.raise_for_status()
+                    break
+                except requests.RequestException as e:
+                    error_response = e.response
+                    retryable = isinstance(e, (requests.Timeout, requests.ConnectionError)) and not isinstance(
+                        e, requests.exceptions.SSLError
+                    )
+                    if isinstance(e, requests.HTTPError):
+                        retryable = error_response is not None and error_response.status_code in {
+                            408, 500, 502, 503, 504
+                        }
+                    # 不提前重试带服务端等待指令的失败响应。
+                    if (
+                        not retryable
+                        or attempt == 1
+                        or (error_response is not None and "Retry-After" in error_response.headers)
+                    ):
+                        raise
 
             parsed_items = self.parser.parse(response.text, feed.url)
 
