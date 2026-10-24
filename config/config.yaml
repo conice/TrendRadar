@@ -157,7 +157,7 @@ rss:
       url: "https://www.cnet.com/rss/news/"
 
     - id: "nytclimate"
-      name: "NYT & Climate and Environment"
+      name: "NYT - Climate"
       url: "https://rss.nytimes.com/services/xml/rss/nyt/Climate.xml"
 
     - id: "githubblog"
@@ -218,10 +218,6 @@ rss:
       name: "The Verge — News"
       url: "https://www.theverge.com/rss/index.xml"
 
-    - id: "wired"
-      name: "WIRED"
-      url: "https://www.wired.com/feed/rss"
-
     - id: "sspai"
       name: "少数派"
       url: "https://sspai.com/feed"
@@ -241,7 +237,7 @@ rss:
  # Science
 
     - id: "sciencedaily"
-      name: "All Top News -- ScienceDaily"
+      name: "ScienceDaily"
       url: "https://www.sciencedaily.com/rss/top/science.xml"
 
     - id: "nasa"
@@ -257,7 +253,7 @@ rss:
       url: "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml"
 
     - id: "phys"
-      name: "Phys.org - latest science and technology news stories"
+      name: "Phys"
       url: "https://phys.org/rss-feed/"
 
 
@@ -272,7 +268,7 @@ rss:
       url: "https://feeds.bbci.co.uk/news/world/rss.xml"
 
     - id: "mitweek"
-      name: "MIT 科技评论 - 本周热榜"
+      name: "MIT - week"
       url: "https://rsshub.bestblogs.dev/mittrchina/hot"
 
     - id: "nytworld"
@@ -284,11 +280,11 @@ rss:
       url: "https://feeds.washingtonpost.com/rss/world"
 
     - id: "theguardian"
-      name: "World news | The Guardian"
+      name: "The Guardian"
       url: "https://www.theguardian.com/world/rss"
 
     - id: "solidot"
-      name: "奇客Solidot–传递最新科技情报"
+      name: "Solidot"
       url: "https://www.solidot.org/index.rss"
 
     - id: "juejin"
@@ -300,7 +296,7 @@ rss:
       url: "https://rss.huxiu.com/"
 
     - id: "tmtpost"
-      name: "钛媒体：引领未来商业与生活新知"
+      name: "钛媒体"
       url: "https://www.tmtpost.com/feed"
 
     - id: "axios"
@@ -308,7 +304,7 @@ rss:
       url: "https://api.axios.com/feed/"
 
     - id: "wsjnews"
-      name: "WSJ: World News"
+      name: "WSJ - News"
       url: "https://feeds.content.dowjones.io/public/rss/RSSWorldNews"
 
     - id: "scmp"
@@ -360,7 +356,7 @@ rss:
 
  # Communities
 
-    - id: "hackernewsycombknator"
+    - id: "hacker - news"
       name: "Hacker News"
       url: "https://news.ycombinator.com/rss"
 
