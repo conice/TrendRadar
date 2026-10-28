@@ -435,6 +435,32 @@ class StorageBackend(ABC):
         """
         pass
 
+    # === 跨日期去重（默认实现，子类通过 mixin 覆盖） ===
+
+    def get_previous_day_titles(self, date: Optional[str] = None) -> Dict[str, Set[str]]:
+        """
+        获取前一天的所有标题（用于跨日期去重）
+
+        Args:
+            date: 参考日期，默认为今天
+
+        Returns:
+            {source_id: {title, ...}}；没有数据时返回空字典
+        """
+        return {}
+
+    def get_previous_day_rss_keys(self, date: Optional[str] = None) -> Dict[str, Set[str]]:
+        """
+        获取前一天 RSS 条目的去重键（"u:<url>" / "t:<title>"）
+
+        Args:
+            date: 参考日期，默认为今天
+
+        Returns:
+            {feed_id: {"u:...", "t:...", ...}}；没有数据时返回空字典
+        """
+        return {}
+
     # === 时间段执行记录（调度系统）===
 
     def has_period_executed(self, date_str: str, period_key: str, action: str) -> bool:

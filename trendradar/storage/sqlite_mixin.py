@@ -7,7 +7,7 @@ SQLite 存储 Mixin
 
 import sqlite3
 from abc import abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -49,6 +49,101 @@ class SQLiteStorageMixin:
     def _format_time_filename(self) -> str:
         """格式化时间文件名 (格式: HH-MM)"""
         pass
+
+    # ========================================
+    # 跨日期去重辅助
+    # ========================================
+
+    def _previous_date_str(self, date: Optional[str] = None) -> str:
+        """
+        获取给定日期的前一天
+
+        Args:
+            date: 日期字符串（YYYY-MM-DD），默认为今天
+
+        Returns:
+            前一天日期字符串；无法解析时返回空字符串
+        """
+        base = date or self._format_date_folder(None)
+        try:
+            return (datetime.strptime(base, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+        except ValueError:
+            return ""
+
+    def _db_exists(self, date: Optional[str] = None, db_type: str = "news") -> bool:
+        """
+        判断指定日期的数据库是否存在
+
+        默认返回 True，由子类根据实际存储位置覆盖。
+        """
+        return True
+
+    def get_previous_day_titles(self, date: Optional[str] = None) -> Dict[str, set]:
+        """
+        读取前一天的所有标题（用于跨日期去重）
+
+        Args:
+            date: 参考日期，默认为今天
+
+        Returns:
+            {source_id: {title, ...}}；前一天没有数据时返回空字典
+        """
+        prev_date = self._previous_date_str(date)
+        if not prev_date or not self._db_exists(prev_date, "news"):
+            return {}
+
+        try:
+            prev_data = self._get_today_all_data_impl(prev_date)
+        except Exception as e:
+            print(f"[存储] 读取前一天新闻数据失败: {e}")
+            return {}
+
+        if not prev_data or not prev_data.items:
+            return {}
+
+        return {
+            source_id: {item.title for item in news_list if item.title}
+            for source_id, news_list in prev_data.items.items()
+        }
+
+    def get_previous_day_rss_keys(self, date: Optional[str] = None) -> Dict[str, set]:
+        """
+        读取前一天 RSS 条目的去重键（URL 与标题）
+
+        Args:
+            date: 参考日期，默认为今天
+
+        Returns:
+            {feed_id: {"u:<url>", "t:<title>", ...}}；前一天没有数据时返回空字典
+        """
+        prev_date = self._previous_date_str(date)
+        if not prev_date or not self._db_exists(prev_date, "rss"):
+            return {}
+
+        try:
+            prev_data = self._get_rss_data_impl(prev_date)
+        except Exception as e:
+            print(f"[存储] 读取前一天 RSS 数据失败: {e}")
+            return {}
+
+        if not prev_data or not prev_data.items:
+            return {}
+
+        return self._collect_rss_keys(prev_data.items)
+
+    @staticmethod
+    def _collect_rss_keys(items: Dict[str, List[RSSItem]]) -> Dict[str, set]:
+        """将 RSS 条目转换为去重键集合（URL 与标题）"""
+        keys: Dict[str, set] = {}
+        for feed_id, rss_list in items.items():
+            feed_keys = set()
+            for item in rss_list:
+                if item.url:
+                    feed_keys.add(f"u:{item.url}")
+                if item.title:
+                    feed_keys.add(f"t:{item.title}")
+            keys[feed_id] = feed_keys
+        return keys
 
     # ========================================
     # Schema 管理
@@ -635,10 +730,21 @@ class SQLiteStorageMixin:
             historical_data = self._get_today_all_data_impl(current_data.date)
 
             if not historical_data:
-                # 没有历史数据，所有都是新的
+                # 当天还没有数据：若前一天已有数据，则以昨天的标题作为历史基准
+                previous_titles = self.get_previous_day_titles(current_data.date)
+                if not any(previous_titles.values()):
+                    # 没有历史数据，所有都是新的
+                    new_titles = {}
+                    for source_id, news_list in current_data.items.items():
+                        new_titles[source_id] = {item.title: item for item in news_list}
+                    return new_titles
+
                 new_titles = {}
                 for source_id, news_list in current_data.items.items():
-                    new_titles[source_id] = {item.title: item for item in news_list}
+                    hist_set = previous_titles.get(source_id, set())
+                    kept = {item.title: item for item in news_list if item.title not in hist_set}
+                    if kept:
+                        new_titles[source_id] = kept
                 return new_titles
 
             # 获取当前批次时间
@@ -657,8 +763,12 @@ class SQLiteStorageMixin:
             # 检查是否有历史数据
             has_historical_data = any(len(titles) > 0 for titles in historical_titles.values())
             if not has_historical_data:
-                # 第一次抓取，没有"新增"概念
-                return {}
+                # 当天第一次抓取：若前一天已有数据，则以昨天的标题作为历史基准
+                previous_titles = self.get_previous_day_titles(current_data.date)
+                if not any(previous_titles.values()):
+                    # 完全没有历史数据，"新增"概念不成立
+                    return {}
+                historical_titles = previous_titles
 
             # 检测新增
             new_titles = {}
@@ -680,6 +790,9 @@ class SQLiteStorageMixin:
         """
         检查是否是当天第一次抓取
 
+        跨日期日期切换时（当天只有本次抓取），如果前一天已有数据，
+        则不再视为"首次抓取"，以便增量模式仍能与前一天数据去重。
+
         Args:
             date: 日期字符串，默认为今天
 
@@ -697,8 +810,12 @@ class SQLiteStorageMixin:
             row = cursor.fetchone()
             count = row[0] if row else 0
 
-            # 如果只有一条或没有记录，视为第一次抓取
-            return count <= 1
+            if count > 1:
+                return False
+
+            # 当天只有本次记录：若前一天已有数据，仍需按增量处理
+            previous_titles = self.get_previous_day_titles(date)
+            return not any(previous_titles.values())
 
         except Exception as e:
             print(f"[存储] 检查首次抓取失败: {e}")
@@ -1046,7 +1163,9 @@ class SQLiteStorageMixin:
         检测新增的 RSS 条目（增量模式）
 
         该方法比较当前抓取数据与历史数据，找出新增的 RSS 条目。
-        关键逻辑：只有在历史批次中从未出现过的 URL 才算新增。
+        关键逻辑：只有在历史数据中从未出现过的条目才算新增。
+        同一天内按抓取时间判定；当天还没有更早批次时，回退到前一天的数据，
+        避免跨日期后把昨天的内容重复推送。
 
         Args:
             current_data: 当前抓取的 RSS 数据
@@ -1058,39 +1177,48 @@ class SQLiteStorageMixin:
             # 获取历史数据
             historical_data = self._get_rss_data_impl(current_data.date)
 
-            if not historical_data:
-                # 没有历史数据，所有都是新的
-                return current_data.items.copy()
-
             # 获取当前批次时间
             current_time = current_data.crawl_time
 
-            # 收集历史 URL（first_time < current_time 的条目）
-            historical_urls: Dict[str, set] = {}
-            for feed_id, rss_list in historical_data.items.items():
-                historical_urls[feed_id] = set()
-                for item in rss_list:
-                    first_time = item.first_time or item.crawl_time
-                    if first_time < current_time:
-                        if item.url:
-                            historical_urls[feed_id].add(item.url)
+            # 收集历史去重键（first_time < current_time 的条目）
+            historical_keys: Dict[str, set] = {}
+            if historical_data:
+                for feed_id, rss_list in historical_data.items.items():
+                    keys = set()
+                    for item in rss_list:
+                        first_time = item.first_time or item.crawl_time
+                        if first_time < current_time:
+                            if item.url:
+                                keys.add(f"u:{item.url}")
+                            if item.title:
+                                keys.add(f"t:{item.title}")
+                    historical_keys[feed_id] = keys
 
             # 检查是否有早于当前批次的历史数据
-            has_historical_data = any(len(urls) > 0 for urls in historical_urls.values())
+            has_historical_data = any(len(keys) > 0 for keys in historical_keys.values())
             if not has_historical_data:
-                # 当天第一次抓取，所有条目都是新增
-                return current_data.items.copy()
+                # 当天第一次抓取：若前一天已有数据，则以昨天的条目作为历史基准
+                previous_keys = self.get_previous_day_rss_keys(current_data.date)
+                if not any(previous_keys.values()):
+                    # 完全没有历史数据，所有条目都是新增
+                    return current_data.items.copy()
+                historical_keys = previous_keys
 
             # 检测新增
             new_items: Dict[str, List[RSSItem]] = {}
             for feed_id, rss_list in current_data.items.items():
-                hist_set = historical_urls.get(feed_id, set())
+                hist_set = historical_keys.get(feed_id, set())
                 for item in rss_list:
-                    # 通过 URL 判断是否新增
-                    if item.url and item.url not in hist_set:
-                        if feed_id not in new_items:
-                            new_items[feed_id] = []
-                        new_items[feed_id].append(item)
+                    # 通过 URL 或标题判断是否新增（部分源会更换带追踪参数的链接）
+                    if not item.url:
+                        continue
+                    if f"u:{item.url}" in hist_set:
+                        continue
+                    if item.title and f"t:{item.title}" in hist_set:
+                        continue
+                    if feed_id not in new_items:
+                        new_items[feed_id] = []
+                    new_items[feed_id].append(item)
 
             return new_items
 

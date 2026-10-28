@@ -169,11 +169,16 @@ def detect_latest_new_titles_from_storage(
 
         # 检查是否是当天第一次抓取（没有任何历史标题）
         # 如果所有平台的历史标题集合都为空，说明只有一个抓取批次
-        # 在这种情况下，将所有最新批次的标题视为"新增"（用于增量模式的第一次推送）
         has_historical_data = any(len(titles) > 0 for titles in historical_titles.values())
         if not has_historical_data:
-            # 第一次爬取：返回所有最新标题作为"新增"
-            return latest_titles
+            # 跨日期场景：以昨天已推送过的标题作为历史基准，避免新一天首推全量重复
+            previous_titles = storage_manager.get_previous_day_titles()
+            if not any(previous_titles.values()):
+                # 完全没有历史数据：第一次爬取，返回所有最新标题作为"新增"
+                return latest_titles
+            historical_titles = {
+                source_id: set(titles) for source_id, titles in previous_titles.items()
+            }
 
         # 步骤3：找出新增标题 = 最新批次标题 - 历史标题
         new_titles = {}

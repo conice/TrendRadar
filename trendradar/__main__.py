@@ -1130,6 +1130,7 @@ class NewsAnalyzer:
         # 根据模式获取原始条目
         if self.report_mode == "incremental":
             new_items_dict = self.storage_manager.detect_new_rss_items(rss_data)
+            new_items_dict = self._filter_previous_day_rss_items(new_items_dict)
             if new_items_dict:
                 raw_rss_items = self._convert_rss_items_to_list(new_items_dict, rss_data.id_to_name)
         elif self.report_mode == "current":
@@ -1147,6 +1148,8 @@ class NewsAnalyzer:
 
         # 2. 获取新增条目（用于统计）
         new_items_dict = self.storage_manager.detect_new_rss_items(rss_data)
+        if self.report_mode == "incremental":
+            new_items_dict = self._filter_previous_day_rss_items(new_items_dict)
         new_items_list = None
         if new_items_dict:
             new_items_list = self._convert_rss_items_to_list(new_items_dict, rss_data.id_to_name)
@@ -1259,6 +1262,76 @@ class NewsAnalyzer:
 
         self._rss_total_count = total
         return rss_stats, rss_new_stats, raw_rss_items, rss_new_urls
+
+    def _filter_previous_day_rss_items(self, items_dict: Dict) -> Dict:
+        """
+        增量模式兜底：剔除前一天已抓取过的 RSS 条目
+
+        主要去重逻辑在存储层（跨日期回退），此处再按前一天数据过滤一次，
+        避免历史库暂不可读等情况下重复推送。
+        """
+        if not items_dict:
+            return items_dict
+
+        try:
+            prev_keys = self.storage_manager.get_previous_day_rss_keys()
+        except Exception as e:
+            print(f"[RSS] 读取前一天 RSS 数据失败，跳过跨日期去重: {e}")
+            return items_dict
+
+        if not prev_keys:
+            return items_dict
+
+        filtered: Dict = {}
+        removed = 0
+        for feed_id, items in items_dict.items():
+            feed_prev = prev_keys.get(feed_id, set())
+            kept = []
+            for item in items:
+                if item.url and f"u:{item.url}" in feed_prev:
+                    removed += 1
+                    continue
+                if item.title and f"t:{item.title}" in feed_prev:
+                    removed += 1
+                    continue
+                kept.append(item)
+            if kept:
+                filtered[feed_id] = kept
+
+        if removed:
+            print(f"[RSS] 跨日期去重：剔除 {removed} 条昨天已抓取的内容")
+        return filtered
+
+    def _filter_previous_day_titles(self, new_titles: Dict) -> Dict:
+        """
+        增量模式兜底：剔除前一天已出现过的热榜标题
+
+        主要去重逻辑在存储层（跨日期回退），此处再按前一天数据过滤一次。
+        """
+        if not new_titles:
+            return new_titles
+
+        try:
+            prev_titles = self.storage_manager.get_previous_day_titles()
+        except Exception as e:
+            print(f"[存储] 读取前一天新闻数据失败，跳过跨日期去重: {e}")
+            return new_titles
+
+        if not prev_titles:
+            return new_titles
+
+        filtered: Dict = {}
+        removed = 0
+        for source_id, titles in new_titles.items():
+            prev_set = prev_titles.get(source_id, set())
+            kept = {title: data for title, data in titles.items() if title not in prev_set}
+            removed += len(titles) - len(kept)
+            if kept:
+                filtered[source_id] = kept
+
+        if removed:
+            print(f"[存储] 跨日期去重：剔除 {removed} 条昨天已出现的热榜标题")
+        return filtered
 
     def _convert_rss_items_to_list(self, items_dict: Dict, id_to_name: Dict) -> List[Dict]:
         """将 RSS 条目字典转换为列表格式，并应用新鲜度过滤（用于推送）"""
@@ -1429,6 +1502,8 @@ class NewsAnalyzer:
         current_platform_ids = self.ctx.platform_ids
 
         new_titles = self.ctx.detect_new_titles(current_platform_ids)
+        if self.report_mode == "incremental":
+            new_titles = self._filter_previous_day_titles(new_titles)
         time_info = self.ctx.format_time()
         word_groups, filter_words, global_filters = self.ctx.load_frequency_words(self.frequency_file)
 

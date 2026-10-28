@@ -99,6 +99,11 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
         db_dir.mkdir(parents=True, exist_ok=True)
         return db_dir / f"{date_str}.db"
 
+    def _db_exists(self, date: Optional[str] = None, db_type: str = "news") -> bool:
+        """判断指定日期的数据库文件是否存在（不会创建文件）"""
+        date_str = self._format_date_folder(date)
+        return (self.data_dir / db_type / f"{date_str}.db").exists()
+
     def _get_connection(self, date: Optional[str] = None, db_type: str = "news") -> sqlite3.Connection:
         """
         获取数据库连接（带缓存）
@@ -167,9 +172,10 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
 
     def is_first_crawl_today(self, date: Optional[str] = None) -> bool:
         """检查是否是当天第一次抓取"""
-        db_path = self._get_db_path(date)
-        if not db_path.exists():
-            return True
+        if not self._db_exists(date, "news"):
+            # 当天还没有数据库：若前一天已有数据，仍按增量处理
+            previous_titles = self.get_previous_day_titles(date)
+            return not any(previous_titles.values())
         return self._is_first_crawl_today_impl(date)
 
     def get_crawl_times(self, date: Optional[str] = None) -> List[str]:

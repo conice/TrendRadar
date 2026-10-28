@@ -242,6 +242,14 @@ class StorageManager:
         """检查是否是当天第一次抓取"""
         return self.get_backend().is_first_crawl_today(date)
 
+    def get_previous_day_titles(self, date: Optional[str] = None) -> dict:
+        """获取前一天的标题（跨日期去重）"""
+        return self.get_backend().get_previous_day_titles(date)
+
+    def get_previous_day_rss_keys(self, date: Optional[str] = None) -> dict:
+        """获取前一天 RSS 条目的去重键（跨日期去重）"""
+        return self.get_backend().get_previous_day_rss_keys(date)
+
     def cleanup(self) -> None:
         """清理资源"""
         if self._backend:

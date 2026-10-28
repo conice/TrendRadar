@@ -208,6 +208,22 @@ class RemoteStorageBackend(SQLiteStorageMixin, StorageBackend):
             print(f"[远程存储] 检查对象存在性异常 ({r2_key}): {e}")
             raise
 
+    def _db_exists(self, date: Optional[str] = None, db_type: str = "news") -> bool:
+        """
+        判断指定日期的数据库是否存在（用于跨日期去重）
+
+        先看本地临时目录，再查远程存储；查询异常时按不存在处理，
+        避免因历史数据不可达而中断本次推送。
+        """
+        local_path = self._get_local_db_path(date, db_type)
+        if local_path.exists():
+            return True
+
+        try:
+            return self._check_object_exists(self._get_remote_db_key(date, db_type))
+        except Exception:
+            return False
+
     def _download_sqlite(self, date: Optional[str] = None, db_type: str = "news") -> Optional[Path]:
         """
         从远程存储下载当天的 SQLite 文件到本地临时目录
