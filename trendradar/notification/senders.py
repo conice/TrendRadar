@@ -524,10 +524,9 @@ def send_to_telegram(
     ai_content = _render_ai_analysis(ai_analysis, "telegram") if ai_analysis else None
     ai_stats = _extract_ai_stats(ai_analysis)
 
-    # 获取分批内容，预留批次头部空间
-    header_reserve = get_max_batch_header_size("telegram")
+    # Telegram 渲染器自带续页标题和页码（见 telegram_renderer.py），不再加通用批次头
     batches = split_content_func(
-        report_data, "telegram", update_info, max_bytes=batch_size - header_reserve, mode=mode,
+        report_data, "telegram", update_info, max_bytes=batch_size, mode=mode,
         rss_items=rss_items,
         rss_new_items=rss_new_items,
         ai_content=ai_content,
@@ -535,9 +534,6 @@ def send_to_telegram(
         ai_stats=ai_stats,
         report_type=report_type,
     )
-
-    # 统一添加批次头部（已预留空间，不会超限）
-    batches = add_batch_headers(batches, "telegram", batch_size)
 
     print(f"{log_prefix}消息分为 {len(batches)} 批次发送 [{report_type}]")
 

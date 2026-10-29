@@ -12,6 +12,7 @@ from trendradar.report.formatter import format_title_for_platform
 from trendradar.report.helpers import format_rank_display
 from trendradar.utils.time import DEFAULT_TIMEZONE, format_iso_time_friendly, convert_time_for_display
 from trendradar.notification.batch import truncate_at_line_boundary
+from trendradar.notification.telegram_renderer import render_telegram_batches
 
 
 # === 分批安全辅助函数 ===
@@ -195,6 +196,17 @@ def split_content_into_batches(
             max_bytes = sizes.get("ntfy", 3800)
         else:
             max_bytes = sizes.get("default", 4000)
+
+    if format_type == "telegram":
+        return render_telegram_batches(
+            report_data, update_info, max_bytes=max_bytes, mode=mode,
+            region_order=region_order, get_time_func=get_time_func,
+            rss_items=rss_items, rss_new_items=rss_new_items, timezone=timezone,
+            display_mode=display_mode, ai_content=ai_content,
+            standalone_data=standalone_data, rank_threshold=rank_threshold,
+            ai_stats=ai_stats, report_type=report_type,
+            show_new_section=show_new_section,
+        )
 
     batches = []
 

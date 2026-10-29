@@ -234,35 +234,34 @@ def render_ai_analysis_telegram(result: AIAnalysisResult) -> str:
     Telegram Bot API 的 HTML 模式仅支持有限标签：
     <b>, <i>, <u>, <s>, <code>, <pre>, <a href="">, <blockquote>
     换行直接使用 \\n，不支持 <br>, <div>, <h1>-<h6> 等标签。
+
+    段落之间用空行分隔，且每段内标签自行闭合：分批时按段落切分
+    （见 notification/telegram_renderer.py），不会把标签拆到两条消息里。
     """
     if not result.success:
         if result.skipped:
-            return f"ℹ️ {_escape_html(result.error)}"
-        return f"⚠️ AI 分析失败: {_escape_html(result.error)}"
+            return f"✨ <b>AI 洞察</b>\n\n<i>{_escape_html(result.error)}</i>"
+        return f"✨ <b>AI 洞察</b>\n\n<i>分析失败：{_escape_html(result.error)}</i>"
 
-    lines = ["<b>✨ AI 热点分析</b>", ""]
+    sections = [
+        ("核心态势", result.core_trends),
+        ("舆论与争议", result.sentiment_controversy),
+        ("异动与弱信号", result.signals),
+        ("RSS 洞察", result.rss_insights),
+        ("研判与建议", result.outlook_strategy),
+    ]
+    paragraphs = ["✨ <b>AI 洞察</b>"]
+    for title, content in sections:
+        if content:
+            paragraphs.append(f"<b>{title}</b>\n{_escape_html(_format_list_content(content))}")
 
-    if result.core_trends:
-        lines.extend(["<b>核心热点态势</b>", _escape_html(_format_list_content(result.core_trends)), ""])
+    for source_name, summary in (result.standalone_summaries or {}).items():
+        if summary:
+            paragraphs.append(
+                f"<b>{_escape_html(source_name)}</b>\n{_escape_html(summary.strip())}"
+            )
 
-    if result.sentiment_controversy:
-        lines.extend(["<b>舆论风向争议</b>", _escape_html(_format_list_content(result.sentiment_controversy)), ""])
-
-    if result.signals:
-        lines.extend(["<b>异动与弱信号</b>", _escape_html(_format_list_content(result.signals)), ""])
-
-    if result.rss_insights:
-        lines.extend(["<b>RSS 深度洞察</b>", _escape_html(_format_list_content(result.rss_insights)), ""])
-
-    if result.outlook_strategy:
-        lines.extend(["<b>研判策略建议</b>", _escape_html(_format_list_content(result.outlook_strategy)), ""])
-
-    if result.standalone_summaries:
-        summaries_text = _format_standalone_summaries(result.standalone_summaries)
-        if summaries_text:
-            lines.extend(["<b>独立源点速览</b>", _escape_html(summaries_text)])
-
-    return "\n".join(lines)
+    return "\n\n".join(paragraphs)
 
 
 def get_ai_analysis_renderer(channel: str):
