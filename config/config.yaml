@@ -66,40 +66,36 @@ platforms:
   api_url: ""                            # 热榜数据 API 地址（留空使用默认地址）
                                         # 如果你自行部署了 newsnow，填入你的地址，如: https://your-domain.com/api/s
   sources:
-    - id: "toutiao"
-      name: "今日头条"
-      expected_domain: "toutiao.com"
-    - id: "baidu"
-      name: "百度热搜"
-      expected_domain: "baidu.com"
-    - id: "wallstreetcn-hot"
-      name: "华尔街见闻"
-      expected_domain: "wallstreetcn.com"
-    - id: "thepaper"
-      name: "澎湃新闻"
-      expected_domain: "thepaper.cn"
-    - id: "bilibili-hot-search"
-      name: "bilibili 热搜"
-      expected_domain: "bilibili.com"
-    - id: "cls-hot"
-      name: "财联社热门"
-      expected_domain: "cls.cn"
-    - id: "ifeng"
-      name: "凤凰网"
-      expected_domain: "ifeng.com"
-    - id: "tieba"
-      name: "贴吧"
-      expected_domain: "baidu.com"
-    - id: "weibo"
-      name: "微博"
-      expected_domain: "weibo.com"
-    - id: "douyin"
-      name: "抖音"
-      expected_domain: "douyin.com"
+
+# ========== 综合资讯 ==========
     - id: "zhihu"
       name: "知乎"
       expected_domain: "zhihu.com"
 
+    - id: "weibo"
+      name: "微博-实时热搜"
+      expected_domain: "weibo.com"
+
+    - id: "toutiao"
+      name: "今日头条"
+      expected_domain: "toutiao.com"
+
+
+# ========== 社区 · 内容平台 ==========
+
+    - id: "bilibili-hot-search"
+      name: "哔哩哔哩-热搜"
+      expected_domain: "bilibili.com"
+
+    - id: "douyin"
+      name: "抖音"
+      expected_domain: "douyin.com"
+
+
+# ========== 安全 ==========
+    - id: "freebuf"
+      name: "Freebuf-网络安全"
+      expected_domain: "freebuf.com"
 
 
 # ===============================================================
@@ -127,19 +123,64 @@ rss:
   # - 正整数：覆盖全局设置，只推送此天数内的文章
   # - 0：禁用此频道的新鲜度过滤，推送所有文章
   feeds:
-    - id: "hacker-news"
-      name: "Hacker News"
-      url: "https://hnrss.org/frontpage"
 
-    - id: "ruanyifeng"
-      name: "阮一峰的网络日志"
-      url: "http://www.ruanyifeng.com/blog/atom.xml"
-      enabled: false                  # 禁用
-      # max_age_days: 3               # 示例：推送 3 天内的文章（更新较慢的博客）
-     
-    - id: "yahoo-finance"
-      name: "雅虎财经"
-      url: "https://finance.yahoo.com/news/rssindex"
+ # Artificial Intelligence
+
+    - id: "aws"
+      name: "AWS Machine Learning"
+      url: "https://aws.amazon.com/blogs/machine-learning/feed/"
+
+
+ # Technology
+
+    - id: "howtogeek"
+      name: "How-To Geek"
+      url: "https://feeds.howtogeek.com/HowToGeek"
+
+
+ # Technology Media
+
+    - id: "ithome"
+      name: "IT之家"
+      url: "https://www.ithome.com/rss/"
+
+    - id: "techcrunch"
+      name: "TechCrunch"
+      url: "https://techcrunch.com/feed/"
+
+
+ # Science
+
+    - id: "nasa"
+      name: "NASA"
+      url: "https://www.nasa.gov/news-release/feed/"
+
+    - id: "nature"
+      name: "Nature"
+      url: "https://www.nature.com/nature.rss"
+
+
+ # News
+
+    - id: "nytworld"
+      name: "NYT & World News"
+      url: "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
+
+    - id: "theguardian"
+      name: "The Guardian"
+      url: "https://www.theguardian.com/world/rss"
+
+    - id: "wsjnews"
+      name: "WSJ - News"
+      url: "https://feeds.content.dowjones.io/public/rss/RSSWorldNews"
+
+
+ # Startups
+
+    - id: "wallstreetcn"
+      name: "华尔街见闻"
+      url: "https://dedicated.wallstreetcn.com/rss.xml"
+
 
     # 自定义源示例
     # - id: "custom-feed"
@@ -401,7 +442,6 @@ ai:
                                     # 示例: ["openai/gpt-4o-mini", "openai/deepseek-ai/DeepSeek-V3"]
 
   # 额外参数（一般无需修改，删掉 # 号即可启用）
-  # 会原样透传给 LiteLLM，可用于补充请求参数或自定义请求头
   # extra_params:
   #   top_p: 1.0
   #   presence_penalty: 0.0

@@ -1,258 +1,436 @@
 # ═══════════════════════════════════════════════════════════════
 #                    TrendRadar 频率词配置文件
-#                         Version: 1.1.0
+#                         Version: 10.1.0
 # ═══════════════════════════════════════════════════════════════
 
-# 可视化配置编辑器地址: https://sansan0.github.io/TrendRadar/
-#
-# 凡是左侧有 # 的都是仅供阅读的说明性文字
-#
-# 这个文件用来设置你想关注的新闻关键词。
-# 系统会自动抓取包含这些关键词的热榜新闻推送给你。
-#
-# 文件分为两个区域：
-#   [GLOBAL_FILTER]  - 全局过滤区：排除不想看的内容
-#   [WORD_GROUPS]    - 词组定义区：设置想关注的关键词
-#
-# ═══════════════════════════════════════════════════════════════
-
-
-# ───────────────────────────────────────────────────────────────
-#                        全局过滤区
-# ───────────────────────────────────────────────────────────────
-# 在这里写入你不想看到的词，每行一个。
-# 包含这些词的新闻会被自动排除，不会出现在推送中。
-#
-# 使用方法：
-#   震惊              直接写词，包含"震惊"的新闻会被过滤
-#   /赌博|博彩/       用 /.../ 包裹可以匹配多个词（用 | 分隔）
+#维护方法
+# 1. 词组必须以 [组名] 开头；组与组之间用空行分隔。
+# 2. 标准格式：
+#    [组名]
+#    /中文正则/
+#    /英文正则/
+# 3. 中文正则只放中文关键词；英文正则只放英文关键词，不要混行。
+# 4. 中文关键词翻译成英文时，使用新闻标题里常见的自然表达，不要逐字直译。
+# 5. 同一个关键词只允许出现在一个词组的对应语言行内；新词组先用全文搜索查重。
+# 6. 英文品牌、产品、人物或组织如果没有对应中文别名，可只写英文正则，并在组名下加：
+#    # 没有中文正则
+# 7. 删除或合并词组时，保留命中更多新闻的组名；删除前先确认没有唯一关键词被误删。
+# 8. 添加关键词后，用项目解析器和新闻样本验证：解析无误、无空组、无重复、命中稳定。
+# 9. 不要添加泛词和兜底规则；优先补充具体品牌、机构、事件、领域和自然表达。
+# 10. 修改后保持 [GLOBAL_FILTER] 在最前，[WORD_GROUPS] 在其后，不改变解析器依赖的结构。
 
 [GLOBAL_FILTER]
-# 过滤标题党
-震惊
 
-
-
-# ───────────────────────────────────────────────────────────────
-#                        词组定义区
-# ───────────────────────────────────────────────────────────────
-# 在这里写入你想关注的关键词。
-# 每个词组用空行分隔，同一词组内的关键词是"或"的关系。
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      语法总览（快速参考）                      │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 关键词语法：
-#   关键词            普通关键词，标题包含即匹配
-#   /正则/            正则表达式匹配（自动忽略大小写）
-#   关键词 => 别名    给关键词指定显示别名
-#   [组别名]          词组第一行，给整组指定别名
-#   +关键词           必须词，所有必须词都要匹配才算匹配
-#   !关键词           过滤词，匹配则排除该条新闻（仅限当前词组）
-#   @数字             限制该词组最多显示多少条
-#
-# 显示名称优先级：
-#   1. 有组别名 → 显示组别名
-#   2. 没有组别名 → 显示各行别名拼接（用 " / " 连接）
-#   3. 没有别名 → 显示关键词本身
-#
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      基础用法（推荐新手）                      │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 1. 最简单：直接写关键词
-#    ────────────────────
-#    华为
-#
-#    效果：匹配所有包含"华为"的新闻
-#
-#
-# 2. 多个关键词归为一组
-#    ────────────────────
-#    华为
-#    鸿蒙
-#    任正非
-#
-#    效果：匹配包含"华为"或"鸿蒙"或"任正非"的新闻，统一显示为"华为 / 鸿蒙 / 任正非"
-#
-#
-# 3. 给词组起个名字（推荐）
-#    ────────────────────
-#    [华为]
-#    华为
-#    鸿蒙
-#    任正非
-#
-#    效果：同上，但显示名称为"华为"（更简洁）
-#
-#
-# ┌─────────────────────────────────────────────────────────────┐
-# │                      进阶用法（可选）                         │
-# └─────────────────────────────────────────────────────────────┘
-#
-# 4. 用正则表达式匹配多个词（一行搞定）
-#    ────────────────────
-#    /华为|鸿蒙|任正非/ => 华为
-#
-#    效果：匹配包含"华为"或"鸿蒙"或"任正非"的新闻，显示为"华为"
-#    说明：/.../ 里用 | 分隔多个词，=> 后面是显示名称
-#
-#    💡 不懂正则？问 AI：
-#       "帮我写一个正则表达式，匹配包含'华为'或'鸿蒙'或'任正非'的文本，
-#        格式要求：/正则/ => 显示名称"
-#
-#
-# 5. 精确匹配英文单词（避免误匹配）
-#    ────────────────────
-#    /\bAI\b/i => AI
-#
-#    说明：\b 表示单词边界，避免匹配到 "MAIL" 中的 "AI"
-#          /i 表示忽略大小写，"ai"、"AI"、"Ai" 都能匹配
-#
-#    💡 不懂正则？问 AI：
-#       "帮我写一个正则表达式，精确匹配英文单词'AI'（不匹配 MAIL 中的 AI），
-#        忽略大小写，格式要求：/正则/i => 显示名称"
-#
-#
-# 6. 排除特定内容
-#    ────────────────────
-#    [苹果公司]
-#    苹果
-#    !水果
-#    !果园
-#
-#    效果：匹配"苹果"但排除包含"水果"或"果园"的新闻
-#    说明：! 开头的词表示"排除"
-#
-#
-# 7. 限制显示条数
-#    ────────────────────
-#    [科技新闻]
-#    科技
-#    @5
-#
-#    效果：最多显示 5 条匹配的新闻
-#    说明：@数字 表示限制条数
-#
-#
-# 8. 必须同时包含多个词
-#    ────────────────────
-#    +苹果
-#    +发布会
-#
-#    效果：必须同时包含"苹果"和"发布会"才匹配
-#    说明：+ 开头的词表示"必须包含"
-#
-# ───────────────────────────────────────────────────────────────
+[促销]
+/促销|国补|补贴|预售|预购|抢先|开售|秒杀|优惠券|折扣|降价|价格|售价|优惠|活动价|首发|新品|上架|下单|抢购|包邮|满减|定金|尾款|平台补贴|消费券|以旧换新/
+/promotion|national subsidy|subsidy|presale|pre-order|early access|on sale|flash sale|coupon|discount|price cut|price|selling price|deal|promotional price|debut|new product|listing|place an order|panic buying|free shipping|spend and save|deposit|final payment|platform subsidy|consumption voucher|trade-in/
 
 [WORD_GROUPS]
 
-# ═══════════════════════════════════════════════════════════════
-#                         企业与品牌
-# ═══════════════════════════════════════════════════════════════
+[胖东来]
+/胖东来|于东来/
+/Pang Dong Lai|Yu Donglai/
 
-/胖东来|于东来/ => 胖东来
+[DeepSeek]
+/深度求索|幻方量化|梁文锋/
+/\bDeepSeek\b|High-Flyer Quant|High-Flyer|Liang Wenfeng/
 
-/深度求索|幻方量化|梁文锋|\bDeepSeek\b/ => DeepSeek
+[华为]
+/华为|任正非|余承东|鸿蒙|海思|昇腾|鲲鹏/
+/\bHUAWEI\b|\bHarmonyOS\b|\bHiSilicon\b|Ren Zhengfei|Richard Yu|Ascend|Kunpeng/
 
-/华为|任正非|余承东|鸿蒙|海思|昇腾|鲲鹏|\bHUAWEI\b|\bHarmonyOS\b|\bHiSilicon\b/ => 华为
+[小米]
+/小米|雷军|澎湃|小米汽车/
+/\bRedmi\b|\bXiaomi\b|Lei Jun|Surge|Xiaomi EV/
 
-/比亚迪|王传福|方程豹|腾势|仰望|弗迪|刀片电池|云辇|\bBYD\b|\bDenza\b|\bYangwang\b/ => 比亚迪
+[比亚迪]
+/比亚迪|王传福|方程豹|腾势|仰望|弗迪|刀片电池|云辇/
+/\bBYD\b|\bDenza\b|\bYangwang\b|Wang Chuanfu|Fangchengbao|FinDreams|Blade Battery|DiSus/
 
-/大疆|汪滔|灵眸|如影|\bDJI\b|\bRoboMaster\b|\bMavic\b|\bZenmuse\b/ => 大疆
+[大疆]
+/大疆|汪滔/
+/\bDJI\b|\bRoboMaster\b|\bMavic\b|\bZenmuse\b|Frank Wang/
 
-/宇树|王兴兴|\bUnitree\b/ => 宇树机器人
+[宇树机器人]
+/宇树|王兴兴/
+/\bUnitree\b|Wang Xingxing/
 
-/智元|灵犀|稚晖君|彭志辉|AgiBot/ => 智元机器人
-/众擎|EngineAI|赵同阳/ => 众擎机器人
+[智元/众擎机器人]
+/智元|稚晖君|彭志辉|众擎|赵同阳/
+/\bAgiBot\b|\bEngineAI\b|Zhihui Jun|Peng Zhihui|Zhao Tongyang/
 
-/黑神话|冯骥/ => 黑神话悟空
+[阿里]
+/阿里巴巴|马云|淘宝|天猫|支付宝|菜鸟|钉钉|通义/
+/\bAlibaba\b|\bAliyun\b|Jack Ma|Taobao|Tmall|Alipay|Cainiao|DingTalk|Tongyi/
 
-/影之刃零|梁其伟/ => 影之刃零
+[京东]
+/京东|刘强东/
+/\bJD\b|\bJingdong\b|JD\.com|Liu Qiangdong|Richard Liu/
 
-/三体|流浪地球|刘慈欣|郭帆/ => 三体/流浪地球
+[字节跳动]
+/字节跳动|张一鸣|梁汝波|抖音/
+/\bByteDance\b|\bTikTok\b|\bDouyin\b|\bLark\b|\bCapCut\b|Zhang Yiming|Liang Rubo/
 
-申奥
+[腾讯]
+/腾讯|马化腾|微信|阅文集团|微众银行/
+/\bTencent\b|\bWeChat\b|\bWeBank\b|Pony Ma|China Literature/
 
-/京东|刘强东|\bJD\b|\bJingdong\b/ => 京东
+[百度]
+/百度|李彦宏|文心一言|萝卜快跑/
+/\bBaidu\b|\bApollo\b|Robin Li|ERNIE Bot|Apollo Go/
 
-/字节|张一鸣|梁汝波|抖音|\bByteDance\b|\bTikTok\b|\bDouyin\b|\bLark\b|\bCapCut\b/ => 字节跳动
+[网易]
+/网易|丁磊/
+/\bNetEase\b|William Ding/
 
-/腾讯|鹅厂|马化腾|微信|QQ|天美|阅文集团|微众银行|\bTencent\b|\bPony Ma\b|\bWeChat\b|\bLightSpeed\b|\bWeBank\b/ => 腾讯
+[国产手机]
+/荣耀|一加|真我/
+/vivo|OPPO|Honor|OnePlus|Realme/
 
-/qwen|minimax|glm/ => 国产开源模型
+[特斯拉]
+/特斯拉/
+/Tesla/
 
-/特斯拉|马斯克|\bTesla\b|\bElon Musk\b|\bCybertruck\b|\bModel 3\b|\bModel Y\b|\bModel S\b|\bModel X\b|\bFSD\b/ => 特斯拉
+[美国]
+/美国|美方|华盛顿|纽约|白宫|国会|五角大楼|美联储|特朗普|川普|拜登|万斯/
+/United States|America|USA|U\.S\.?|Washington|New York|White House|Congress|Pentagon|Federal Reserve|Trump|Biden|Vance/
 
-/英伟达|黄仁勋|\bNVIDIA\b|\bGeForce\b|\bRTX\b|\bCUDA\b|\bJensen Huang\b/ => 英伟达
-/苏姿丰|锐龙|霄龙|\bAMD\b|\bRyzen\b|\bEPYC\b|\bRadeon\b|\bLisa Su\b/ => AMD
+[英伟达]
+/英伟达|黄仁勋/
+/\bNVIDIA\b|\bGeForce\b|\bRTX\b|\bCUDA\b|\bJensen Huang\b/
 
-/微软|\bMicrosoft\b|\bWindows\b|\bAzure\b|\bSatya Nadella\b|\bCopilot\b/ => 微软
-/谷歌|皮查伊|安卓|油管|\bGoogle\b|\bAlphabet\b|\bAndroid\b|\bChrome\b|\bYouTube\b|\bGemini\b|\bDeepMind\b|\bWaymo\b/ => 谷歌
-/库克|\biPhone\b|\biPad\b|\bMacBook\b|\biOS\b|\bVision Pro\b|\bAirPods\b|\bApple\b|\bTim Cook\b/ => 苹果
+[AMD]
+/苏姿丰|锐龙|霄龙/
+/\bAMD\b|\bRyzen\b|\bEPYC\b|\bRadeon\b|\bLisa Su\b/
 
-/\bOpenAI\b|\bChatGPT\b|\bSora\b|\bDALL-E\b|\bSam Altman\b|\bGreg Brockman\b/ => OpenAI
-/\bAnthropic\b|\bClaude\b|\bDario Amodei\b/ => Claude
+[微软]
+/微软/
+/\bMicrosoft\b|\bWindows\b|\bAzure\b|\bSatya Nadella\b|\bCopilot\b/
 
+[谷歌]
+/谷歌|皮查伊|安卓|油管/
+/\bGoogle\b|\bAlphabet\b|\bAndroid\b|\bChrome\b|\bYouTube\b|\bGemini\b|\bDeepMind\b|\bWaymo\b|Sundar Pichai/
 
-# ═══════════════════════════════════════════════════════════════
-#                         国家与地区
-# ═══════════════════════════════════════════════════════════════
+[苹果]
+/苹果|库克/
+/\biPhone\b|\biPad\b|\bMacBook\b|\biOS\b|\bVision Pro\b|\bAirPods\b|\bApple\b|\bTim Cook\b/
+
+[Meta]
+# 没有中文正则
+/\bMeta\b|\bFacebook\b|\bInstagram\b|\bWhatsApp\b/
+
+[OpenAI]
+# 没有中文正则
+/\bOpenAI\b|\bChatGPT\b|\bSora\b|\bDALL-E\b|\bSam Altman\b|\bGreg Brockman\b/
+
+[Claude]
+# 没有中文正则
+/\bAnthropic\b|\bClaude\b|\bDario Amodei\b/
 
 [中国]
-国产
-中国
+/中国|国产|我国|国务院|外交部|商务部|国家统计局/
+/China|Chinese|domestic|State Council|Ministry of Foreign Affairs|Ministry of Commerce|National Bureau of Statistics/
 
 [东亚]
-日本
-朝鲜
-韩国
+/日本|韩国|朝鲜|东京|首尔|平壤/
+/Japan|South Korea|North Korea|Tokyo|Seoul|Pyongyang/
 
-[北美]
-美国
-加拿大
+[欧盟]
+/欧盟|欧洲联盟|欧委会|欧洲议会|欧元区/
+/European Union|EU|European Commission|European Parliament|Eurozone/
 
-[西欧]
-法国
-英国
+[欧洲]
+/德国|法国|英国|意大利|西班牙|荷兰|瑞士|瑞典|波兰/
+/Germany|France|UK|Britain|United Kingdom|Italy|Spain|Netherlands|Switzerland|Sweden|Poland/
 
-/俄罗斯|俄国/ => 俄罗斯
+[俄乌]
+/俄罗斯|俄国|乌克兰|泽连斯基|普京|克里姆林宫|俄军|乌军/
+/Russia|Ukraine|Zelensky|Putin|Kremlin|Russian military|Ukrainian military/
 
-印度
+[中东]
+/以色列|伊朗|哈马斯|胡塞|真主党|加沙|中东/
+/Israel|Iran|Hamas|Houthis|Hezbollah|Gaza|Middle East/
 
+[印度]
+/印度/
+/India/
 
-# ═══════════════════════════════════════════════════════════════
-#                         科技领域
-# ═══════════════════════════════════════════════════════════════
+[美洲]
+/加拿大|墨西哥|巴西|阿根廷/
+/Canada|Mexico|Brazil|Argentina/
 
-[AI 相关]
-/(?<![a-zA-Z])ai(?![a-zA-Z])/
-人工智能
+[AI]
+/人工智能|大模型|智能体/
+/(?<![a-zA-Z])AI(?![a-zA-Z])|artificial intelligence|large language model|LLM|agent/
 
 [芯片]
-芯片
-光刻机
-半导体
+/芯片/
+/chip/
 
-/水电|雅鲁藏布江/ => 水电
-/光伏|太阳能/ => 光伏
-核能
-能源
+[半导体]
+/光刻|晶圆|半导体|中芯国际|台积电/
+/lithography|wafer|semiconductor|SMIC|TSMC/
 
-/自动驾驶|无人驾驶|智驾/ => 自动驾驶
+[自动驾驶]
+/自动驾驶|无人驾驶|智驾/
+/autonomous driving|driverless|self-driving|smart driving/
 
-机器人
-/机械狗|四足/ => 机器狗
-具身智能
+[机器人]
+/机器人|机器狗|具身智能|人形机器人/
+/robot|robot dog|embodied AI|humanoid robot/
 
-/月球|登月|火星|宇宙|飞船|航天|空间站|卫星/ => 航天
+[低空经济]
+/低空经济|无人机|飞行汽车/
+/eVTOL|low-altitude economy|drone|flying car/
 
-# 前沿科技
-量子
-脑机
-基因
+[固态电池]
+/固态电池|动力电池|宁德时代/
+/solid-state battery|EV battery|CATL/
 
-# 产业政策
-生产力
+[航天]
+/月球|宇宙|航天/
+/\bNASA\b|Moon|lunar landing|Mars|universe|aerospace/
+
+[能源]
+/水电|光伏|太阳能|核能|风电|储能|能源/
+/hydroelectric|solar|photovoltaic|nuclear|wind power|energy storage|energy/
+
+[量子]
+/量子/
+/quantum/
+
+[生物医药]
+/脑机|基因编辑|细胞治疗|创新药|疫苗|临床|生物医药/
+/\bHPV\b|brain-computer interface|gene editing|cell therapy|innovative drug|vaccine|clinical|biopharmaceutical/
+
+[网络治理]
+/数据安全|个人信息|网络安全|网信办|网络暴力|诈骗/
+/data security|personal information|cybersecurity|Cyberspace Administration|cyberbullying|fraud/
+
+[金融]
+/银行|保险|证券|基金|汇率|降息|加息/
+/bank|insurance|fund|exchange rate|rate cut|rate hike/
+
+[楼市]
+/房价|房贷|楼市|住房公积金/
+/housing price|mortgage|housing market/
+
+[民生]
+/失业|工资|薪酬|个税|养老/
+/unemployment|salary|compensation|income tax|elderly care/
+
+[贸易]
+/关税|贸易战|出口管制|制裁|跨境电商/
+/tariff|trade war|export controls|sanctions|cross-border e-commerce/
+
+[自然灾害]
+/山火|高温|寒潮/
+/wildfire|heat wave|cold wave/
+
+[事故]
+/爆炸|坍塌|火灾|矿难|沉船|坠机|空难/
+/explosion|collapse|fire|mine disaster|shipwreck|plane crash|air crash/
+
+[体育]
+/奥运|亚运|世界杯|欧洲杯|世俱杯/
+/\bWTT\b|\bNBA\b|\bCBA\b|Olympics|Asian Games|World Cup|European Championship|Club World Cup/
+
+[影视演出]
+/电影|票房|电视剧|综艺|演唱会/
+/film|box office|TV series|variety show|concert/
+
+[宏观经济]
+/经济|工业|零售|消费|财政|税收|央企|国企|企业/
+/GDP|CPI|PPI|economy|industry|retail|consumption|fiscal|taxation|central SOE|SOE|enterprise/
+
+[教育考试]
+/教育|高考|考研|学校|大学|学生|教师|招生|毕业/
+/education|gaokao|postgraduate exam|school|university|student|teacher|admissions|graduation/
+
+[出行物流]
+/出行|航班|机票|铁路|高铁|列车|交通|快递|物流/
+/flight|airfare|railway|high-speed rail|train|transportation|express delivery|logistics/
+
+[医疗健康]
+/医院|医生|患者|疾病|癌症|健康|卫生|门诊|药品/
+/hospital|doctor|patient|disease|cancer|health|hygiene|outpatient|medicine/
+
+[司法案件]
+/警方|法院|审判|起诉|立案|嫌疑|被捕|调查|通报/
+/police|court|trial|prosecution|case filing|suspect|arrest|investigation|briefing/
+
+[环境气象]
+/气象|天气|气温|冷空气|厄尔尼诺|环境|污染|生态/
+/weather|climate|temperature|cold air|El Nino|environment|pollution|ecology/
+
+[科研进展]
+/研究|科学家|发现|突破|论文|科研|诺贝尔/
+/research|scientist|discovery|breakthrough|paper|scientific research|Nobel/
+
+[政策法规]
+/政策|新规|规定|办法|意见|条例|实施方案|国家/
+/policy|new regulation|rule|measure|opinion|regulation|implementation plan|national/
+
+[消费民生]
+/住房|物业|补贴|免费|价格|市场/
+/property management|subsidy|free|price|market/
+
+[政治外交]
+/外交|总统|政府|总理|领导人/
+/diplomacy|president|government|prime minister|leader/
+
+[天文]
+/地球|行星|光年|天文/
+/Earth|planet|light-year|astronomy/
+
+[港澳台]
+/香港|澳门|台湾|台北/
+/Hong Kong|Macao|Taiwan|Taipei/
+
+[金融市场]
+/A股|股市|股|指数|期货|人民币|外汇|黄金|汽油|成品油/
+/ETF|A-shares|stock market|stock|index|futures|yuan|RMB|foreign exchange|gold|gasoline|refined oil/
+
+[央行金融]
+/央行|逆回购|货币政策|金融/
+/central bank|reverse repo|monetary policy|finance/
+
+[选举政治]
+/选举|民调|政党|共和党|民主党|执政/
+/election|opinion poll|political party|Republican|Democrat|governing/
+
+[疫情疾控]
+/疫情|感染|病例|疾控|流感|新冠/
+/pandemic|epidemic|infection|case|disease control|flu|COVID-19/
+
+[伤亡搜救]
+/死亡|遇难|受伤|失联|搜救|伤亡/
+/death|killed|injured|missing|search and rescue|casualties/
+
+[交通车辆]
+/汽车|车辆|电动自行车|共享单车|公交|地铁|轨道|驾驶/
+/car|vehicle|e-bike|shared bike|bus|subway|rail|driving/
+
+[人口家庭]
+/结婚|离婚|彩礼|生育|人口|新生儿|家庭/
+/marriage|divorce|bride price|childbirth|population|newborn|family/
+
+[安全冲突]
+/冲突|袭击|打击|军事|国防|军队|导弹|防空/
+/conflict|attack|strike|military|defense|armed forces|missile|air defense/
+
+[地方政务]
+/地方|城市|农村|省份|居民|社区|政务|便民/
+/local|city|rural|province|resident|community|government services|public services/
+
+[互联网商业]
+/公司|平台|互联网|电商|直播|手机|电子/
+/App|company|platform|internet|e-commerce|livestream|mobile phone|electronics/
+
+[房地产]
+/房产|商品房|住宅|房地产|房企/
+/real estate|commercial housing|housing|property developer/
+
+[就业职场]
+/就业|求职|招聘|裁员|离职|职场|岗位|员工/
+/employment|job hunting|recruitment|layoffs|resignation|workplace|job|employee/
+
+[体育赛事]
+/体育|冠军|联赛|足球|篮球|乒乓|排名|亚足联/
+/sports|champion|league|soccer|basketball|table tennis|ranking|AFC/
+
+[节假日出入境]
+/放假|假期|节假日|调休|春运|出入境|免签|海关/
+/holiday|vacation|public holiday|travel rush|immigration|visa-free|customs/
+
+[法治监督]
+/最高法|最高检|公安部|律师|违法|违规|失信|执法/
+/Supreme Court|Supreme People's Procuratorate|Ministry of Public Security|lawyer|illegal|violation|dishonesty|law enforcement/
+
+[标准监管]
+/标准|认证|质检|抽检|检测|监管|总局/
+/standard|certification|quality inspection|sampling inspection|testing|supervision|administration/
+
+[公益救助]
+/救助/
+/relief/
+
+[文化遗产]
+/文物|博物馆|文化|遗址|艺术/
+/cultural relic|museum|culture|heritage site|art/
+
+[马斯克航天]
+/马斯克|星舰/
+/\bSpaceX\b|Musk|Starship/
+
+[军事外交]
+/弹药|枪支|手榴弹|战果|战机|军舰|军演|停火|谈判|会谈/
+/ammunition|firearm|grenade|battle result|fighter jet|warship|military exercise|ceasefire|negotiation|talks/
+
+[能源价格]
+/油价|原油|天然气|煤炭|电力|用电|电网/
+/oil price|crude oil|natural gas|coal|electricity|power consumption|power grid|hydropower|solar power/
+
+[国际会议]
+/联合国|广交会|进博会|峰会/
+/APEC|\bG20\b|\bG7\b|United Nations|Canton Fair|China International Import Expo|summit/
+
+[两岸]
+/国台办|赖清德|两岸|台办/
+/Taiwan Affairs Office|Lai Ching-te|cross-strait/
+
+[航天发射]
+/发射|火箭|卫星|飞船|空间站|登月|探月|火星/
+/launch|rocket|satellite|spacecraft|space station|lunar mission|Mars mission/
+
+[贵金属]
+/金价|银价|贵金属|纪念币|积存金/
+/gold price|silver price|precious metals|commemorative coin|gold accumulation/
+
+[资本市场]
+/私募|融资|估值|上市|市值|财报|营收/
+/IPO|private equity|fundraising|valuation|listing|market cap|earnings report|revenue/
+
+[财税社保]
+/税|发票|社保|公积金|医保|养老金|低保/
+/tax|invoice|social security|housing fund|health insurance|pension|basic living allowance/
+
+[公益慈善]
+/公益|慈善|捐赠|捐款|志愿者|见义勇为/
+/public welfare|charity|donation|volunteer|act of bravery/
+
+[旅游酒店]
+/旅游|旅行|游客|景区|文旅|住宿|酒店/
+/travel|tour|tourist|scenic spot|cultural tourism|accommodation|hotel/
+
+[食品餐饮]
+/餐饮|外卖|食品|食品安全|白酒|啤酒|饮料/
+/dining|food delivery|food|food safety|baijiu|beer|beverage/
+
+[宠物动物]
+/宠物|动物园|流浪狗|流浪猫/
+/pet|zoo|stray dog|stray cat/
+
+[天气灾害]
+/降雨|降温|台风|暴雨|雪灾|冰冻|干旱|洪水|地震/
+/rainfall|cooling|typhoon|rainstorm|snow disaster|freezing|drought|flood|earthquake/
+
+[产品发布]
+/版本|更新|发布|上线|公测|推送/
+/version|update|release|beta testing|push notification/
+
+[数据报告]
+/数据|报告|统计|白皮书/
+/data|report|statistics|survey|white paper/
+
+[舆论热点]
+/新闻|热搜|热议|曝光|辟谣|谣言/
+/news|trending topic|hot discussion|expose|rumor|debunk/
+
+[人物节目]
+/高市早苗|春晚|央视|总台|张雪机车/
+/\bWSBK\b|Takaichi Sanae|Spring Festival Gala|CCTV|CMG|Zhang Xue Motorcycle/
+
+[特种交通]
+/老头乐|低速电动车|摩托车|电动车/
+/low-speed electric vehicle|mobility scooter|motorcycle|electric bike/
