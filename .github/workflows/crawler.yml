@@ -7,15 +7,15 @@ on:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     #
     # 🔄 运行机制 / How it works:
-    #    - 每个周期为 7 天，届时自动停止
-    #    - 运行 "Check In" 会重置周期（重新开始 7 天倒计时，而非累加）
-    #    - Each cycle is 7 days, then auto-stops
-    #    - "Check In" resets the cycle (restarts 7-day countdown, not cumulative)
+    #    - 每个周期为 30 天，届时自动停止
+    #    - 运行 "Check In" 会删除运行记录和数据库备份，重置 30 天周期
+    #    - Each cycle is 30 days, then auto-stops
+    #    - "Check In" deletes runs and database backups, resetting the 30-day cycle
     #
     # 💡 设计初衷 / Why this design:
-    #    如果 7 天都忘了签到，或许这些资讯对你来说并非刚需
+    #    如果 30 天都忘了签到，或许这些资讯对你来说并非刚需
     #    适时的暂停，能帮你从信息流中抽离，给大脑留出喘息的空间
-    #    If you forget for 7 days, maybe you don't really need it
+    #    If you forget for 30 days, maybe you don't really need it
     #    A timely pause helps you detach from the stream and gives your mind space
     #
     # 🙏 珍惜资源 / Respect shared resources:
@@ -41,7 +41,8 @@ on:
 
 concurrency:
   group: crawler-${{ github.ref_name }}
-  cancel-in-progress: true
+  # 同分支串行运行，避免抓取或上传备份时被下一次运行中断。
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -79,7 +80,7 @@ jobs:
             CURRENT_TIMESTAMP=$(date +%s)
             FIRST_RUN_TIMESTAMP=$(date -d "$FIRST_RUN_DATE" +%s)
             DIFF_SECONDS=$((CURRENT_TIMESTAMP - FIRST_RUN_TIMESTAMP))
-            LIMIT_SECONDS=604800
+            LIMIT_SECONDS=2592000
 
             if [ $DIFF_SECONDS -gt $LIMIT_SECONDS ]; then
               echo "⚠️ 试用期已结束，请运行 'Check In' 签到续期"
@@ -133,6 +134,42 @@ jobs:
             exit 1
           fi
 
+      - name: Find database backup
+        id: backup
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { createHash } = require('crypto');
+            // 完整 ref 的摘要避免分支名中的斜杠等非法字符及名称冲突。
+            const branchKey = createHash('sha256').update(context.ref).digest('hex');
+            const prefix = `trendradar-data-${branchKey}-`;
+            core.setOutput('prefix', prefix);
+            core.setOutput('name', `${prefix}${context.runId}-${process.env.GITHUB_RUN_ATTEMPT}`);
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {
+              ...context.repo, per_page: 100,
+            });
+            const backups = artifacts
+              .filter(a => a.name.startsWith(prefix) && !a.expired)
+              .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
+            if (backups.length === 0) {
+              core.info('没有可用数据库备份，从仓库已有数据开始运行（首次运行、签到清理或备份过期后）。');
+              return;
+            }
+            const latest = backups[0];
+            core.setOutput('artifact-id', String(latest.id));
+            core.setOutput('run-id', String(latest.workflow_run.id));
+            core.info(`恢复数据库备份: ${latest.name} (${latest.created_at})`);
+
+      - name: Restore database backup
+        if: steps.backup.outputs.artifact-id != ''
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.backup.outputs.artifact-id }}
+          run-id: ${{ steps.backup.outputs.run-id }}
+          github-token: ${{ github.token }}
+          path: output
+          merge-multiple: true
+
       - name: Run crawler
         if: success()
         env:
@@ -160,14 +197,51 @@ jobs:
           AI_API_KEY: ${{ secrets.AI_API_KEY }}
           AI_MODEL: ${{ secrets.AI_MODEL }}
           AI_API_BASE: ${{ secrets.AI_API_BASE }}
-          # 远程存储配置
-          S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-          S3_ACCESS_KEY_ID: ${{ secrets.S3_ACCESS_KEY_ID }}
-          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
-          S3_ENDPOINT_URL: ${{ secrets.S3_ENDPOINT_URL }}
-          S3_REGION: ${{ secrets.S3_REGION }}
+          # 数据库在本地读写，跨次运行通过 Actions Artifact 保存。
+          STORAGE_BACKEND: local
           GITHUB_ACTIONS: true
         run: uv run python -m trendradar
+
+      - name: Upload database backup
+        id: upload_backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.backup.outputs.name }}
+          path: |
+            output/news/*.db
+            output/rss/*.db
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Prune old database backups
+        uses: actions/github-script@v7
+        env:
+          BACKUP_PREFIX: ${{ steps.backup.outputs.prefix }}
+          UPLOADED_ARTIFACT_ID: ${{ steps.upload_backup.outputs.artifact-id }}
+        with:
+          script: |
+            const prefix = process.env.BACKUP_PREFIX;
+            const uploadedId = Number(process.env.UPLOADED_ARTIFACT_ID);
+            if (!prefix || !uploadedId) {
+              throw new Error('缺少本次上传信息，停止清理备份');
+            }
+            const artifacts = await github.paginate(github.rest.actions.listArtifactsForRepo, {
+              ...context.repo, per_page: 100,
+            });
+            const backups = artifacts
+              .filter(a => a.name.startsWith(prefix) && !a.expired)
+              .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || b.id - a.id);
+            if (!backups.some(a => a.id === uploadedId)) {
+              throw new Error('未找到刚上传的备份，保留旧备份并停止清理');
+            }
+            // 始终保护本次上传，再保留最近两份旧备份。只删除 Artifact，不删除运行记录。
+            const older = backups.filter(a => a.id !== uploadedId);
+            for (const artifact of older.slice(2)) {
+              await github.rest.actions.deleteArtifact({
+                ...context.repo, artifact_id: artifact.id,
+              });
+              core.info(`已删除旧数据库备份: ${artifact.name}`);
+            }
 
       # --------------------------------------------------------------------------------
       # ☁️ CLOUDFLARE PAGES DEPLOY / 部署到 Cloudflare Pages（可选）
