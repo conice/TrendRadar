@@ -210,6 +210,7 @@ jobs:
           path: |
             output/news/*.db
             output/rss/*.db
+            !output/news/2025-*.db
           if-no-files-found: error
           retention-days: 30
 
