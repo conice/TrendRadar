@@ -365,6 +365,7 @@ def _load_storage_config(config_data: Dict) -> Dict:
     local_retention_env = _get_env_int_or_none("LOCAL_RETENTION_DAYS")
     remote_retention_env = _get_env_int_or_none("REMOTE_RETENTION_DAYS")
     pull_days_env = _get_env_int_or_none("PULL_DAYS")
+    crawl_history_days_env = _get_env_int_or_none("CRAWL_HISTORY_DAYS")
 
     return {
         "BACKEND": _get_env_str("STORAGE_BACKEND") or storage.get("backend", "auto"),
@@ -385,6 +386,7 @@ def _load_storage_config(config_data: Dict) -> Dict:
             "REGION": _get_env_str("S3_REGION") or remote.get("region", ""),
             "RETENTION_DAYS": remote_retention_env if remote_retention_env is not None else remote.get("retention_days", 0),
         },
+        "HISTORY_DAYS": crawl_history_days_env if crawl_history_days_env is not None else 1,
         "PULL": {
             "ENABLED": pull_enabled_env if pull_enabled_env is not None else pull.get("enabled", False),
             "DAYS": pull_days_env if pull_days_env is not None else pull.get("days", 7),

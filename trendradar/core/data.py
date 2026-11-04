@@ -4,11 +4,12 @@
 
 提供数据读取和检测功能：
 - read_all_today_titles: 从存储后端读取当天所有标题
-- detect_latest_new_titles: 检测最新批次的新增标题
+- detect_latest_new_titles: 在指定历史范围内检测最新批次的新增标题
 
 Author: TrendRadar Team
 """
 
+from datetime import datetime, timedelta
 from typing import Dict, List, Tuple, Optional
 
 
@@ -113,6 +114,7 @@ def read_all_today_titles(
 def detect_latest_new_titles_from_storage(
     storage_manager,
     current_platform_ids: Optional[List[str]] = None,
+    history_days: int = 1,
 ) -> Dict:
     """
     从存储后端检测最新批次的新增标题
@@ -120,6 +122,7 @@ def detect_latest_new_titles_from_storage(
     Args:
         storage_manager: 存储管理器实例
         current_platform_ids: 当前监控的平台 ID 列表（用于过滤）
+        history_days: 比较今天及之前的历史数据库天数
 
     Returns:
         Dict: 新增标题 {source_id: {title: title_data}}
@@ -128,12 +131,6 @@ def detect_latest_new_titles_from_storage(
         # 获取最新抓取数据
         latest_data = storage_manager.get_latest_crawl_data()
         if not latest_data or not latest_data.items:
-            return {}
-
-        # 获取所有历史数据
-        all_data = storage_manager.get_today_all_data()
-        if not all_data or not all_data.items:
-            # 没有历史数据（第一次抓取），不应该有"新增"标题
             return {}
 
         # 获取最新批次时间
@@ -152,20 +149,33 @@ def detect_latest_new_titles_from_storage(
                     "mobileUrl": item.mobile_url or "",
                 }
 
-        # 步骤2：收集历史标题
-        # 关键逻辑：一个标题只要其 first_crawl_time < latest_time，就是历史标题
-        # 这样即使同一标题有多条记录（URL 不同），只要任何一条是历史的，该标题就算历史
+        # 步骤2：收集范围内各日期数据库的历史标题。
+        # 当前日期只比较最新批次之前的记录，之前日期的数据库全部属于历史。
+        try:
+            days = max(1, int(history_days))
+        except (TypeError, ValueError):
+            days = 1
+        try:
+            latest_date = datetime.strptime(latest_data.date, "%Y-%m-%d").date()
+        except (TypeError, ValueError):
+            latest_date = datetime.now().date()
+
         historical_titles = {}
-        for source_id, news_list in all_data.items.items():
-            if current_platform_ids is not None and source_id not in current_platform_ids:
+        for day_offset in range(days):
+            date_str = (latest_date - timedelta(days=day_offset)).isoformat()
+            day_data = storage_manager.get_today_all_data(date_str)
+            if not day_data or not day_data.items:
                 continue
 
-            historical_titles[source_id] = set()
-            for item in news_list:
-                first_time = item.first_time or item.crawl_time
-                # 如果该记录的首次出现时间早于最新批次，则该标题是历史标题
-                if first_time < latest_time:
-                    historical_titles[source_id].add(item.title)
+            for source_id, news_list in day_data.items.items():
+                if current_platform_ids is not None and source_id not in current_platform_ids:
+                    continue
+
+                source_history = historical_titles.setdefault(source_id, set())
+                for item in news_list:
+                    first_time = item.first_time or item.crawl_time
+                    if day_offset > 0 or first_time < latest_time:
+                        source_history.add(item.title)
 
         # 检查是否是当天第一次抓取（没有任何历史标题）
         # 如果所有平台的历史标题集合都为空，说明只有一个抓取批次
@@ -199,19 +209,23 @@ def detect_latest_new_titles(
     storage_manager,
     current_platform_ids: Optional[List[str]] = None,
     quiet: bool = False,
+    history_days: int = 1,
 ) -> Dict:
     """
-    检测当日最新批次的新增标题（从存储后端）
+    在指定历史范围内检测最新批次的新增标题（从存储后端）
 
     Args:
         storage_manager: 存储管理器实例
         current_platform_ids: 当前监控的平台 ID 列表（用于过滤）
+        history_days: 比较今天及之前的历史数据库天数
         quiet: 是否静默模式（不打印日志）
 
     Returns:
         Dict: 新增标题 {source_id: {title: title_data}}
     """
-    new_titles = detect_latest_new_titles_from_storage(storage_manager, current_platform_ids)
+    new_titles = detect_latest_new_titles_from_storage(
+        storage_manager, current_platform_ids, history_days=history_days
+    )
     if new_titles and not quiet:
         total_new = sum(len(titles) for titles in new_titles.values())
         print(f"[存储] 从存储后端检测到 {total_new} 条新增标题")

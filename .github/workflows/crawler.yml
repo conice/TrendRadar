@@ -52,6 +52,8 @@ jobs:
   crawl:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      CRAWL_HISTORY_DAYS: 30
 
     steps:
       - name: Checkout repository
@@ -212,7 +214,7 @@ jobs:
             output/rss/*.db
             !output/news/2025-*.db
           if-no-files-found: error
-          retention-days: 30
+          retention-days: ${{ env.CRAWL_HISTORY_DAYS }}
 
       - name: Prune old database backups
         uses: actions/github-script@v7

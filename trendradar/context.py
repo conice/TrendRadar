@@ -225,8 +225,14 @@ class AppContext:
     def detect_new_titles(
         self, platform_ids: Optional[List[str]] = None, quiet: bool = False
     ) -> Dict:
-        """检测最新批次的新增标题"""
-        return detect_latest_new_titles(self.get_storage_manager(), platform_ids, quiet=quiet)
+        """检测历史范围内最新批次的新增标题"""
+        history_days = self.config.get("STORAGE", {}).get("HISTORY_DAYS", 1)
+        return detect_latest_new_titles(
+            self.get_storage_manager(),
+            platform_ids,
+            history_days=history_days,
+            quiet=quiet,
+        )
 
     def is_first_crawl(self) -> bool:
         """检测是否是当天第一次爬取"""
