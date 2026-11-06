@@ -3,7 +3,7 @@
 import os
 import unittest
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 # Keep standalone test runs offline during LiteLLM's import.
 with patch.dict(os.environ, {"LITELLM_LOCAL_MODEL_COST_MAP": "True"}):
@@ -65,6 +65,26 @@ class RssTotalCountTests(unittest.TestCase):
 
     def make_analyzer(self, mode):
         return _make_analyzer(mode, self.items[:2], self.items[:4], self.items)
+
+    def test_history_window_reaches_all_new_item_detection_calls(self):
+        for mode, expected in self.MODE_TOTALS:
+            for history_days in (None, 30):
+                for display_enabled in (False, True):
+                    with self.subTest(mode=mode, history_days=history_days, display=display_enabled):
+                        analyzer = self.make_analyzer(mode)
+                        analyzer.ctx.config["DISPLAY"]["REGIONS"]["RSS"] = display_enabled
+                        if history_days is not None:
+                            analyzer.ctx.config["STORAGE"] = {"HISTORY_DAYS": history_days}
+
+                        _, _, raw_items, _ = analyzer._process_rss_data_by_mode(self.rss_data)
+
+                        expected_calls = int(mode == "incremental") + int(display_enabled)
+                        self.assertEqual(
+                            analyzer.storage_manager.detect_new_rss_items.call_args_list,
+                            [call(self.rss_data, history_days=history_days or 1)] * expected_calls,
+                        )
+                        self.assertEqual(len(raw_items), expected)
+                        self.assertEqual(analyzer._rss_total_count, expected)
 
     def test_total_count_kept_when_keyword_match_is_empty(self):
         for mode, expected in self.MODE_TOTALS:

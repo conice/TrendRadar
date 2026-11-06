@@ -214,9 +214,9 @@ class StorageManager:
         """获取最新一次抓取的 RSS 数据（当前榜单模式）"""
         return self.get_backend().get_latest_rss_data(date)
 
-    def detect_new_rss_items(self, current_data: RSSData) -> dict:
-        """检测新增的 RSS 条目（增量模式）"""
-        return self.get_backend().detect_new_rss_items(current_data)
+    def detect_new_rss_items(self, current_data: RSSData, history_days: int = 1) -> dict:
+        """检测历史范围内新增的 RSS 条目"""
+        return self.get_backend().detect_new_rss_items(current_data, history_days=history_days)
 
     def get_today_all_data(self, date: Optional[str] = None) -> Optional[NewsData]:
         """获取当天所有数据"""

@@ -120,6 +120,10 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
 
         return self._db_connections[db_path]
 
+    def _rss_data_exists(self, date: str) -> bool:
+        """判断指定日期是否已有 RSS 数据库。"""
+        return self._get_db_path(date, db_type="rss").exists()
+
     # ========================================
     # StorageBackend 接口实现（委托给 mixin）
     # ========================================
@@ -216,9 +220,9 @@ class LocalStorageBackend(SQLiteStorageMixin, StorageBackend):
         """获取指定日期的所有 RSS 数据"""
         return self._get_rss_data_impl(date)
 
-    def detect_new_rss_items(self, current_data: RSSData) -> Dict[str, List[RSSItem]]:
-        """检测新增的 RSS 条目"""
-        return self._detect_new_rss_items_impl(current_data)
+    def detect_new_rss_items(self, current_data: RSSData, history_days: int = 1) -> Dict[str, List[RSSItem]]:
+        """检测历史范围内新增的 RSS 条目"""
+        return self._detect_new_rss_items_impl(current_data, history_days=history_days)
 
     def get_latest_rss_data(self, date: Optional[str] = None) -> Optional[RSSData]:
         """获取最新一次抓取的 RSS 数据"""

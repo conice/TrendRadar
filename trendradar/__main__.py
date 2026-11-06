@@ -1125,11 +1125,12 @@ class NewsAnalyzer:
         rss_new_stats = None
         raw_rss_items = None  # 原始 RSS 条目列表（用于独立展示区）
         rss_new_urls = set()  # 原始新增 RSS URLs（未经关键词过滤）
+        history_days = self.ctx.config.get("STORAGE", {}).get("HISTORY_DAYS", 1)
 
         # 1. 首先获取原始条目（用于独立展示区，不受 display.regions.rss 影响）
         # 根据模式获取原始条目
         if self.report_mode == "incremental":
-            new_items_dict = self.storage_manager.detect_new_rss_items(rss_data)
+            new_items_dict = self.storage_manager.detect_new_rss_items(rss_data, history_days=history_days)
             if new_items_dict:
                 raw_rss_items = self._convert_rss_items_to_list(new_items_dict, rss_data.id_to_name)
         elif self.report_mode == "current":
@@ -1149,7 +1150,7 @@ class NewsAnalyzer:
             return None, None, raw_rss_items, rss_new_urls
 
         # 2. 获取新增条目（用于统计）
-        new_items_dict = self.storage_manager.detect_new_rss_items(rss_data)
+        new_items_dict = self.storage_manager.detect_new_rss_items(rss_data, history_days=history_days)
         new_items_list = None
         if new_items_dict:
             new_items_list = self._convert_rss_items_to_list(new_items_dict, rss_data.id_to_name)

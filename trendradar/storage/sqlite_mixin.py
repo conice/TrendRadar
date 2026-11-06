@@ -7,7 +7,7 @@ SQLite 存储 Mixin
 
 import sqlite3
 from abc import abstractmethod
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -49,6 +49,10 @@ class SQLiteStorageMixin:
     def _format_time_filename(self) -> str:
         """格式化时间文件名 (格式: HH-MM)"""
         pass
+
+    def _rss_data_exists(self, date: str) -> bool:
+        """判断指定日期是否已有 RSS 数据库。"""
+        return True
 
     # ========================================
     # Schema 管理
@@ -1041,44 +1045,46 @@ class SQLiteStorageMixin:
             print(f"[存储] 读取 RSS 数据失败: {e}")
             return None
 
-    def _detect_new_rss_items_impl(self, current_data: RSSData) -> Dict[str, List[RSSItem]]:
+    def _detect_new_rss_items_impl(self, current_data: RSSData, history_days: int = 1) -> Dict[str, List[RSSItem]]:
         """
         检测新增的 RSS 条目（增量模式）
 
-        该方法比较当前抓取数据与历史数据，找出新增的 RSS 条目。
-        关键逻辑：只有在历史批次中从未出现过的 URL 才算新增。
+        比较当前抓取数据与指定日期范围内的历史数据，找出新增的 RSS 条目。
+        同一订阅源中，只有在窗口内历史批次中从未出现过的 URL 才算新增。
+        当前日期只比较当前批次之前的记录，之前日期的数据库全部属于历史。
 
         Args:
             current_data: 当前抓取的 RSS 数据
+            history_days: 比较当天及之前的历史数据库天数，默认为 1
 
         Returns:
             新增的 RSS 条目 {feed_id: [RSSItem, ...]}
         """
         try:
-            # 获取历史数据
-            historical_data = self._get_rss_data_impl(current_data.date)
-
-            if not historical_data:
-                # 没有历史数据，所有都是新的
-                return current_data.items.copy()
-
-            # 获取当前批次时间
+            try:
+                days = max(1, int(history_days))
+            except (TypeError, ValueError):
+                days = 1
+            current_date = datetime.strptime(current_data.date, "%Y-%m-%d").date()
             current_time = current_data.crawl_time
-
-            # 收集历史 URL（first_time < current_time 的条目）
             historical_urls: Dict[str, set] = {}
-            for feed_id, rss_list in historical_data.items.items():
-                historical_urls[feed_id] = set()
-                for item in rss_list:
-                    first_time = item.first_time or item.crawl_time
-                    if first_time < current_time:
-                        if item.url:
-                            historical_urls[feed_id].add(item.url)
+            for day_offset in range(days):
+                date_str = (current_date - timedelta(days=day_offset)).isoformat()
+                if not self._rss_data_exists(date_str):
+                    continue
+                historical_data = self._get_rss_data_impl(date_str)
+                if not historical_data or not historical_data.items:
+                    continue
 
-            # 检查是否有早于当前批次的历史数据
+                for feed_id, rss_list in historical_data.items.items():
+                    source_history = historical_urls.setdefault(feed_id, set())
+                    for item in rss_list:
+                        first_time = item.first_time or item.crawl_time
+                        if item.url and (day_offset > 0 or first_time < current_time):
+                            source_history.add(item.url)
+
             has_historical_data = any(len(urls) > 0 for urls in historical_urls.values())
             if not has_historical_data:
-                # 当天第一次抓取，所有条目都是新增
                 return current_data.items.copy()
 
             # 检测新增
