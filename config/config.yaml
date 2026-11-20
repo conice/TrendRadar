@@ -71,16 +71,16 @@ platforms:
       expected_domain: "toutiao.com"
     - id: "baidu"
       name: "百度热搜"
-      expected_domain: "thepaper.cn"
+      expected_domain: "baidu.com"
     - id: "bilibili-hot-search"
       name: "bilibili 热搜"
+      expected_domain: "bilibili.com"
     - id: "tieba"
       name: "贴吧"
       expected_domain: "baidu.com"
     - id: "weibo"
       name: "微博"
       expected_domain: "weibo.com"
-
 
 
 # ===============================================================
