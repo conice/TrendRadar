@@ -458,6 +458,7 @@ class AppContext:
             ai_stats=ai_stats,
             report_type=report_type,
             show_new_section=self.show_new_section,
+            style=self.config.get("NOTIFICATION_STYLE", "magazine"),
         )
 
     # === 通知发送 ===

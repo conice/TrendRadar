@@ -93,6 +93,7 @@ def _load_notification_config(config_data: Dict) -> Dict:
 
     return {
         "ENABLE_NOTIFICATION": notification.get("enabled", True),
+        "NOTIFICATION_STYLE": str(notification.get("style", "magazine") or "magazine").strip().lower(),
         "MESSAGE_BATCH_SIZE": batch_size.get("default", 4000),
         "DINGTALK_BATCH_SIZE": batch_size.get("dingtalk", 20000),
         "FEISHU_BATCH_SIZE": batch_size.get("feishu", 29000),

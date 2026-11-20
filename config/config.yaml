@@ -262,6 +262,7 @@ display:
 notification:
   enabled: true                       # 是否启用通知功能（true=启用, false=关闭）—— 总开关
                                       # 开启 schedule 后此项仍为总开关：false=永远不推送，true=由调度控制
+  style: "magazine"                   # 推送排版：magazine=杂志版（默认）| classic=经典版
 
   # 推送渠道配置
   channels:

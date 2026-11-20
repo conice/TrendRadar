@@ -152,6 +152,7 @@ def split_content_into_batches(
     ai_stats: Optional[Dict] = None,
     report_type: str = "热点分析报告",
     show_new_section: bool = True,
+    style: str = "classic",
 ) -> List[str]:
     """分批处理消息内容，确保词组标题+至少第一条新闻的完整性（支持热榜+RSS合并+AI分析+独立展示区）
 
@@ -177,6 +178,7 @@ def split_content_into_batches(
         ai_content: AI 分析内容（已渲染的字符串，可选）
         standalone_data: 独立展示区数据（可选），包含 platforms 和 rss_feeds 列表
         ai_stats: AI 分析统计数据（可选），包含 total_news, analyzed_news, max_news_limit 等
+        style: 排版风格 (magazine=杂志版, classic=经典版)
 
     Returns:
         分批后的消息内容列表
@@ -195,6 +197,28 @@ def split_content_into_batches(
             max_bytes = sizes.get("ntfy", 3800)
         else:
             max_bytes = sizes.get("default", 4000)
+
+    if style == "magazine":
+        from trendradar.notification.magazine import render_magazine_batches
+
+        return render_magazine_batches(
+            report_data=report_data,
+            format_type=format_type,
+            update_info=update_info,
+            max_bytes=max_bytes,
+            mode=mode,
+            region_order=region_order,
+            get_time_func=get_time_func,
+            rss_items=rss_items,
+            rss_new_items=rss_new_items,
+            timezone=timezone,
+            display_mode=display_mode,
+            ai_content=ai_content,
+            standalone_data=standalone_data,
+            rank_threshold=rank_threshold,
+            report_type=report_type,
+            show_new_section=show_new_section,
+        )
 
     batches = []
 

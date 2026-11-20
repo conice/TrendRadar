@@ -263,6 +263,7 @@ display:
 notification:
   enabled: true                       # Enable notifications (true=on, false=off) — master switch
                                       # Still the master switch once schedule is on: false=never push, true=controlled by schedule
+  style: "magazine"                   # Push layout: magazine (default) | classic
 
   # Push channel configuration
   channels:
