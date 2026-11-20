@@ -2010,7 +2010,7 @@ GitHub Pages 在国内访问较慢，[Cloudflare Pages](https://pages.cloudflare
    | `config/config.yaml` | 主配置文件：推送模式、时间窗口、平台列表、热点权重等 |
    | `config/frequency_words.txt` | 关键词文件：设置你关心的词汇，筛选推送内容 |
    | `config/ai_analysis_prompt.txt` | AI 提示词模板：自定义 AI 分析师的角色和分析维度 |
-   | `.github/workflows/crawler.yml` | 执行频率：控制多久运行一次（⚠️ 谨慎修改） |
+   | `.github/workflows/crawler.yml` | 触发入口：接收 Cloudflare Worker 的 `repository_dispatch`（时间配置在 `cloudflare/wrangler.toml`） |
 
    👉 **详细配置教程**：[配置详解](#配置详解)
 
@@ -3298,44 +3298,34 @@ schedule:
 <summary>👉 点击展开：<strong>设置自动运行频率</strong></summary>
 <br>
 
-**配置位置：** `.github/workflows/crawler.yml` 的 `schedule` 部分
+**本仓库已改为 Cloudflare Worker 定时触发。** 配置位置：`cloudflare/wrangler.toml`
 
-```yaml
-on:
-  schedule:
-    - cron: "0 * * * *"  # 每小时运行一次
+```toml
+[triggers]
+crons = ["30 0-14 * * *"]
 ```
 
-#### 怎么修改运行频率？
+- Cloudflare cron 按 **UTC** 解释。
+- `30 0-14 * * *` = 北京时间 **08:30-22:30，每小时第 30 分钟**，每天 15 次。
+- 改时间后执行 `cd cloudflare && npx wrangler deploy`。
+- 部署与 PAT 配置见 [`cloudflare/README.md`](cloudflare/README.md)。
 
-GitHub Actions 使用一种叫 "Cron" 的时间格式，不需要深入理解，直接复制下面的代码替换即可。
+GitHub Actions 的 `schedule` 已从 `crawler.yml` 移除，避免和 Worker 重复运行；保留 `workflow_dispatch` 供手动调试。
 
-**配置位置：** `.github/workflows/crawler.yml` 文件中的 `schedule` 部分
+#### 时差换算
 
-| 我想要... | 复制这行代码 | 说明 |
-|-----------|------------|------|
-| **每小时一次** | `- cron: "0 * * * *"` | **默认配置**，第 0 分钟运行 |
-| **每 30 分钟** | `- cron: "*/30 * * * *"` | 每隔 30 分钟运行一次 |
-| **每天早 8 点** | `- cron: "0 0 * * *"` | ⚠️ 写 `0` 是因为 UTC 时间 (0点) = 北京时间 (8点) |
-| **工作时间每半小时** | `- cron: "*/30 0-14 * * *"` | 对应北京时间 8:00 - 22:00 |
-| **一日三餐点** | `- cron: "0 0,6,12 * * *"` | 对应北京时间 8:00、14:00、20:00 |
+Cloudflare 和 GitHub 一样使用 UTC：**北京时间 - 8 小时 = cron 时间**。
+例如北京时间 20:30 → UTC 12:30 → `30 12 * * *`。
 
-#### ⚠️ 两个重要提醒
+#### 为什么不用 GitHub `schedule`
 
-1. **时差问题**：GitHub 的服务器在国外，用的是 UTC 时间。
-   - **简单的算术题**：你想设定的北京时间 **减去 8 小时** = 你要填的时间。
-   - *例子：想让它北京时间 20:00 运行，设置里要填 12:00*
+GitHub 的定时任务经常排队数十分钟到数小时；Worker 到点发 `repository_dispatch`，Actions 通常几秒内开始。Actions runner 本身仍可能排队，但不再受 `schedule` 队列影响。
 
-2. **不要太频繁**：建议间隔不要少于 30 分钟。
-   - GitHub 免费资源有限，跑得太勤可能会被官方限制账号。
-   - 而且 Actions 启动本身就有几分钟延迟，太精确的控制没有意义。
+#### 注意
 
-#### 手把手修改步骤
-
-1. 在你的 GitHub 仓库中，找到 `.github/workflows/crawler.yml` 文件
-2. 点击右上角的 ✏️ (Edit) 按钮
-3. 找到 `cron: "..."` 那一行，把引号里的内容换成上面的"代码"
-4. 点击右上角的绿色 **Commit changes** 按钮保存
+- Workers Free 每账户最多 5 个 cron trigger；本 Worker 占 1 个。若账户已用满，需换账户或升级。
+- 30 天签到仍然有效：每 30 天运行一次 Actions 里的 **Check In**。
+- Worker 的部署、验证和排查见 [`cloudflare/README.md`](cloudflare/README.md)。
 
 </details>
 

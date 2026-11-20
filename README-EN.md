@@ -1958,7 +1958,7 @@ Templates support two placeholders:
    |------|---------|
    | `config/config.yaml` | Main config file: push mode, time window, platform list, hotspot weights, etc. |
    | `config/frequency_words.txt` | Keyword file: set your interested keywords, filter push content |
-   | `.github/workflows/crawler.yml` | Execution frequency: control how often to run (⚠️ modify carefully) |
+   | `.github/workflows/crawler.yml` | Trigger entry: receives `repository_dispatch` from the Cloudflare Worker (schedule lives in `cloudflare/wrangler.toml`) |
 
    👉 **Detailed Configuration Tutorial**: [Configuration Guide](#configuration-guide)
 
@@ -3290,44 +3290,34 @@ If none of the preset templates fit your needs, edit the `custom` section at the
 <summary>👉 Click to expand: <strong>Set Auto-Run Frequency</strong></summary>
 <br>
 
-**Configuration Location:** `schedule` section in `.github/workflows/crawler.yml`
+**This repository uses a Cloudflare Worker cron trigger.** Configuration: `cloudflare/wrangler.toml`
 
-```yaml
-on:
-  schedule:
-    - cron: "0 * * * *"  # Run every hour
+```toml
+[triggers]
+crons = ["30 0-14 * * *"]
 ```
 
-#### How to change the schedule?
+- Cloudflare cron is **UTC**.
+- `30 0-14 * * *` = Beijing **08:30-22:30, every hour at minute 30**, 15 runs/day.
+- After changing the time, run `cd cloudflare && npx wrangler deploy`.
+- Deployment and PAT setup: [`cloudflare/README.md`](cloudflare/README.md).
 
-GitHub Actions uses a time format called "Cron". You don't need to understand it deeply; just copy and replace the code below.
+The GitHub Actions `schedule` has been removed from `crawler.yml` to avoid duplicate runs; `workflow_dispatch` remains for manual debugging.
 
-**Configuration Location**: `schedule` section in `.github/workflows/crawler.yml`
+#### Timezone
 
-| I want... | Copy this line | Note |
-|-----------|----------------|------|
-| **Every Hour** | `- cron: "0 * * * *"` | **Default**, runs at minute 0 |
-| **Every 30 Mins** | `- cron: "*/30 * * * *"` | Runs every 30 minutes |
-| **Daily at 8 AM** | `- cron: "0 0 * * *"` | ⚠️ `0` because UTC 0:00 = Beijing 8:00 AM |
-| **Work Hours (30m)** | `- cron: "*/30 0-14 * * *"` | Beijing 8:00 - 22:00 |
-| **3 Times Daily** | `- cron: "0 0,6,12 * * *"` | Beijing 8:00, 14:00, 20:00 |
+Cloudflare and GitHub both use UTC: **Beijing time - 8 hours = cron time**.
+Example: Beijing 20:30 → UTC 12:30 → `30 12 * * *`.
 
-#### ⚠️ Two Important Notes
+#### Why not GitHub `schedule`
 
-1. **Time Zone**: GitHub servers use **UTC time**.
-   - **Math**: Your desired Beijing time **minus 8 hours** = value to fill.
-   - *Example: For Beijing 20:00, fill in 12:00.*
+GitHub scheduled runs often queue for tens of minutes to hours. The Worker sends `repository_dispatch` on time, so Actions usually starts within seconds. The Actions runner can still queue, but the `schedule` queue is no longer involved.
 
-2. **Don't run too often**: Suggest intervals no shorter than 30 minutes.
-   - GitHub free resources are limited; running too frequently might get flagged.
-   - Actions have startup delays, so precise timing isn't guaranteed anyway.
+#### Notes
 
-#### Step-by-Step Guide
-
-1. In your GitHub repository, find `.github/workflows/crawler.yml`.
-2. Click the ✏️ (Edit) button top right.
-3. Find the line `cron: "..."` and replace the content inside quotes with the code above.
-4. Click the green **Commit changes** button to save.
+- Workers Free allows 5 cron triggers per account; this Worker uses 1. If the account is already full, use another account or upgrade.
+- The 30-day check-in still applies: run **Check In** in Actions every 30 days.
+- Deployment, verification, and troubleshooting: [`cloudflare/README.md`](cloudflare/README.md).
 
 </details>
 

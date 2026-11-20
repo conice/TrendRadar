@@ -1,0 +1,24 @@
+# Cloudflare Worker 配置（wrangler 部署用）
+#
+# 部署：
+#   cd cloudflare
+#   npx wrangler login
+#   npx wrangler secret put GITHUB_TOKEN
+#   npx wrangler deploy
+#
+# 本文件由 wrangler 管理时，改 cron 后必须重新 deploy。
+# 不装 wrangler 也可以在 Cloudflare Dashboard 的 Triggers 页面添加，见 README.md。
+
+name = "trendradar-trigger"
+main = "trigger.js"
+compatibility_date = "2026-11-20"
+
+[vars]
+# 改成你的 owner/repo
+GITHUB_REPO = "conice/TrendRadar"
+
+[triggers]
+# Cloudflare cron 一律按 UTC 解释。
+# 30 0-14 * * * = 北京时间 08:30-22:30，每小时第 30 分钟触发一次。
+# 只用一个表达式：TrendRadar 依赖持续采集，不要拆成早/晚几个 slot。
+crons = ["30 0-14 * * *"]
