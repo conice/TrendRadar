@@ -133,6 +133,39 @@ jobs:
             exit 1
           fi
 
+      # --------------------------------------------------------------------------------
+      # 💾 DEDUP DATABASE CACHE / 去重数据库缓存
+      # --------------------------------------------------------------------------------
+      # GitHub Actions 每次运行都是全新工作区，本地 SQLite（output/news、output/rss）
+      # 默认不会跨运行保留，导致每次抓取都被当成当天第一次，所有标题重新推送。
+      #   - restore 用「分支 + 日期」前缀，取当天最近一次缓存
+      #   - save 的 key 必须唯一（cache 不可覆盖），因此带上 run_id / run_attempt
+      #   - 日期按 config.yaml 的 app.timezone 计算，与代码写入的 DB 文件名保持一致
+      #   - 首次运行当天没有 DB 时先建空文件，避免 cache save 因路径不存在而失败
+      # --------------------------------------------------------------------------------
+      - name: Prepare dedup databases
+        if: success()
+        id: dedup
+        run: |
+          mkdir -p output/news output/rss
+          TZ_NAME=$(awk -F'"' '/^[[:space:]]*timezone:/{print $2; exit}' config/config.yaml)
+          TZ_NAME=${TZ_NAME:-Asia/Shanghai}
+          DATE=$(TZ="$TZ_NAME" date +%F)
+          touch "output/news/${DATE}.db" "output/rss/${DATE}.db"
+          echo "date=${DATE}" >> "$GITHUB_OUTPUT"
+
+      - name: Restore dedup databases
+        if: success() && steps.dedup.outputs.date != ''
+        continue-on-error: true
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            output/news/${{ steps.dedup.outputs.date }}.db
+            output/rss/${{ steps.dedup.outputs.date }}.db
+          key: db-${{ github.ref_name }}-${{ steps.dedup.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            db-${{ github.ref_name }}-${{ steps.dedup.outputs.date }}-
+
       - name: Run crawler
         if: success()
         env:
@@ -168,6 +201,16 @@ jobs:
           S3_REGION: ${{ secrets.S3_REGION }}
           GITHUB_ACTIONS: true
         run: uv run python -m trendradar
+
+      - name: Save dedup databases
+        if: always() && steps.dedup.outputs.date != ''
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            output/news/${{ steps.dedup.outputs.date }}.db
+            output/rss/${{ steps.dedup.outputs.date }}.db
+          key: db-${{ github.ref_name }}-${{ steps.dedup.outputs.date }}-${{ github.run_id }}-${{ github.run_attempt }}
 
       # --------------------------------------------------------------------------------
       # ☁️ CLOUDFLARE PAGES DEPLOY / 部署到 Cloudflare Pages（可选）
