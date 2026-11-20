@@ -430,12 +430,6 @@ rss:
       enabled: true
       # max_age_days: 0
 
-    - id: "sky-sports"
-      name: "Sky Sports"
-      url: "https://www.skysports.com/rss/12040"
-      enabled: true
-      # max_age_days: 0
-
     # 生活·消费
     - id: "smzdm"
       name: "什么值得买"
@@ -921,7 +915,7 @@ ai:
 # 9. AI 分析功能（模型配置见上方 ai 段）
 # ===============================================================
 ai_analysis:
-  enabled: true                     # 是否启用 AI 分析（true=启用, false=关闭）—— 总开关
+  enabled: false                     # 是否启用 AI 分析（true=启用, false=关闭）—— 总开关
                                     # 开启 schedule 后此项仍为总开关：false=永远不分析，true=由调度控制
 
   language: "Chinese"               # 分析报告语言（如 "English", "Korean", "法语"）
