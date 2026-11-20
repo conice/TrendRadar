@@ -1,11 +1,11 @@
 name: Check In
 
-# ✅ 签到续期：运行此 workflow 可重置 7 天计时，保持 "Get Hot News" 正常运行
-# ✅ Renewal: Run this workflow to reset the 7-day timer and keep "Get Hot News" active
+# ✅ 签到续期：运行此 workflow 可重置 30 天计时，保持 "Get Hot News" 正常运行
+# ✅ Renewal: Run this workflow to reset the 30-day timer and keep "Get Hot News" active
 #
 # 📌 操作方法 / How to use:
 #   1. 点击 "Run workflow" 按钮 / Click "Run workflow" button
-#   2. 每 7 天内至少运行一次 / Run at least once every 7 days
+#   2. 每 30 天内至少运行一次 / Run at least once every 30 days
 
 on:
   workflow_dispatch:

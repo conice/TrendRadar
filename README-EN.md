@@ -1129,7 +1129,7 @@ Open the pushed HTML report in a browser to unlock an enhanced experience (email
 > 💡 For storage configuration details, see [Configuration Details - Storage Configuration](#11-storage-configuration-v400-new)
 
 ### **Multi-Platform Deployment**
-- **GitHub Actions**: Cloud automated operations (7-day check-in cycle + remote cloud storage)
+- **GitHub Actions**: Cloud automated operations (30-day check-in cycle + remote cloud storage)
 - **Docker Deployment**: Supports multi-architecture containerized operation
 - **Local Running**: Python environment direct execution
 
@@ -1241,7 +1241,7 @@ Transform from "algorithm recommendation captivity" to "actively getting the inf
 
 * **Features**: Data is stored in **Remote Cloud Storage** (no longer written to Git repo)
 * **Storage**: Configure cloud storage service (e.g. Cloudflare R2, Alibaba Cloud OSS, Tencent Cloud COS, etc.)
-* **Note**: Requires periodic check-in renewal (every 7 days)
+* **Note**: Requires periodic check-in renewal (every 30 days)
 
 <a id="local-deploy"></a>
 
@@ -1968,11 +1968,11 @@ Templates support two placeholders:
 
    **v4.0.0 Important Change**: Introduced the "Activity Detection" mechanism; GitHub Actions need periodic check-ins to maintain operation.
 
-   - **Running Cycle**: Valid for **7 days**—service will automatically suspend when countdown ends.
-   - **Renewal Method**: Manually trigger the "Check In" workflow on the Actions page to reset the 7-day validity period.
+   - **Running Cycle**: Valid for **30 days**—service will automatically suspend when countdown ends.
+   - **Renewal Method**: Manually trigger the "Check In" workflow on the Actions page to reset the 30-day validity period.
    - **Operation Path**: `Actions` → `Check In` → `Run workflow`
    - **Design Philosophy**:
-     - If you forget for 7 days, maybe you don't really need it. Letting it stop is a digital detox, freeing you from the constant impact.
+     - If you forget for 30 days, maybe you don't really need it. Letting it stop is a digital detox, freeing you from the constant impact.
      - GitHub Actions is a valuable public computing resource. The check-in mechanism aims to prevent wasted computing cycles, ensuring resources are allocated to truly active users who need them. Thank you for your understanding and support.
 
    ---

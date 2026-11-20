@@ -7,15 +7,15 @@ on:
     # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     #
     # 🔄 运行机制 / How it works:
-    #    - 每个周期为 7 天，届时自动停止
-    #    - 运行 "Check In" 会重置周期（重新开始 7 天倒计时，而非累加）
-    #    - Each cycle is 7 days, then auto-stops
-    #    - "Check In" resets the cycle (restarts 7-day countdown, not cumulative)
+    #    - 每个周期为 30 天，届时自动停止
+    #    - 运行 "Check In" 会重置周期（重新开始 30 天倒计时，而非累加）
+    #    - Each cycle is 30 days, then auto-stops
+    #    - "Check In" resets the cycle (restarts 30-day countdown, not cumulative)
     #
     # 💡 设计初衷 / Why this design:
-    #    如果 7 天都忘了签到，或许这些资讯对你来说并非刚需
+    #    如果 30 天都忘了签到，或许这些资讯对你来说并非刚需
     #    适时的暂停，能帮你从信息流中抽离，给大脑留出喘息的空间
-    #    If you forget for 7 days, maybe you don't really need it
+    #    If you forget for 30 days, maybe you don't really need it
     #    A timely pause helps you detach from the stream and gives your mind space
     #
     # 🙏 珍惜资源 / Respect shared resources:
@@ -79,7 +79,7 @@ jobs:
             CURRENT_TIMESTAMP=$(date +%s)
             FIRST_RUN_TIMESTAMP=$(date -d "$FIRST_RUN_DATE" +%s)
             DIFF_SECONDS=$((CURRENT_TIMESTAMP - FIRST_RUN_TIMESTAMP))
-            LIMIT_SECONDS=604800
+            LIMIT_SECONDS=2592000
 
             if [ $DIFF_SECONDS -gt $LIMIT_SECONDS ]; then
               echo "⚠️ 试用期已结束，请运行 'Check In' 签到续期"
