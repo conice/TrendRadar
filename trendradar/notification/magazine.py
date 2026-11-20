@@ -142,7 +142,7 @@ def _rank_label(title_data: Dict) -> str:
     if not ranks:
         return ""
     rank = ranks[-1]
-    return f"#{rank}" if rank else ""
+    return f"第 {rank} 位" if rank else ""
 
 
 def _title_line(
@@ -156,7 +156,7 @@ def _title_line(
     url = title_data.get("mobile_url") or title_data.get("url") or ""
     headline = fmt.bold(fmt.link(title, url) if url else fmt.escape(title))
 
-    prefix = f"{index}  " if index is not None else "·  "
+    prefix = f"{index}. " if index is not None else "·  "
     headline = f"{prefix}{headline}"
 
     meta_parts = []
@@ -170,7 +170,7 @@ def _title_line(
     if title_data.get("time_display"):
         meta_parts.append(str(title_data["time_display"]))
     if title_data.get("count", 1) and int(title_data.get("count", 1)) > 1:
-        meta_parts.append(f"×{title_data['count']}")
+        meta_parts.append(f"重复 {title_data['count']} 次")
 
     meta = " · ".join(meta_parts)
     return _Line(headline, fmt.muted(meta) if meta else "", len(prefix))
@@ -226,6 +226,32 @@ def _split_text(text: str, limit: int) -> List[str]:
 # 报头与页脚
 # ========================================
 
+def _edition_label(now: datetime) -> str:
+    hour = now.hour
+    if hour < 6:
+        return "夜间版"
+    if hour < 11:
+        return "早间版"
+    if hour < 14:
+        return "午间版"
+    if hour < 18:
+        return "午后版"
+    return "晚间版"
+
+
+def _focus_sentence(stats: List[Dict]) -> str:
+    words = [str(stat.get("word", "")).strip() for stat in stats[:3] if stat.get("word")]
+    if not words:
+        return ""
+    if len(words) == 1:
+        joined = words[0]
+    elif len(words) == 2:
+        joined = f"{words[0]}与{words[1]}"
+    else:
+        joined = f"{'、'.join(words[:-1])}与{words[-1]}"
+    return f"本期焦点：{joined}。"
+
+
 def _masthead(
     fmt: _Format,
     report_data: Dict,
@@ -242,46 +268,33 @@ def _masthead(
     rss_matched = report_data.get("rss_matched_count", 0)
     if not rss_matched and rss_items:
         rss_matched = sum(stat.get("count", 0) for stat in rss_items)
-    rss_total = report_data.get("rss_total_count", 0)
     hotlist_new = report_data.get("total_new_count", 0)
     rss_new = sum(len(stat.get("titles", [])) for stat in (rss_new_items or []))
     total_new = hotlist_new + rss_new
 
-    body = []
-
-    counts = []
-    if hotlist_matched or hotlist_total:
-        counts.append(f"今日收录 {hotlist_matched} 条")
-    if total_new:
-        counts.append(f"新增 {total_new} 条")
-    if counts:
-        body.append("   ".join(counts))
-
-    metrics = []
+    lead = []
     if hotlist_total:
-        metrics.append(f"热榜 {hotlist_matched}/{hotlist_total}")
+        lead.append(f"本期自 {hotlist_total} 条热榜中选录 {hotlist_matched} 条")
+    elif hotlist_matched:
+        lead.append(f"本期选录 {hotlist_matched} 条")
+    if rss_matched:
+        lead.append(f"订阅 {rss_matched} 条")
+    if total_new:
+        lead.append(f"新增 {total_new} 条")
     if platform_total:
-        metrics.append(f"平台 {max(0, platform_total - failed_count)}/{platform_total}")
-    if rss_total:
-        metrics.append(f"RSS {rss_matched}/{rss_total}")
-    if metrics:
-        body.append("   ".join(metrics))
+        lead.append(f"覆盖 {max(0, platform_total - failed_count)} 个平台")
 
-    if stats:
-        body.append(
-            "最热 "
-            + "  ·  ".join(
-                f"{fmt.escape(str(s['word']))} {s.get('count', 0)}" for s in stats[:3]
-            )
-        )
+    deck = ("，".join(lead) + "。" if lead else "") + _focus_sentence(stats)
 
     lines = [
         "T R E N D R A D A R",
-        f"热 点 观 察  ·  {now.strftime('%Y.%m.%d')}  ·  {report_type}",
+        f"热 点 观 察   ·   {report_type}",
+        f"第 {now.timetuple().tm_yday} 期   ·   {now.strftime('%Y 年 %m 月 %d 日')}"
+        f"   ·   {_edition_label(now)}",
         "",
     ]
-    if body:
-        lines.extend([fmt.rule, "", *body, "", fmt.rule])
+    if deck:
+        lines.extend([fmt.rule, "", deck, "", fmt.rule])
     else:
         lines.append(fmt.rule)
 
@@ -289,15 +302,24 @@ def _masthead(
 
 
 def _continuation_header(fmt: _Format, now: datetime) -> str:
-    return f"T R E N D R A D A R  ·  续  ·  {_now_str(now)}\n\n{fmt.rule}"
+    return f"T R E N D R A D A R  ·  续页  ·  {_now_str(now)}"
 
 
-def _footer(fmt: _Format, now: datetime, update_info: Optional[Dict]) -> str:
-    lines = [fmt.rule, "", f"TRENDRADAR  ·  更新于 {now.strftime('%Y-%m-%d %H:%M')}"]
+def _footer(
+    fmt: _Format,
+    now: datetime,
+    update_info: Optional[Dict],
+    failed_ids: Optional[List] = None,
+) -> str:
+    lines = [fmt.rule, ""]
+    if failed_ids:
+        missing = "、".join(fmt.escape(str(failed)) for failed in failed_ids)
+        lines.append(f"编务说明：本期未获取 {missing}。")
+    lines.append(f"TRENDRADAR  ·  {now.strftime('%Y-%m-%d %H:%M')} 付印")
     if update_info:
         lines.append(
-            f"发现新版本 {update_info.get('remote_version', '')}"
-            f"（当前 {update_info.get('current_version', '')}）"
+            f"新版 {update_info.get('remote_version', '')}"
+            f" 已发布，当前版本 {update_info.get('current_version', '')}。"
         )
     return "\n".join(lines)
 
@@ -322,8 +344,12 @@ def _hotlist_blocks(
         column += 1
         word = stat.get("word", "")
         count = stat.get("count", len(titles))
-        heading = f"{column:02d} ── {fmt.escape(str(word))}"
-        kicker = "今日最热 · {} 条".format(count) if count == max_count else f"{count} 条"
+        heading = f"{column:02d} ｜ {fmt.escape(str(word))}"
+        kicker = (
+            f"今日最热，共 {count} 条。"
+            if count == max_count
+            else f"共 {count} 条。"
+        )
         group = f"{fmt.bold(heading)}\n{fmt.muted(kicker)}"
 
         show_source = display_mode == "keyword"
@@ -355,8 +381,8 @@ def _rss_blocks(rss_items: List[Dict], fmt: _Format) -> List[_Block]:
         if not titles:
             continue
         column += 1
-        heading = f"{column:02d} ── {fmt.escape(str(stat.get('word', '')))}"
-        group = f"{fmt.bold(heading)}\n{fmt.muted(f'{len(titles)} 条')}"
+        heading = f"{column:02d} ｜ {fmt.escape(str(stat.get('word', '')))}"
+        group = f"{fmt.bold(heading)}\n{fmt.muted(f'共 {len(titles)} 条。')}"
 
         for index, title_data in enumerate(titles, 1):
             line = _render_line(_title_line(fmt, title_data, index=index))
@@ -447,9 +473,9 @@ def _standalone_blocks(
             title = clean_title(item.get("title", "")) or item.get("url", "")
             url = item.get("url", "")
             line = _Line(
-                f"{index}  {fmt.bold(fmt.link(title, url) if url else fmt.escape(title))}",
+                f"{index}. {fmt.bold(fmt.link(title, url) if url else fmt.escape(title))}",
                 fmt.muted(meta) if meta else "",
-                len(f"{index}  "),
+                len(f"{index}. "),
             )
             if index == 1:
                 blocks.append(_Block(f"{name}\n\n{_render_line(line)}", name))
@@ -463,7 +489,7 @@ def _standalone_time(item: Dict) -> str:
     first_time = item.get("first_time", "")
     last_time = item.get("last_time", "")
     if first_time and last_time and first_time != last_time:
-        return f"{convert_time_for_display(first_time)}~{convert_time_for_display(last_time)}"
+        return f"{convert_time_for_display(first_time)} 至 {convert_time_for_display(last_time)}"
     if first_time:
         return convert_time_for_display(first_time)
     return ""
@@ -491,7 +517,7 @@ def _ai_blocks(ai_content: str, fmt: _Format) -> List[_Block]:
             if match:
                 heading = next((g for g in match.groups() if g), "").strip()
                 if heading and "AI 热点分析" not in heading:
-                    converted.append(fmt.bold(f"— {heading}"))
+                    converted.append(fmt.bold(heading))
                 continue
             converted.append(line)
 
@@ -502,18 +528,17 @@ def _ai_blocks(ai_content: str, fmt: _Format) -> List[_Block]:
     return blocks
 
 
-def _failed_blocks(failed_ids: List, fmt: _Format) -> List[_Block]:
-    if not failed_ids:
-        return []
-    blocks = []
-    for failed_id in failed_ids:
-        blocks.append(_Block(f"·  {fmt.escape(str(failed_id))}"))
-    return blocks
-
-
 # ========================================
 # 打包
 # ========================================
+
+def _with_footer(body: str, footer: str) -> str:
+    """拼页脚；正文已以分割线收尾时去掉页脚重复的那条。"""
+    rule, _, rest = footer.partition("\n")
+    if rest and body.endswith(f"\n\n{rule}"):
+        return f"{body}\n\n{rest.lstrip(chr(10))}"
+    return f"{body}\n\n{footer}"
+
 
 def _pack(
     blocks: List[_Block],
@@ -535,18 +560,18 @@ def _pack(
         pieces = _split_text(block.text, limit) if len(block.text.encode("utf-8")) > limit else [block.text]
         group = block.group
 
-        for piece in pieces:
+        for index, piece in enumerate(pieces):
             candidate = f"{current}\n\n{piece}"
             if len(f"{candidate}\n\n{footer}".encode("utf-8")) <= max_bytes:
                 current = candidate
                 has_content = True
                 continue
 
-            if has_content:
-                batches.append(f"{current}\n\n{footer}")
+            # 当前页收尾；报头页即使还没有正文也单独成页
+            batches.append(_with_footer(current, footer))
 
             current = cont_header
-            if group:
+            if group and not (index == 0 and block.text.startswith(group)):
                 current += f"\n\n{group}"
             current += f"\n\n{piece}"
             has_content = True
@@ -555,7 +580,7 @@ def _pack(
                 current = f"{cont_header}\n\n{piece}"
 
     if has_content:
-        batches.append(f"{current}\n\n{footer}")
+        batches.append(_with_footer(current, footer))
 
     return batches
 
@@ -590,7 +615,7 @@ def render_magazine_batches(
 
     first_header = _masthead(fmt, report_data, report_type, now, rss_items, rss_new_items)
     cont_header = _continuation_header(fmt, now)
-    footer = _footer(fmt, now, update_info)
+    footer = _footer(fmt, now, update_info, report_data.get("failed_ids", []))
 
     blocks: List[_Block] = []
 
@@ -603,7 +628,7 @@ def render_magazine_batches(
         elif region == "rss":
             if rss_items:
                 section = fmt.section(
-                    "R S S 精 选",
+                    "订 阅 精 选",
                     sum(len(stat.get("titles", [])) for stat in rss_items),
                 )
                 rss_blocks = _rss_blocks(rss_items, fmt)
@@ -617,14 +642,15 @@ def render_magazine_batches(
                 new_blocks = _new_titles_blocks(new_titles, fmt)
                 if new_blocks:
                     count = sum(len(source.get("titles", [])) for source in new_titles)
-                    section = fmt.section("速 递", count)
-                    new_blocks[0].text = f"{section}\n\n{new_blocks[0].text}"
+                    section = fmt.section("速 递")
+                    deck = fmt.muted(f"本时段新增 {count} 条。")
+                    new_blocks[0].text = f"{section}\n{deck}\n\n{new_blocks[0].text}"
                     blocks.extend(new_blocks)
 
                 rss_new_blocks = _rss_new_blocks(rss_new_items or [], fmt)
                 if rss_new_blocks:
                     count = len(rss_new_blocks)
-                    section = fmt.section("RSS 速 递", count)
+                    section = fmt.section("订 阅 速 递", count)
                     rss_new_blocks[0].text = f"{section}\n\n{rss_new_blocks[0].text}"
                     blocks.extend(rss_new_blocks)
 
@@ -637,7 +663,7 @@ def render_magazine_batches(
                         for key in ("platforms", "rss_feeds")
                         for block in standalone_data.get(key, [])
                     )
-                    section = fmt.section("独 立 展 示", count)
+                    section = fmt.section("榜 单 全 录", count)
                     standalone_blocks[0].text = f"{section}\n\n{standalone_blocks[0].text}"
                     blocks.extend(standalone_blocks)
 
@@ -645,15 +671,10 @@ def render_magazine_batches(
             if ai_content:
                 ai_blocks = _ai_blocks(ai_content, fmt)
                 if ai_blocks:
-                    section = fmt.section("编 者 按")
+                    section = fmt.section("本 期 观 察")
                     ai_blocks[0].text = f"{section}\n\n{ai_blocks[0].text}"
                     blocks.extend(ai_blocks)
 
-    failed_blocks = _failed_blocks(report_data.get("failed_ids", []), fmt)
-    if failed_blocks:
-        section = fmt.section("数 据 缺 口")
-        failed_blocks[0].text = f"{section}\n\n{failed_blocks[0].text}"
-        blocks.extend(failed_blocks)
 
     if not blocks:
         if mode == "incremental":
