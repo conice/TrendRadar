@@ -71,16 +71,16 @@ platforms:
       expected_domain: "toutiao.com"
     - id: "baidu"
       name: "百度热搜"
-      expected_domain: "thepaper.cn"
+      expected_domain: "baidu.com"
     - id: "bilibili-hot-search"
       name: "bilibili 热搜"
+      expected_domain: "bilibili.com"
     - id: "tieba"
       name: "贴吧"
       expected_domain: "baidu.com"
     - id: "weibo"
       name: "微博"
       expected_domain: "weibo.com"
-
 
 
 # ===============================================================
@@ -427,12 +427,6 @@ rss:
     - id: "bbc-sport"
       name: "BBC Sport"
       url: "http://feeds.bbci.co.uk/sport/rss.xml"
-      enabled: true
-      # max_age_days: 0
-
-    - id: "sky-sports"
-      name: "Sky Sports"
-      url: "https://www.skysports.com/rss/12040"
       enabled: true
       # max_age_days: 0
 
@@ -921,7 +915,7 @@ ai:
 # 9. AI 分析功能（模型配置见上方 ai 段）
 # ===============================================================
 ai_analysis:
-  enabled: true                     # 是否启用 AI 分析（true=启用, false=关闭）—— 总开关
+  enabled: false                     # 是否启用 AI 分析（true=启用, false=关闭）—— 总开关
                                     # 开启 schedule 后此项仍为总开关：false=永远不分析，true=由调度控制
 
   language: "Chinese"               # 分析报告语言（如 "English", "Korean", "法语"）
